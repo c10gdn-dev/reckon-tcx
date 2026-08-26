@@ -2,7 +2,7 @@
 
 **Corrects Fitbit's GPS distance inflation before uploading to Strava.**
 
-![Python](https://img.shields.io/badge/python-3.12+-blue)
+![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 <!-- CI and coverage badges go here once the repository has a remote. They are

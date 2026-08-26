@@ -19,12 +19,14 @@ classifiers = [
   "Environment :: Console",
   "Intended Audience :: End Users/Desktop",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Utilities",
 ]
 
 # Zero runtime dependencies, deliberately — see PLAN.md §3. This is what lets
 # Terraform's archive_file zip src/ directly with no build step. Do not add
-# `requests`; it is not in the Lambda Python 3.12 runtime.
+# `requests`; it is not in the Lambda Python runtime.
 dependencies = []
 
 [project.scripts]

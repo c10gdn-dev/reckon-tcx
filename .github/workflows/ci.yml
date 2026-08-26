@@ -8,11 +8,19 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Floor, current stable, and the one in between. Zero runtime
+        # dependencies make the matrix nearly free, and it is what stops the
+        # supported range in pyproject.toml from being an untested claim.
+        python-version: ["3.12", "3.13", "3.14"]
+    name: test (py${{ matrix.python-version }})
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
           enable-cache: true
       - run: uv sync
       - name: Lint

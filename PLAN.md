@@ -11,7 +11,17 @@ rather than by fixing position. Fitbit's stride-based figure is exactly that, an
 this tool chooses to trust it over the noisier GPS-derived one. The name is an
 admission that the output is a better estimate, not ground truth.
 
-**Stack:** Python 3.12, stdlib only at runtime. Terraform for the AWS deployment.
+**Stack:** Python 3.14 for development and CI, stdlib only at runtime; the
+supported floor is 3.12 and CI runs the full matrix 3.12/3.13/3.14. Terraform for
+the AWS deployment.
+
+This originally read "Python 3.12", chosen to match an assumed Lambda runtime.
+That was stale — 3.12 is two releases behind and on security-only fixes, and
+Lambda has offered newer runtimes for some time. Nothing in the codebase needs a
+specific version: there are no runtime dependencies and no version-gated syntax,
+and the suite passes identically on all three. **Verify the available Lambda
+runtimes at phase 4 and pin only the deploy artefact** — do not let that
+constrain local tooling before then.
 **Tenancy:** single-user per deployment. Forkers bring their own Fitbit/Strava app
 credentials. Do not build multi-tenant auth.
 
@@ -109,7 +119,7 @@ reckon/
 This means Terraform's `archive_file` can zip the source directly — set
 `source_dir = "src"` so the archive root is `reckon/` and handler strings resolve
 as `reckon.aws.receiver.handler`. No layers, no container images, no build step in
-the deploy path. Do not add `requests`; it is not in the Python 3.12 runtime and
+the deploy path. Do not add `requests`; it is not in the Lambda Python runtime and
 pulling it in destroys this property. This constraint extends to `analyse --plot`:
 the factor-distribution SVG is hand-emitted XML (§6), not matplotlib.
 
