@@ -1,0 +1,46 @@
+# Calibration corpus — real GPS traces. A raw TCX is a precise record of where
+# you live and when you leave the house. Never commit these.
+training-data/*
+!training-data/.gitkeep
+!training-data/README.md
+
+# Local Claude Code settings and working notes.
+# Note: the usual convention is to COMMIT CLAUDE.md so it is shared and
+# versioned with the code, and to ignore only .claude/. It is excluded here as a
+# deliberate choice: it holds candid internal notes aimed at a coding agent
+# rather than at a reader of this repository.
+.claude/
+CLAUDE.md
+
+# Credentials and local config
+.env
+*.pem
+terraform.tfvars
+backend.tf
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# Test and coverage artefacts
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.mutmut-cache
+mutants/
+
+# Editor and OS
+.DS_Store
+.idea/
+.vscode/
