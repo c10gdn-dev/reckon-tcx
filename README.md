@@ -122,20 +122,24 @@ reckon rescale INPUT [--distance DIST] [-o OUTPUT]
 | `--tolerance` | How far the factor may sit from 1 before the guard fires. Default `0.2`. |
 | `--on-tolerance` | `abort` (default), `clamp` to the tolerance bound, or `proceed` anyway. |
 
-The report line goes to stderr and the file to stdout, so `reckon rescale in.tcx
---distance 10km > out.tcx` works and stays readable.
+The report line goes to stderr and the file to stdout, so
+`reckon rescale in.tcx > out.tcx` works and stays readable.
 
 **Every activity comes out the other side.** Anything Reckon cannot correct is
 written through byte-identically rather than dropped, so an indoor session still
 reaches Strava — just with the numbers it came with. Running Reckon twice is a
 no-op: the second pass computes a factor of exactly 1.
 
-**Guards.** Reckon returns the file unchanged, with a warning, rather than
-fabricating data: no `DistanceMeters` in the stream, a zero total, or no
-`Position` elements at all. A non-monotonic stream warns and proceeds, since
-multiplication preserves ordering. A factor further from 1 than `--tolerance`
-aborts by default — a large discrepancy more often means a mismatched target
-than a bad track.
+**Guards.** Reckon leaves an activity alone, with a warning naming the reason,
+rather than fabricating data:
+
+| Situation | What happens |
+|-----------|--------------|
+| No `Position` elements — an indoor activity | Passed through unchanged. There is no GPS inflation to remove. |
+| No `DistanceMeters` in the stream, or a zero total | Passed through unchanged. Reckon will not invent a stream. |
+| Partial GPS — the watch lost its lock for part of the activity | Passed through unchanged. Scaling would attribute the missing distance to the part of the route that *was* recorded. |
+| A non-monotonic stream | Warns and proceeds; multiplication preserves ordering. |
+| A factor further from 1 than `--tolerance` | Aborts by default. With partial GPS detected separately, this now genuinely means the *target* is wrong rather than the track. |
 
 ## Status
 

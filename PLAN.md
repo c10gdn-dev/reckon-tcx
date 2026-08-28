@@ -136,7 +136,7 @@ stay `reckon` regardless.
 ## 4. CLI surface
 
 ```
-reckon rescale IN.tcx --distance 10.2km -o OUT.tcx   # offline, no network
+reckon rescale IN.tcx [--distance 10.2km] -o OUT.tcx # offline, no network
 reckon fetch LOG_ID [--raw]                          # Fitbit -> stdout/file
 reckon sync [--since DATE] [--dry-run]               # full pipeline, local store
 reckon watch [--interval 900]                        # poll loop
@@ -148,12 +148,17 @@ reckon auth fitbit | strava                          # OAuth dance
 — it is how the transform gets validated and how anyone else evaluates the project
 in thirty seconds.
 
-`--distance` accepts `10.2km`, `6.3mi`, or a bare number meaning metres
-(`10200`). Case-insensitive, no space before the unit. Reject anything else with
-a message showing the three accepted forms.
+`--distance` is **optional**. The target defaults to the file's own
+`Lap/DistanceMeters`, which the corpus shows is the figure the activity app
+displays, so `reckon rescale FILE` is the whole command. When given, it accepts
+`10.2km`, `6.3mi`, or a bare number meaning metres (`10200`); case-insensitive,
+no space before the unit, and anything else is rejected with a message showing
+the three accepted forms. The report line says which was used, `(from file)` or
+`(given)`.
 
-`fetch` without `--raw` returns the *rescaled* TCX, using the distance from the
-activity's summary as the target; `--raw` returns Fitbit's bytes untouched.
+`fetch` without `--raw` returns the *rescaled* TCX; `--raw` returns Fitbit's
+bytes untouched. Note that the target does **not** come from the activity summary
+— it is already in the TCX, so `fetch` needs no second request for it.
 
 `--dry-run` on `sync` should do everything except the Strava POST and print the
 before/after totals and factor.
@@ -208,13 +213,22 @@ Two consequences worth understanding, neither caused by the rescale:
 **Guards, each needing a test:**
 
 - No `DistanceMeters`, or final value 0 → return unmodified with a warning. Do
-  not fabricate a stream.
-- No `Position` elements (indoor activity) → skip the activity entirely.
-- `abs(factor - 1) > tolerance` → refuse by default; a large discrepancy is more
-  likely a bad Fitbit summary than a bad track. Configurable
-  `abort` | `clamp` | `proceed`.
+  not fabricate a stream. `SkipReason.NO_DISTANCE_STREAM`.
+- No `Position` elements (indoor activity) → leave the activity unchanged and
+  pass the file through. `SkipReason.NO_GPS`.
+- **Partial GPS** → leave unchanged and pass through, `SkipReason.PARTIAL_GPS`,
+  on either of two signals: GPS time coverage below `MIN_GPS_COVERAGE`, or a
+  factor above `MAX_CREDIBLE_FACTOR` when the target came from the file. See
+  §"Partial GPS" for why both are needed and why coverage must be measured in
+  seconds. This guard exists because tolerance cannot see an incomplete track.
+- `abs(factor - 1) > tolerance` → refuse by default. Now that partial GPS is
+  detected separately, this guard means what it says: the *target* is wrong, not
+  the track. Configurable `abort` | `clamp` | `proceed`, and its error message
+  advising "check the target distance" is finally correct advice.
 - Non-monotonic input distance → warn, proceed (monotonicity survives
   multiplication).
+- The transform is **idempotent**: `Lap/DistanceMeters` is the target and is
+  never scaled by the factor derived from it, so a second pass is a no-op.
 
 **Outcomes: deterministic skips are not failures.**
 
@@ -222,13 +236,22 @@ The pipeline maps every activity to exactly one of three outcomes, and the
 distinction drives retry behaviour everywhere downstream:
 
 - `uploaded` — Strava accepted it; record the activity id.
-- `skipped(reason)` — a *deterministic* result: no GPS, no distance stream,
-  factor outside tolerance with `abort` configured. Record it in the processed-log
-  store with the reason, delete the queue message, do **not** retry. Retrying
-  cannot change the input, and letting these raise in AWS mode would burn three
-  receives and poison the DLQ with activities that can never succeed.
+- `passed_through(reason)` — a *deterministic* result where the numbers could not
+  be improved but the activity is still valid: `no_gps`, `no_distance_stream`,
+  `partial_gps`. **Upload it unchanged.** Record the reason, delete the queue
+  message, do **not** retry. Retrying cannot change the input.
+- `withheld(reason)` — deterministic, and the activity should *not* reach Strava:
+  a malformed file, or a factor outside tolerance with `abort`. Record and do not
+  retry.
 - raised exception — a *transient* fault: network, 429, 5xx, throttling. Let it
   propagate so SQS retries and, if persistent, the DLQ alarm fires.
+
+**`passed_through` and `withheld` were one outcome and must not be.** The owner's
+requirement is that Strava record every sport, with the numbers improved where
+possible. A yoga session cannot be corrected and must still upload; so must a
+partial-GPS walk. Collapsing these into `skipped` would silently drop activities.
+`reckon rescale` already behaves correctly — it writes every input out — and
+`RescaleResult.skips` carries the structured reasons the pipeline routes on.
 
 `ProcessedLogStore` therefore stores a status (`uploaded` | `skipped` | `failed`)
 and a reason, not a bare seen-marker. `reckon sync` prints the same three-way
