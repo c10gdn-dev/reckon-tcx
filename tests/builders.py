@@ -90,6 +90,7 @@ def activity(
     distances: Sequence[float | None] = (0.0, 500.0, 1000.0),
     with_position: bool = True,
     speeds: Sequence[float | None] | None = None,
+    positions: Sequence[bool] | None = None,
     sport: str = "Running",
     activity_id: str | None = None,
     start_offset: int = 0,
@@ -99,17 +100,25 @@ def activity(
     avg_speed: float | None = None,
     include_id: bool = True,
 ) -> str:
-    """One `<Activity>` element, with `distances` split evenly across `laps` laps."""
+    """One `<Activity>` element, with `distances` split evenly across `laps` laps.
+
+    `positions` overrides `with_position` per trackpoint, which is how a partial
+    GPS track — lock lost for part of the activity — gets built.
+    """
     if speeds is None:
         speeds = [None] * len(distances)
+    if positions is None:
+        positions = [with_position] * len(distances)
     points = [
         trackpoint(
             offset_seconds=start_offset + index * 10,
             distance_m=distance,
-            with_position=with_position,
+            with_position=present,
             speed=speed,
         )
-        for index, (distance, speed) in enumerate(zip(distances, speeds, strict=True))
+        for index, (distance, speed, present) in enumerate(
+            zip(distances, speeds, positions, strict=True)
+        )
     ]
 
     per_lap = -(-len(points) // laps) if points else 0

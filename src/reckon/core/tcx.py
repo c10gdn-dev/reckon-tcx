@@ -4,6 +4,7 @@ Owns namespaces, element lookup and the round-trip guarantees the transform
 depends on. Knows nothing about rescaling.
 """
 
+import datetime as dt
 import math
 import xml.etree.ElementTree as ET
 from collections.abc import Iterator
@@ -78,6 +79,45 @@ def label(activity: ET.Element) -> str:
     if element is None or not (element.text or "").strip():
         return "<unidentified>"
     return element.text.strip()
+
+
+def gps_coverage(activity: ET.Element) -> float:
+    """Fraction of the activity's elapsed time that carries a position fix.
+
+    Measured in *seconds*, not trackpoints, and deliberately so: the watch
+    samples roughly half as often while it has no fix, so counting trackpoints
+    understates a dropout badly enough to hide one.
+
+    An interval between two trackpoints counts as covered when the earlier of the
+    two has a `Position`. Returns 0.0 for an activity with no positions at all,
+    and 1.0 for one too short to have an interval.
+    """
+    marks: list[tuple[dt.datetime, bool]] = []
+    for point in trackpoints(activity):
+        element = point.find(TIME)
+        if element is None:
+            raise MalformedTCX("trackpoint has no Time; cannot measure GPS coverage")
+        marks.append((_read_time(element), point.find(POSITION) is not None))
+    if not marks:
+        return 0.0
+    span = (marks[-1][0] - marks[0][0]).total_seconds()
+    if span <= 0:
+        return 1.0 if any(covered for _, covered in marks) else 0.0
+    unlocked = sum(
+        (marks[i][0] - marks[i - 1][0]).total_seconds()
+        for i in range(1, len(marks))
+        if not marks[i - 1][1]
+    )
+    return max(0.0, 1.0 - unlocked / span)
+
+
+def _read_time(element: ET.Element) -> dt.datetime:
+    """Parse a TCX timestamp for measurement only — it is never written back."""
+    text = (element.text or "").strip()
+    try:
+        return dt.datetime.fromisoformat(text)
+    except ValueError as exc:
+        raise MalformedTCX(f"Time is not an ISO 8601 timestamp: {text!r}") from exc
 
 
 def lap_distance_total(activity: ET.Element) -> float | None:

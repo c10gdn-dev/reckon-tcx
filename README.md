@@ -93,12 +93,14 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
 - **The factor is not a constant.** Across eleven activities it ranged 0.89–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that
   particular track was. Reckon computes it per file and refuses to guess.
-- **A partial GPS track cannot be corrected, and Reckon refuses to try.** If the
-  watch never got a lock for the first few minutes, the stream covers less ground
-  than you actually travelled, and scaling it up would attribute missing distance
-  to the wrong part of the route. One walk in testing lost lock for 383 s; its
-  factor came out at 1.33 and Reckon aborted. That is the correct answer, and
-  `--on-tolerance proceed` would produce a plausible-looking fabrication.
+- **A partial GPS track cannot be corrected, and Reckon detects that and
+  declines.** If the watch lost its lock for part of the activity, the stream
+  covers less ground than you actually travelled, and scaling it up would
+  attribute the missing distance to the part of the route that *was* recorded.
+  Reckon checks two things: how much of the elapsed time carried a fix, and
+  whether the activity's own total exceeds what GPS measured — which cannot
+  happen from noise alone, since jitter only ever adds length. Either one refuses
+  the correction. The file is still written out, unchanged.
 - **Indoor activities are passed through**, not corrected and not dropped. With
   no GPS there is no inflation to remove, so the file is written out unchanged.
 - **Reckon does not touch activity type.** It edits distances and speeds only;

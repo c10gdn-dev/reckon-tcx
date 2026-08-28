@@ -18,10 +18,50 @@ from reckon.core.errors import MissingTarget, ToleranceExceeded
 
 DEFAULT_TOLERANCE = 0.2
 
+# Minimum fraction of an activity's elapsed time that must carry a GPS fix
+# before its distance stream is considered a complete record of the route.
+#
+# Calibrated against the corpus: nine complete tracks measure 89.2%-99.4%, and
+# the one activity that lost lock measures 71.7%. The default sits between those
+# clusters. Be aware that no real file has yet been observed between 72% and 89%,
+# so the exact threshold is a judgement inside an unobserved gap — it is exposed
+# as a parameter for that reason.
+MIN_GPS_COVERAGE = 0.80
+
+# A factor above this means the GPS stream measured *less* than the activity's
+# own total. GPS jitter is strictly additive — every wobble lengthens the path,
+# none shortens it — so a complete track cannot come in short. When the target
+# was taken from the file, that is evidence of missing track rather than of
+# noise. All nine complete tracks in the corpus fall below 1.0; the highest is
+# 0.9943. The margin above 1.0 absorbs rounding in the two recorded totals.
+MAX_CREDIBLE_FACTOR = 1.005
+
 # Number of decimal places kept when writing a scaled value back. Distances are
 # metres and speeds are m/s; seven places is far beyond the precision of either
 # measurement, so this only exists to stop float repr from writing 17 digits.
 _PRECISION = 7
+
+
+class SkipReason(StrEnum):
+    """Why an activity was left unscaled.
+
+    Structured rather than prose because phase 5 has to route on it: every one of
+    these is a deterministic pass-through, never a transient fault, and none of
+    them is a reason to withhold the upload.
+    """
+
+    NO_GPS = "no_gps"
+    NO_DISTANCE_STREAM = "no_distance_stream"
+    PARTIAL_GPS = "partial_gps"
+
+
+@dataclass(frozen=True)
+class Skip:
+    """One activity that was left exactly as it was found, and why."""
+
+    activity: str
+    reason: SkipReason
+    detail: str
 
 
 class ToleranceAction(StrEnum):
@@ -61,6 +101,7 @@ class RescaleResult:
     trackpoint_count: int
     warnings: tuple[str, ...]
     modified: bool
+    skips: tuple[Skip, ...] = ()
 
     @property
     def result_total_m(self) -> float:
@@ -74,6 +115,7 @@ def rescale_tcx(
     *,
     tolerance: float = DEFAULT_TOLERANCE,
     on_tolerance: ToleranceAction = ToleranceAction.ABORT,
+    min_gps_coverage: float = MIN_GPS_COVERAGE,
 ) -> RescaleResult:
     """Rescale the distance stream in `tcx_bytes` so its total is `target_distance_m`.
 
@@ -96,6 +138,7 @@ def rescale_tcx(
 
     root = tcx.parse(tcx_bytes)
     warnings: list[str] = []
+    skips: list[Skip] = []
     scalable: list[ET.Element] = []
     gps_total = 0.0
     trackpoint_count = 0
@@ -107,10 +150,27 @@ def rescale_tcx(
         final, non_monotonic, count = _distance_stream(activity)
         trackpoint_count += count
         if not tcx.has_position(activity):
-            warnings.append(f"activity {name}: no GPS positions (indoor?), left unchanged")
+            _skip(skips, warnings, name, SkipReason.NO_GPS, "no GPS positions (indoor?)")
             continue
         if final is None:
-            warnings.append(f"activity {name}: no Trackpoint/DistanceMeters, left unchanged")
+            _skip(
+                skips, warnings, name, SkipReason.NO_DISTANCE_STREAM, "no Trackpoint/DistanceMeters"
+            )
+            continue
+        coverage = tcx.gps_coverage(activity)
+        if coverage < min_gps_coverage:
+            # The stream describes less ground than was actually covered, so
+            # scaling it would spread the missing distance over the part of the
+            # route that *was* recorded. Refuse regardless of how plausible the
+            # resulting factor looks.
+            _skip(
+                skips,
+                warnings,
+                name,
+                SkipReason.PARTIAL_GPS,
+                f"GPS covers only {coverage:.1%} of the elapsed time "
+                f"(needs {min_gps_coverage:.0%}); the distance stream is incomplete",
+            )
             continue
         if non_monotonic:
             # Multiplication preserves monotonicity, so this is worth saying but
@@ -120,17 +180,31 @@ def rescale_tcx(
         gps_total += final
 
     if not scalable:
-        warnings.append("no activity carries a GPS distance stream; returned unchanged")
-        return _unchanged(tcx_bytes, target_distance_m, trackpoint_count, warnings)
+        warnings.append("no activity carries a usable GPS distance stream; returned unchanged")
+        return _unchanged(tcx_bytes, target_distance_m, trackpoint_count, warnings, skips)
     if gps_total == 0.0:
         warnings.append("GPS distance total is zero; returned unchanged")
-        return _unchanged(tcx_bytes, target_distance_m, trackpoint_count, warnings)
+        return _unchanged(tcx_bytes, target_distance_m, trackpoint_count, warnings, skips)
 
     lap_totals = {id(a): tcx.lap_distance_total(a) for a in scalable}
-    if target_distance_m is None:
+    from_file = target_distance_m is None
+    if from_file:
         target_distance_m = _target_from_file(scalable, lap_totals)
 
     factor = target_distance_m / gps_total
+    if from_file and factor > MAX_CREDIBLE_FACTOR:
+        # Jitter cannot make a track measure short, so the file's own total
+        # exceeding the GPS sum means part of the route went unrecorded — a
+        # dropout too brief for the coverage check to have caught.
+        detail = (
+            f"the file's own total exceeds the GPS distance by {(factor - 1) * 100:.1f}%, "
+            f"which GPS noise cannot explain; part of the route was not recorded"
+        )
+        for activity in scalable:
+            _skip(skips, warnings, tcx.label(activity), SkipReason.PARTIAL_GPS, detail)
+        warnings.append("no activity carries a usable GPS distance stream; returned unchanged")
+        return _unchanged(tcx_bytes, target_distance_m, trackpoint_count, warnings, skips)
+
     if abs(factor - 1.0) > tolerance:
         if on_tolerance is ToleranceAction.ABORT:
             raise ToleranceExceeded(factor, gps_total, target_distance_m, tolerance)
@@ -152,6 +226,7 @@ def rescale_tcx(
         trackpoint_count=trackpoint_count,
         warnings=tuple(warnings),
         modified=True,
+        skips=tuple(skips),
     )
 
 
@@ -227,8 +302,19 @@ def _format(value: float) -> str:
     return f"{value:.{_PRECISION}f}".rstrip("0").rstrip(".")
 
 
+def _skip(
+    skips: list[Skip], warnings: list[str], name: str, reason: SkipReason, detail: str
+) -> None:
+    skips.append(Skip(activity=name, reason=reason, detail=detail))
+    warnings.append(f"activity {name}: {detail}, left unchanged")
+
+
 def _unchanged(
-    tcx_bytes: bytes, target_m: float | None, trackpoint_count: int, warnings: list[str]
+    tcx_bytes: bytes,
+    target_m: float | None,
+    trackpoint_count: int,
+    warnings: list[str],
+    skips: list[Skip],
 ) -> RescaleResult:
     """Hand back the original bytes untouched, not a re-serialisation of them."""
     return RescaleResult(
@@ -239,4 +325,5 @@ def _unchanged(
         trackpoint_count=trackpoint_count,
         warnings=tuple(warnings),
         modified=False,
+        skips=tuple(skips),
     )

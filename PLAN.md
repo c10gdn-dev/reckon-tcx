@@ -380,12 +380,51 @@ in the corpus was caught only because it was extreme: 383 s, 25% of the activity
 It was caught by magnitude, not by detection.
 
 Tolerance is the wrong instrument for this. It bounds *how much* correction is
-applied; it cannot tell a noisy track from an incomplete one. **v1.0 must detect
-partial GPS structurally** — a distance stream that begins at 0.00 well into the
-activity, a run of positionless trackpoints, an abrupt gap between consecutive
-fixes — and refuse regardless of the resulting factor. This supersedes the
-tolerance guard for this failure mode; the guard stays for genuine target
-mismatches.
+applied; it cannot tell a noisy track from an incomplete one.
+
+**Built (2026-08-28).** Two independent signals, either of which refuses:
+
+1. **GPS time coverage** — `tcx.gps_coverage` returns the fraction of elapsed
+   time carrying a fix; below `MIN_GPS_COVERAGE` (0.80) the activity is skipped.
+   Measured in *seconds*, which matters: the watch samples roughly half as often
+   while unlocked, so counting trackpoints puts the known partial file at 83%
+   coverage and hides the dropout entirely. By time it is 71.7%, against
+   89.2-99.4% for the nine complete tracks.
+
+2. **A factor above `MAX_CREDIBLE_FACTOR` (1.005)**, when the target came from
+   the file. This is the better-grounded of the two and follows from §1's own
+   physics: GPS jitter is strictly additive, so a complete track cannot measure
+   *shorter* than the true total. All nine complete tracks fall below 1.0, the
+   highest being 0.9943. A file's own total exceeding its GPS sum therefore means
+   missing route, not noise. Only applied when the target came from the file — an
+   explicit `--distance` that is too large is a caller error and stays a
+   tolerance matter.
+
+The signals catch different failures, which is why both exist. Coverage catches
+long dropouts; the factor rule catches short ones. A dropout of 40 fixes injected
+into a clean ride leaves coverage at 95.9% — comfortably passing — and is caught
+only by the factor rule.
+
+An idea that did *not* survive contact with the data: "the distance stream begins
+at 0.00 well into the activity" is not a signature at all. **Every** file does
+that, because every activity has a GPS acquisition lead-in — 15 to 79 s across
+the corpus. A lead-in is normal; only its size is diagnostic.
+
+**Outcome is pass-through, not failure.** A partial-GPS activity is left exactly
+as found and the file is written unchanged, exit 0, with the reason named. It
+still reaches Strava, uncorrected, which is what the owner asked for: Reckon
+declines to improve the numbers rather than making the activity disappear.
+Previously this file aborted with exit 1 via the tolerance guard, reporting a
+bare factor breach that named no cause.
+
+**Skips are structured.** `RescaleResult.skips` carries `Skip(activity, reason,
+detail)` with `SkipReason` one of `no_gps`, `no_distance_stream`, `partial_gps`.
+Phase 5 routes on these: all three are deterministic pass-throughs, never
+transient faults, and **none is a reason to withhold the upload**.
+
+Still outstanding: the threshold sits in a region no real file occupies — nothing
+has been observed between 72% and 89% coverage. `min_gps_coverage` is a parameter
+for that reason, and the Tier 1 corpus items below are what would pin it down.
 
 #### Corpus checklist for v1.0
 

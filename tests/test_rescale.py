@@ -10,7 +10,12 @@ import pytest
 import builders
 from reckon.core import tcx
 from reckon.core.errors import MalformedTCX, MissingTarget, ToleranceExceeded
-from reckon.core.rescale import ToleranceAction, rescale_tcx
+from reckon.core.rescale import (
+    MAX_CREDIBLE_FACTOR,
+    SkipReason,
+    ToleranceAction,
+    rescale_tcx,
+)
 
 
 def distances(data: bytes) -> list[float]:
@@ -144,7 +149,7 @@ def test_activity_without_gps_is_left_alone():
     assert result.gps_total_m == 0.0
     assert result.trackpoint_count == 3
     assert any("no GPS positions" in w for w in result.warnings)
-    assert any("no activity carries a GPS distance stream" in w for w in result.warnings)
+    assert any("no activity carries a usable GPS distance stream" in w for w in result.warnings)
 
 
 def test_activity_without_a_distance_stream_is_left_alone():
@@ -386,3 +391,116 @@ def test_activity_without_a_lap_total_still_scales_its_stream():
     result = rescale_tcx(data, 900.0)
 
     assert distances(result.data) == pytest.approx([0.0, 450.0, 900.0])
+
+
+# --- partial GPS: the case where rescaling would fabricate -------------------
+
+
+def partial_track(locked: int = 2, unlocked: int = 8, lap_distance_m: float = 900.0) -> bytes:
+    """An activity that only got a fix for the last `locked` trackpoints."""
+    distances = (None,) * unlocked + tuple(float(i * 100) for i in range(locked))
+    return builders.tcx(
+        distances=distances,
+        positions=[False] * unlocked + [True] * locked,
+        lap_distance_m=lap_distance_m,
+    )
+
+
+def test_partial_gps_is_refused_rather_than_scaled():
+    result = rescale_tcx(partial_track())
+
+    assert result.modified is False
+    assert [s.reason for s in result.skips] == [SkipReason.PARTIAL_GPS]
+    assert "GPS covers only" in result.skips[0].detail
+    assert "the distance stream is incomplete" in result.skips[0].detail
+
+
+def test_partial_gps_returns_the_original_bytes_untouched():
+    data = partial_track()
+
+    assert rescale_tcx(data).data == data
+
+
+def test_partial_gps_threshold_is_adjustable():
+    """The default sits in a gap no real file has been observed in, so it moves.
+
+    The lap total here matches the stream, so the factor rule stays quiet and
+    coverage is the only thing deciding.
+    """
+    data = partial_track(lap_distance_m=100.0)
+
+    assert rescale_tcx(data).modified is False
+    assert rescale_tcx(data, min_gps_coverage=0.0).modified is True
+
+
+def test_a_complete_track_is_not_mistaken_for_a_partial_one():
+    result = rescale_tcx(builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=900.0))
+
+    assert result.modified is True
+    assert result.skips == ()
+
+
+def test_a_short_dropout_is_caught_by_the_factor_even_at_high_coverage():
+    """GPS noise only ever adds length, so a track cannot measure short."""
+    # Nine of ten fixes present — coverage passes — but the file's own total is
+    # well above what the stream recorded.
+    data = builders.tcx(
+        distances=(0.0, None, *(float(i * 10) for i in range(1, 9))),
+        positions=[True, False] + [True] * 8,
+        lap_distance_m=500.0,
+    )
+
+    result = rescale_tcx(data)
+
+    assert result.modified is False
+    assert {s.reason for s in result.skips} == {SkipReason.PARTIAL_GPS}
+    assert "GPS noise cannot explain" in result.skips[0].detail
+
+
+def test_an_explicit_target_above_the_stream_is_a_tolerance_matter_not_a_dropout():
+    """A bad --distance is the caller's error, not evidence of a missing track."""
+    data = builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=900.0)
+
+    with pytest.raises(ToleranceExceeded):
+        rescale_tcx(data, 5000.0)
+
+
+def test_an_explicit_target_slightly_above_the_stream_still_scales():
+    data = builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=900.0)
+
+    result = rescale_tcx(data, 1100.0)
+
+    assert result.modified is True
+    assert result.factor == pytest.approx(1.1)
+
+
+def test_a_factor_a_hair_above_one_from_the_file_is_tolerated_as_rounding():
+    """MAX_CREDIBLE_FACTOR absorbs rounding in the two recorded totals."""
+    data = builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=1000.0)
+
+    result = rescale_tcx(data)
+
+    assert result.factor == pytest.approx(1.0)
+    assert MAX_CREDIBLE_FACTOR > 1.0
+
+
+def test_no_gps_and_no_stream_carry_their_own_skip_reasons():
+    no_gps = rescale_tcx(builders.tcx(with_position=False))
+    no_stream = rescale_tcx(builders.tcx(distances=(None, None, None)))
+
+    assert [s.reason for s in no_gps.skips] == [SkipReason.NO_GPS]
+    assert [s.reason for s in no_stream.skips] == [SkipReason.NO_DISTANCE_STREAM]
+
+
+def test_skips_name_the_activity_they_refer_to():
+    data = builders.document(
+        builders.activity(distances=(0.0, 500.0), activity_id="first", lap_distance_m=480.0),
+        builders.activity(
+            distances=(None, None), activity_id="second", with_position=False, start_offset=3600
+        ),
+    )
+
+    result = rescale_tcx(data)
+
+    assert [(s.activity, s.reason) for s in result.skips] == [("second", SkipReason.NO_GPS)]
+    assert result.modified is True

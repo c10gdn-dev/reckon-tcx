@@ -94,3 +94,69 @@ def test_timestamps_collects_ids_lap_starts_and_trackpoint_times() -> None:
     assert found[0] == builders.timestamp(0)
     assert found[2] == builders.timestamp(0)
     assert found[3] == builders.timestamp(10)
+
+
+# --- GPS coverage ------------------------------------------------------------
+
+
+def coverage(**kwargs) -> float:
+    root = tcx.parse(builders.tcx(**kwargs))
+    return tcx.gps_coverage(next(tcx.activities(root)))
+
+
+def test_coverage_is_total_when_every_trackpoint_has_a_fix():
+    assert coverage(distances=(0.0, 100.0, 200.0)) == pytest.approx(1.0)
+
+
+def test_coverage_is_zero_without_any_fix():
+    assert coverage(distances=(0.0, 100.0, 200.0), with_position=False) == 0.0
+
+
+def test_coverage_is_measured_in_seconds_not_trackpoints():
+    """Half the points but four fifths of the time: the answer must be 0.8."""
+    root = tcx.parse(
+        builders.document(
+            builders.activity(
+                distances=(None,) * 2 + (0.0, 100.0, 200.0),
+                positions=[False] * 2 + [True] * 3,
+            )
+        )
+    )
+    # Two unlocked 10 s intervals out of a 40 s span.
+    assert tcx.gps_coverage(next(tcx.activities(root))) == pytest.approx(0.5)
+
+
+def test_coverage_of_a_partial_track_reflects_the_dropout():
+    assert coverage(
+        distances=(None,) * 8 + (0.0, 100.0), positions=[False] * 8 + [True] * 2
+    ) == pytest.approx(1 / 9)
+
+
+def test_coverage_of_an_empty_track_is_zero():
+    assert coverage(distances=()) == 0.0
+
+
+def test_coverage_of_a_single_trackpoint_is_total_when_it_has_a_fix():
+    assert coverage(distances=(0.0,)) == 1.0
+
+
+def test_coverage_of_a_single_trackpoint_is_zero_without_one():
+    assert coverage(distances=(0.0,), with_position=False) == 0.0
+
+
+def test_coverage_rejects_a_trackpoint_with_no_time():
+    data = builders.tcx(distances=(0.0, 100.0)).replace(
+        b"<Time>2024-01-01T09:00:00.000Z</Time>", b"", 1
+    )
+    root = tcx.parse(data)
+    with pytest.raises(MalformedTCX, match="no Time"):
+        tcx.gps_coverage(next(tcx.activities(root)))
+
+
+def test_coverage_rejects_an_unparseable_timestamp():
+    data = builders.tcx(distances=(0.0, 100.0)).replace(
+        b"<Time>2024-01-01T09:00:00.000Z</Time>", b"<Time>the seventh of never</Time>", 1
+    )
+    root = tcx.parse(data)
+    with pytest.raises(MalformedTCX, match="ISO 8601"):
+        tcx.gps_coverage(next(tcx.activities(root)))
