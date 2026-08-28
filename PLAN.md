@@ -277,179 +277,89 @@ place to find out how much they matter in practice:
 
 That analysis is worth doing early and is genuinely informative.
 
-**Calibration result, nine activities, 2026-08-27.** The transform holds on every
-file; the *explanation* of why it works did not survive cycling, and has been
-replaced.
+**Calibration result, eleven activities, 2026-08-28.** The transform holds on
+every file; the *explanation* of why it works did not survive cycling, and has
+been replaced.
 
 Sorted by wiggle (see below), which very nearly sorts by inflation:
 
-| activity | Sport | Google Health | Strava | inflation | factor | wiggle |
-|----------|-------|--------------|--------|-----------|--------|--------|
-| cycle, 31 min | Biking | 9.32 km | 9.37 km | +0.58% | 0.9943 | 1.014 |
-| cycle, 30 min | Biking | 9.57 km | 9.76 km | +2.07% | 0.9797 | 1.025 |
-| run, 43 min | Running | 7.06 km | 7.25 km | +2.77% | 0.9731 | 1.035 |
-| walk, 23 min | Other | 2.11 km | 1.58 km | *partial GPS* | 1.3295 | 1.045 |
-| walk, 53 min | Other | 5.26 km | 5.41 km | +2.97% | 0.9712 | 1.074 |
-| walk, 24 min | Other | 2.40 km | 2.54 km | +6.11% | 0.9424 | 1.083 |
-| run, 116 min | Running | 21.46 km | 24.06 km | +12.15% | 0.8916 | 1.103 |
-| run, 83 min | Running | 15.23 km | 16.14 km | +6.04% | 0.9431 | 1.103 |
-| run, 57 min | Running | 8.18 km | 8.94 km | +9.43% | 0.9138 | 1.121 |
+| activity | Sport | app total | Strava | inflation | factor | wiggle | GPS gaps |
+|----------|-------|-----------|--------|-----------|--------|--------|----------|
+| cycle, 31 min | Biking | 9.32 km | 9.37 km | +0.58% | 0.9943 | 1.014 | 1.2% |
+| cycle, 30 min | Biking | 9.57 km | 9.76 km | +2.07% | 0.9797 | 1.025 | 1.6% |
+| run, 43 min | Running | 7.06 km | 7.25 km | +2.77% | 0.9731 | 1.035 | 0.9% |
+| walk, 67 min | Other | 6.47 km | 6.54 km | +1.14% | 0.9887 | 1.035 | 0.3% |
+| walk, 23 min | Other | 2.11 km | 1.58 km | *partial GPS* | 1.3295 | 1.045 | 16.6% |
+| walk, 53 min | Other | 5.26 km | 5.41 km | +2.97% | 0.9712 | 1.074 | 3.7% |
+| walk, 24 min | Other | 2.40 km | 2.54 km | +6.11% | 0.9424 | 1.083 | 4.2% |
+| run, 116 min | Running | 21.46 km | 24.06 km | +12.15% | 0.8916 | 1.103 | 2.5% |
+| run, 83 min | Running | 15.23 km | 16.14 km | +6.04% | 0.9431 | 1.103 | 4.0% |
+| run, 57 min | Running | 8.18 km | 8.94 km | +9.43% | 0.9138 | 1.121 | 6.8% |
+
+Plus a yoga session with no GPS at all, which has no factor and is passed
+through unchanged.
 
 Confirmed on every file:
 
-- **Google Health matches `Lap/DistanceMeters`** to within 0.06% worst case. The
-  target total is already in the TCX — no activity-summary fetch is needed.
-- **Strava reports the trackpoint distance stream**, to within 0.21% and often far
-  closer (0.001% on the second ride), and never the coordinates. The partial-GPS
-  walk confirms it hardest: the stream sits 25% below the stride total there and
-  Strava reported the stream.
+- **The app's total matches `Lap/DistanceMeters`** to within 0.06% worst case.
+  The target is already in the TCX — no activity-summary fetch is needed.
+- **Strava reports the trackpoint distance stream**, to within 0.21% and often
+  far closer, and never the coordinates. The partial-GPS walk confirms it
+  hardest: the stream sits 25% below the app total there and Strava reported the
+  stream.
 - **Strava's elapsed time is the wall-clock span of the trackpoints**, exact to
-  the second on all nine. Google Health's duration is `TotalTimeSeconds`.
+  the second on all eleven.
 
 ### Dead reckoning is not the mechanism
 
 §1 explains the correction as GPS fused with **stride cadence**, and the project
 is named for it. The cycling files falsify that as a complete account.
 
-There are no strides on a bicycle, yet Fitbit's total still came in below the GPS
-stream on both rides — 198 m and 54 m, factors 0.9797 and 0.9943. Whatever Fitbit
-does to produce its total, it is not primarily stride-based dead reckoning,
-because it does the same thing for an activity with no stride signal at all.
+There are no strides on a bicycle, yet the app's total still came in below the
+GPS stream on both rides — 198 m and 54 m, factors 0.9797 and 0.9943. Whatever
+produces that total, it is not primarily stride-based dead reckoning, because it
+does the same thing for an activity with no stride signal at all.
 
-**What the corpus supports instead: Fitbit smooths, Strava sums raw.** Define
+**What the corpus supports instead: the source smooths, Strava sums raw.** Define
 wiggle as full-resolution path length over the same path decimated to one fix per
 5 s — real movement is smooth at that scale, GPS jitter is not, so the ratio
 isolates high-frequency noise from genuine cornering.
 
-Across the eight complete tracks wiggle correlates with inflation at **r = +0.859,
-Spearman rho = +0.881**, well ahead of duration (+0.75), distance (+0.55) and
-speed (-0.42). It has strengthened with every file added — +0.76 at n = 6, +0.81
-at n = 7, +0.86 at n = 8 — which is not how a spurious correlation usually
-behaves. It has also made one genuine out-of-sample prediction: before the second
-ride's factor was known, wiggle was predicted at 1.005-1.015 from its 0.58%
-inflation and measured 1.014.
+Across the nine complete tracks wiggle correlates with inflation at **r = +0.873,
+Spearman rho = +0.867**, well ahead of duration (+0.65), GPS dropout (+0.63) and
+distance (+0.58). It has strengthened with every file added — +0.76 at n = 6,
++0.81 at n = 7, +0.86 at n = 8, +0.87 at n = 9 — which is not how a spurious
+correlation usually behaves.
 
-Two limits keep this a hypothesis rather than a finding:
+It has also made **two out-of-sample predictions and got both right**, each
+stated before the value was computed:
 
-- **It fails to separate the two long runs.** Both measure wiggle 1.103; their
-  inflations are 6.04% and 12.15%. Something else is operating there.
-- **The excess-to-inflation ratio is not constant** — 1.4% excess against 0.58%
-  inflation on one ride, 2.5% against 2.07% on the other. Wiggle orders
-  activities well; it does not measure the factor.
+- The second ride: predicted 1.005-1.015 from its 0.58% inflation, measured 1.014.
+- The 67-minute walk: predicted 1.02-1.04, against a 1.045-1.083 band spanned by
+  every previous walk, measured 1.035. This was the sharper test — a walk with
+  the lowest walk inflation in the corpus had to break the walk pattern, and did.
 
-Speed is best read as a proxy for smoothness rather than a cause: bicycles track
-cleanly, and cleanliness is what correlates.
+One limit keeps it a hypothesis rather than a measurement: **equal wiggle does
+not mean equal inflation.** The two long runs both measure 1.103 with inflations
+of 6.04% and 12.15%; the 43-minute run and the 67-minute walk both measure 1.035
+with 2.77% and 1.14%. Wiggle *orders* activities well and predicts a band. It
+does not give a number, and it must never be used to synthesise a factor.
 
-**Consequences.** None for the transform, which never depended on why Fitbit's
-total is better. Two for the documentation, both now done:
-
-1. `README.md` §"How it works" and this section state only what is supported:
-   Fitbit's total is demonstrably not a raw GPS sum, Strava's demonstrably is, and
-   the difference tracks high-frequency noise. Do not assert a filter design that
-   has not been observed, and do not reintroduce the stride-fusion explanation.
-2. The name and the `dead-reckoning` keyword in `pyproject.toml` are imprecise.
-   Not worth renaming a project over, but do not lean on the metaphor in new prose.
+**Consequences.** None for the transform, which never depended on why the app's
+total is better. Two for the documentation, both done: §"How it works" in the
+README and this section claim only what is supported, and the name and the
+`dead-reckoning` keyword are noted as imprecise. Do not reintroduce the
+stride-fusion explanation.
 
 **`Sport` is expressible for runs and rides, not for walks.** Runs export as
-`Running`, both rides as `Biking`, both walks as `Other` — TCX v2 permits only
-those three. So phase 6 can trust `Running` and `Biking` directly and only needs
-the Fitbit activity summary to disambiguate `Other`.
+`Running`, both rides as `Biking`, walks and yoga as `Other` — TCX v2 permits
+only those three. Phase 6 can trust `Running` and `Biking` and needs the activity
+summary only to disambiguate `Other`.
 
-**A fixed fallback factor is not defensible.** Over the eight complete tracks the
-factor ranges 0.8916-0.9943, mean 0.9511, stdev 0.0351. Where the target total is
-unavailable, skip the activity; do not substitute a guessed factor. **Do not use
-wiggle to synthesise one either** — it is a correlate, not a measurement, and the
-two long runs show where that would go wrong.
-
-**The no-GPS guard is reachable, and is now covered by real data.** It was
-briefly recorded here that Fitbit likely does not export TCX for a GPS-less
-activity, reasoning that TCX is a track format. That was wrong. A **yoga**
-session exports as TCX and syncs to Strava:
-1867 trackpoints carrying only `Time` and `HeartRateBpm`, zero `Position`
-elements, no `Trackpoint/DistanceMeters`, and `Lap/DistanceMeters` of `0.0`.
-
-`rescale` handles it correctly — both warnings fire, exit 0, and the output is
-**byte-identical** to the input rather than a re-serialisation, which is what
-`_unchanged()` exists to guarantee. Strava displays it as 0 km, matching
-`Lap/DistanceMeters`, and its elapsed time still matches the trackpoint span to
-the second. The cross-app rules hold even for an activity with no distance.
-
-**`Sport="Other"` carries no information at all.** It now spans a 5.26 km walk
-and a stationary yoga session. Phase 6 must always consult the Fitbit activity
-summary for `Other`; there is no defensible fallback. `Running` and `Biking`
-remain trustworthy.
-
-### Three defects the corpus exposed — all fixed
-
-1. **`trackpoint_count` reported 0 for a file with 1867 trackpoints.** It
-   accumulated only over *scaled* activities, so every skip guard zeroed it, and
-   the CLI printed a flatly false `0 trackpoints`. It now counts every trackpoint
-   in the file, scaled or not: the number describes the input, not what the
-   transform touched. Message reworded to
-   `N trackpoints, nothing to rescale, file written unchanged`.
-
-2. **`--distance` was mandatory but sometimes meaningless.** Rescaling the yoga
-   file required an arbitrary `--distance 1000` that was then ignored. It is now
-   optional and defaults to the file's own `Lap/DistanceMeters` — which the
-   corpus proved *is* the target on every activity type. `reckon rescale FILE`
-   is the whole command; `--distance` remains as an override and reports itself
-   as `(given)` versus `(from file)`.
-
-   The no-GPS guards resolve *before* any target is needed, so a file with
-   nothing to scale round-trips byte-identically whether or not a target exists.
-   An explicitly supplied bad target is still rejected eagerly — that is a caller
-   error, and is never second-guessed. `MissingTarget` covers "asked to read the
-   target from the file, and the file has none".
-
-3. **The transform was not idempotent** — found while fixing (2), and *created*
-   as a hazard by it. `Lap/DistanceMeters` was in `_SCALED_TAGS`, so the first
-   pass multiplied Fitbit's own total by the factor derived from it. With an
-   explicit target that was harmless; reading the target from the file made a
-   second run shrink the distance again, silently: 15229 -> 14362 -> 13544.
-
-   `Lap/DistanceMeters` and `Trackpoint/DistanceMeters` mean different things and
-   now take different factors. The lap total is the authority — the stream is
-   moved to meet it, and the lap value survives untouched when it *is* the
-   target. With an overriding `--distance` the lap totals move to the new target
-   instead, keeping their proportions across multiple laps, so the output is
-   self-consistent either way. Verified across all ten corpus files: lap
-   preserved, `Lap == stream final`, and a second pass byte-identical.
-
-### Correcting numbers must never mean dropping activities
-
-The owner's requirement (2026-08-27): *"I want Strava to record all my sports, I
-just want to make the numbers more accurate."*
-
-That splits a distinction §5 currently conflates. The three-way outcome uses
-`skipped(reason)` for no-GPS, and in the phase-5 pipeline that reads as *do not
-upload*. It must not. **"Cannot correct" and "do not upload" are separate
-decisions.** A yoga session is uncorrectable and must still reach Strava
-unchanged; only a genuinely unprocessable file should be withheld. Rename or
-split the outcome before building the pipeline — `passed_through` versus
-`withheld` is the real distinction.
-
-The partial-GPS walk is the one case that needs thought: it is correctable in
-principle but must not be corrected. It should still upload, uncorrected.
-
-### Strava learns sport type from somewhere other than the TCX
-
-Observed (owner, 2026-08-27): Strava labels these activities correctly despite
-`Sport="Other"` on walks and yoga. Since TCX v2 carries only `Running`,
-`Biking` and `Other`, the type cannot have come from the file — the native
-Fitbit-to-Strava integration must pass it through the API alongside the upload.
-
-This matters for phase 6 and is **unresolved**. Reckon edits distances and
-speeds only and never touches activity type, so it cannot make typing worse. But
-a Reckon-uploaded activity goes to Strava as a file upload, which has only the
-TCX `Sport` value to go on — so walks and yoga would arrive as `Other` where the
-native sync got them right. Before building the uploader, establish where the
-native integration sources the type, and set Strava's `sport_type` explicitly
-from the Fitbit activity summary rather than relying on the file.
-
-**Near-no-op corrections are normal and must stay supported.** The second ride's
-factor is 0.9943, a 54 m change over 9.3 km. `rescale` handles it correctly. Do
-not add a "too small to bother" short-circuit; a 54 m correction is still the
-difference between the two apps agreeing and not.
+**A fixed fallback factor is not defensible.** Over the nine complete tracks the
+factor ranges 0.8916-0.9943, mean 0.9553, stdev 0.0352. Where the target total is
+unavailable, skip the correction; do not substitute a guessed factor, and do not
+use wiggle to synthesise one.
 
 ### Partial GPS: the case where rescaling is wrong
 

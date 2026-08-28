@@ -25,6 +25,7 @@ Real activities from a Fitbit Charge 5:
 | run, 57 min | 8.18 km | 8.94 km | +9.3% | 8.18 km |
 | walk, 24 min | 2.40 km | 2.54 km | +6.1% | 2.40 km |
 | walk, 53 min | 5.26 km | 5.41 km | +3.0% | 5.26 km |
+| walk, 67 min | 6.47 km | 6.54 km | +1.1% | 6.47 km |
 | cycle, 30 min | 9.57 km | 9.76 km | +2.1% | 9.57 km |
 | cycle, 31 min | 9.32 km | 9.37 km | +0.6% | 9.32 km |
 
@@ -89,7 +90,7 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
 - **Route, timestamps and dates are unchanged.** Strava's *elapsed* time is
   unaffected. Its *moving* time may shift by a few seconds, because Strava
   derives that from speed and speed is distance over time.
-- **The factor is not a constant.** Across nine activities it ranged 0.89–0.99
+- **The factor is not a constant.** Across eleven activities it ranged 0.89–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that
   particular track was. Reckon computes it per file and refuses to guess.
 - **A partial GPS track cannot be corrected, and Reckon refuses to try.** If the
