@@ -361,6 +361,62 @@ factor ranges 0.8916-0.9943, mean 0.9553, stdev 0.0352. Where the target total i
 unavailable, skip the correction; do not substitute a guessed factor, and do not
 use wiggle to synthesise one.
 
+### What the corpus is for, and what v1.0 needs from it
+
+**Nothing is trained.** No constant in the code is fitted from these files. The
+transform reads its target out of each file at runtime, and the wiggle metric is
+deliberately excluded from the code path. `training-data/` is a **validation**
+corpus: it exists to prove the assumptions hold, to calibrate the tolerance
+guard, and to exercise the skip paths. More files of the same kind do not make
+the tool better — coverage of specific risks does.
+
+#### The blocking correctness hole
+
+**A short GPS dropout is invisible to the tolerance guard.** Modelling a lost
+lock of 30-120 s against each of the nine complete tracks yields factors between
+0.896 and 1.062 — every one inside the 0.2 band, every one silently "corrected",
+every one fabricating the distance covered while unlocked. The partial-GPS walk
+in the corpus was caught only because it was extreme: 383 s, 25% of the activity.
+It was caught by magnitude, not by detection.
+
+Tolerance is the wrong instrument for this. It bounds *how much* correction is
+applied; it cannot tell a noisy track from an incomplete one. **v1.0 must detect
+partial GPS structurally** — a distance stream that begins at 0.00 well into the
+activity, a run of positionless trackpoints, an abrupt gap between consecutive
+fixes — and refuse regardless of the resulting factor. This supersedes the
+tolerance guard for this failure mode; the guard stays for genuine target
+mismatches.
+
+#### Corpus checklist for v1.0
+
+Tier 1, blocking — validates the detector above:
+
+- [ ] Two or three activities with a **short dropout, 30 s to 2 min**: started
+      indoors, in a car park, under cover, among tall buildings.
+- [ ] One **mid-activity dropout** — tunnel, underpass, dense woods.
+      Structurally different from a start gap: it is unknown whether the stream
+      keeps counting, pauses, or restarts from zero, and the single start-gap
+      example cannot answer that.
+
+Tier 2, blocking — paths covered only by synthetic builders:
+
+- [ ] Any **multi-lap** activity. All eleven real files have exactly one `Lap`.
+- [ ] A **paused and resumed** activity, if the device supports it. Nothing in
+      the corpus has a gap between trackpoints larger than 3 s.
+- [ ] A **winter activity** at `+00:00`, ideally one spanning the DST change.
+      Every file so far is `+01:00`. Timestamps are copied rather than parsed, so
+      the risk is low — but low is not tested.
+- [ ] One **very short** activity (under 5 min) and one **very long** (over 2.5 h).
+
+Tier 3, not blocking:
+
+- [ ] A second device model. Everything so far is one Charge 5.
+- [ ] Activities spread over enough months that a firmware change would show.
+
+**Explicitly not needed:** more clean runs, walks or rides in good conditions.
+The invariants hold on eleven of eleven files; another good track does not move
+v1.0. No volume of data is required for the wiggle metric, because it is not used.
+
 ### Partial GPS: the case where rescaling is wrong
 
 One walk in the corpus is its most
