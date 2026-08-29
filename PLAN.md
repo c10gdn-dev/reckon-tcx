@@ -526,6 +526,35 @@ factor of about 13. It is therefore entirely willing to post-process a stream it
 considers noisy, and specifically declines to do so for distance. That is what
 makes this correction possible at all.
 
+### The tolerance guard is asymmetric
+
+Changed 2026-08-29, after a real file exposed a false refusal.
+
+A short walk measured **factor 0.723** — 38.3% inflation, by far the worst in the
+corpus. Everything says the correction is legitimate: GPS coverage 91.6%, so not
+a dropout; wiggle 1.229, the highest measured, so genuinely a noisy track; and
+the factor is below 1, the jitter direction. The old symmetric
+`DEFAULT_TOLERANCE = 0.2` refused it — **a false refusal on the activity with the
+most to correct**, which defeats the point of the tool.
+
+The mistake was treating one number as bounding two different failures:
+
+- **Below 1** the stream over-measured. That is ordinary GPS jitter, and the
+  corpus now shows it reaching 38%. The bound should be loose.
+- **Above 1** the stream measured *short*, which jitter cannot cause. When the
+  target came from the file this is partial GPS and is reported as such; when it
+  was supplied explicitly it is a caller error. Either way it is not the same
+  thing as jitter and does not want the same bound.
+
+So `tolerance` now bounds only the low side, `DEFAULT_TOLERANCE` is **0.4**
+(admitting 0.723 with headroom while still catching an order-of-magnitude error
+such as metres supplied where kilometres were meant), and the high side is
+`MAX_CREDIBLE_FACTOR` for file targets and `1 + tolerance` for explicit ones.
+
+This is the third time the same mistake has appeared: one mechanism standing in
+for two distinct meanings. `Lap` versus `Trackpoint` `DistanceMeters` was the
+first, `skipped` versus `withheld` the second. Worth watching for a fourth.
+
 ### Elevation is out of scope, deliberately
 
 Decided 2026-08-29. The altitude stream is at least as noisy as the distance

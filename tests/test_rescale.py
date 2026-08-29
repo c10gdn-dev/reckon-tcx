@@ -214,28 +214,28 @@ def test_malformed_distance_value_is_reported_as_malformed_tcx():
 # --- tolerance ---------------------------------------------------------------
 
 
-def test_factor_outside_tolerance_aborts_by_default():
+def test_factor_far_below_one_aborts_by_default():
     with pytest.raises(ToleranceExceeded) as caught:
-        rescale_tcx(builders.tcx(distances=(0.0, 500.0, 1000.0)), 500.0)
+        rescale_tcx(builders.tcx(distances=(0.0, 500.0, 1000.0)), 200.0)
 
     error = caught.value
-    assert error.factor == pytest.approx(0.5)
+    assert error.factor == pytest.approx(0.2)
     assert error.gps_total_m == pytest.approx(1000.0)
-    assert error.target_m == pytest.approx(500.0)
-    assert error.tolerance == pytest.approx(0.2)
+    assert error.target_m == pytest.approx(200.0)
+    assert error.tolerance == pytest.approx(0.4)
     assert "--on-tolerance clamp|proceed" in str(error)
 
 
 def test_factor_below_tolerance_can_be_clamped():
     result = rescale_tcx(
         builders.tcx(distances=(0.0, 500.0, 1000.0)),
-        500.0,
+        200.0,
         on_tolerance=ToleranceAction.CLAMP,
     )
 
-    assert result.factor == pytest.approx(0.8)
-    assert result.result_total_m == pytest.approx(800.0)
-    assert any("clamped to 0.8000" in w for w in result.warnings)
+    assert result.factor == pytest.approx(0.6)
+    assert result.result_total_m == pytest.approx(600.0)
+    assert any("clamped to 0.6000" in w for w in result.warnings)
 
 
 def test_factor_above_tolerance_can_be_clamped():
@@ -245,18 +245,18 @@ def test_factor_above_tolerance_can_be_clamped():
         on_tolerance=ToleranceAction.CLAMP,
     )
 
-    assert result.factor == pytest.approx(1.2)
+    assert result.factor == pytest.approx(1.4)
 
 
 def test_factor_outside_tolerance_can_proceed_unclamped():
     result = rescale_tcx(
         builders.tcx(distances=(0.0, 500.0, 1000.0)),
-        500.0,
+        200.0,
         on_tolerance=ToleranceAction.PROCEED,
     )
 
-    assert result.factor == pytest.approx(0.5)
-    assert result.result_total_m == pytest.approx(500.0)
+    assert result.factor == pytest.approx(0.2)
+    assert result.result_total_m == pytest.approx(200.0)
     assert any("outside tolerance" in w and "proceeding" in w for w in result.warnings)
 
 
@@ -264,6 +264,41 @@ def test_factor_exactly_on_the_tolerance_bound_is_allowed():
     result = rescale_tcx(builders.tcx(distances=(0.0, 500.0, 1000.0)), 800.0, tolerance=0.2)
 
     assert result.factor == pytest.approx(0.8)
+
+
+# --- the guard is asymmetric ------------------------------------------------
+
+
+def test_heavy_jitter_from_the_file_is_corrected_not_refused():
+    """A real walk measured 0.723. A symmetric 0.2 band refused it; it must not."""
+    data = builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=723.0)
+
+    result = rescale_tcx(data)
+
+    assert result.modified is True
+    assert result.factor == pytest.approx(0.723)
+
+
+def test_the_low_bound_still_catches_an_order_of_magnitude_error():
+    """Metres supplied where kilometres were meant, say."""
+    with pytest.raises(ToleranceExceeded):
+        rescale_tcx(builders.tcx(distances=(0.0, 500.0, 1000.0)), 10.0)
+
+
+def test_an_explicit_target_is_bounded_above_as_well():
+    """A caller's number can be wrong in either direction."""
+    with pytest.raises(ToleranceExceeded):
+        rescale_tcx(builders.tcx(distances=(0.0, 500.0, 1000.0)), 3000.0)
+
+
+def test_a_target_from_the_file_above_one_is_partial_gps_not_a_tolerance_breach():
+    """Jitter cannot make a track short, so this is a different failure entirely."""
+    data = builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=3000.0)
+
+    result = rescale_tcx(data)
+
+    assert result.modified is False
+    assert [s.reason for s in result.skips] == [SkipReason.PARTIAL_GPS]
 
 
 # --- taking the target from the file ---------------------------------------

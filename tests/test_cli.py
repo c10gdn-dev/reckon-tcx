@@ -153,7 +153,7 @@ def test_unreadable_input_exits_one_without_a_traceback(tmp_path):
 
 
 def test_tolerance_breach_exits_one_with_the_guidance_message(tcx_file):
-    code, out, err = run("rescale", str(tcx_file), "--distance", "500")
+    code, out, err = run("rescale", str(tcx_file), "--distance", "100")
 
     assert code == 1
     assert out == b""
@@ -175,7 +175,7 @@ def test_on_tolerance_clamp_is_accepted_from_the_command_line(tcx_file):
     code, _, err = run("rescale", str(tcx_file), "--distance", "500", "--on-tolerance", "clamp")
 
     assert code == 0
-    assert "factor 0.800000" in err
+    assert "factor 0.600000" in err
 
 
 def test_explicit_tolerance_widens_the_guard(tcx_file):

@@ -16,7 +16,17 @@ from enum import StrEnum
 from reckon.core import tcx
 from reckon.core.errors import MissingTarget, ToleranceExceeded
 
-DEFAULT_TOLERANCE = 0.2
+# How far *below* 1 the factor may fall. Deliberately asymmetric — see the guard
+# in `rescale_tcx` — because the two directions mean different things.
+#
+# A factor below 1 means the GPS stream over-measured, which is ordinary jitter.
+# The corpus has one real walk at 0.723: a short meandering route with 91.6% GPS
+# coverage and the highest wiggle measured, so genuinely noisy rather than
+# broken. An earlier symmetric 0.2 refused it, which was a false refusal on the
+# activity with the most to correct. 0.4 admits it with headroom while still
+# catching a target that is wrong by an order of magnitude, such as metres
+# supplied where kilometres were meant.
+DEFAULT_TOLERANCE = 0.4
 
 # Minimum fraction of an activity's elapsed time that must carry a GPS fix
 # before its distance stream is considered a complete record of the route.
@@ -205,11 +215,21 @@ def rescale_tcx(
         warnings.append("no activity carries a usable GPS distance stream; returned unchanged")
         return _unchanged(tcx_bytes, target_distance_m, trackpoint_count, warnings, skips)
 
-    if abs(factor - 1.0) > tolerance:
+    # The guard is asymmetric because the two directions are different failures.
+    # Below 1 the stream over-measured: ordinary GPS jitter, observed as far down
+    # as 0.723 on a real walk, so the bound is loose. Above 1 the stream
+    # under-measured, which jitter cannot cause — a target read from the file is
+    # handled as partial GPS above, and an explicit target that high is a caller
+    # error, so it is still bounded.
+    lower = 1.0 - tolerance
+    upper = 1.0 + tolerance
+    too_low = factor < lower
+    too_high = not from_file and factor > upper
+    if too_low or too_high:
         if on_tolerance is ToleranceAction.ABORT:
             raise ToleranceExceeded(factor, gps_total, target_distance_m, tolerance)
         if on_tolerance is ToleranceAction.CLAMP:
-            clamped = min(max(factor, 1.0 - tolerance), 1.0 + tolerance)
+            clamped = lower if too_low else upper
             warnings.append(f"factor {factor:.4f} outside tolerance, clamped to {clamped:.4f}")
             factor = clamped
         else:

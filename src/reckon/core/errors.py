@@ -24,8 +24,12 @@ class MissingTarget(ReckonError):
 class ToleranceExceeded(ReckonError):
     """The rescale factor is further from 1 than the caller allowed.
 
-    A large discrepancy is more likely a bad Fitbit summary than a bad track, so
-    the default is to refuse rather than to apply a correction nobody asked for.
+    The bound is asymmetric. A factor below 1 means the GPS stream over-measured,
+    which is ordinary jitter and can legitimately be large, so `tolerance` gives
+    it a loose floor. A factor above 1 means the stream measured short, which
+    jitter cannot cause — when the target came from the file that is partial GPS
+    and is reported as such, so reaching this exception from above means an
+    explicit target that is too large.
     """
 
     def __init__(

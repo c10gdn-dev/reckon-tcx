@@ -87,8 +87,11 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
 ## Honest limits
 
 - **It corrects a systematic bias; it does not recover ground truth.** The
-  output is as good as Fitbit's fused total and no better. If that total is
-  wrong, Reckon faithfully reproduces it.
+  output is as good as the device's own total and no better. If that total is
+  wrong, Reckon faithfully reproduces it. Two watches walked the same route side
+  by side in testing and reported 1249 m and 974 m — 28% apart, with nothing to
+  say which was right. Treat the result as much better than raw GPS, not as
+  correct.
 - **Splits all shift proportionally.** Every kilometre gets the same factor, so
   the *shape* of your pace curve is preserved exactly, but Reckon cannot tell
   which specific kilometre carried the error.
@@ -97,7 +100,7 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   where the distance changed by 10.8% — because Strava derives it from speed, and
   speed is distance over time.
 - **Elevation is not corrected.** See below; this is deliberate.
-- **The factor is not a constant.** Across eleven activities it ranged 0.89–0.99
+- **The factor is not a constant.** Across thirteen activities it ranged 0.72–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that
   particular track was. Reckon computes it per file and refuses to guess.
 - **A partial GPS track cannot be corrected, and Reckon detects that and
@@ -157,7 +160,7 @@ reckon rescale INPUT [--distance DIST] [-o OUTPUT]
 | `INPUT` | TCX file to read. |
 | `--distance DIST` | Override the target. `15.23km`, `9.46mi`, or a bare number meaning metres. Defaults to the file's own `Lap/DistanceMeters`. |
 | `-o`, `--output` | Write here instead of stdout. |
-| `--tolerance` | How far the factor may sit from 1 before the guard fires. Default `0.2`. |
+| `--tolerance` | How far *below* 1 the factor may fall before the guard fires. Default `0.4`. The bound is asymmetric — see below. |
 | `--on-tolerance` | `abort` (default), `clamp` to the tolerance bound, or `proceed` anyway. |
 
 The report line goes to stderr and the file to stdout, so
@@ -177,7 +180,13 @@ rather than fabricating data:
 | No `DistanceMeters` in the stream, or a zero total | Passed through unchanged. Reckon will not invent a stream. |
 | Partial GPS — the watch lost its lock for part of the activity | Passed through unchanged. Scaling would attribute the missing distance to the part of the route that *was* recorded. |
 | A non-monotonic stream | Warns and proceeds; multiplication preserves ordering. |
-| A factor further from 1 than `--tolerance` | Aborts by default. With partial GPS detected separately, this now genuinely means the *target* is wrong rather than the track. |
+| A factor further below 1 than `--tolerance` | Aborts by default. The stream over-measured by more than jitter can explain, so the target is probably wrong. |
+| A factor above 1 | The stream measured *short*, which jitter cannot cause. Treated as partial GPS when the target came from the file, or as a bad `--distance` when you supplied one. |
+
+The bound is deliberately **asymmetric**. GPS noise only ever adds length, so a
+factor below 1 is the normal case and can legitimately be large — one real walk
+in testing measured 0.723, a 38% over-read. A factor above 1 means something
+quite different and gets handled separately.
 
 ## Status
 
