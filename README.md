@@ -58,7 +58,7 @@ Fitbit and Strava disagree because they compute distance differently, and one of
 them is summing noise.
 
 **Strava sums the distance stream in the file, unchanged.** Verified across
-eleven exports, and then tested directly: a rescaled file uploaded by hand came
+fourteen exports, and then tested directly: a rescaled file uploaded by hand came
 back reporting the rescaled total, 21.4 km, where the original stream said
 24.06 km and a raw haversine sum of the same coordinates said 24.08 km. Strava
 takes the stream at face value and does not recompute from position.
@@ -231,9 +231,11 @@ quite different and gets handled separately.
 
 ## Status
 
-Alpha, and honest about it: the offline `rescale` command works and is
-validated against real exports. Automatic fetching from Fitbit, uploading to
-Strava, and the AWS deployment are planned but not built. See `PLAN.md`.
+Alpha, and honest about it. The offline commands — `rescale` and `analyse` —
+work and are validated against fourteen real exports, including a hand upload to
+Strava confirming it honours the corrected stream. Automatic fetching from
+Fitbit, uploading to Strava, and the AWS deployment are planned but not built.
+See `PLAN.md`.
 
 ## Alternatives
 
