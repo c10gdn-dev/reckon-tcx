@@ -101,6 +101,13 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
 - **Splits all shift proportionally.** Every kilometre gets the same factor, so
   the *shape* of your pace curve is preserved exactly, but Reckon cannot tell
   which specific kilometre carried the error.
+- **The first few seconds are missing from the file, and nothing can recover
+  them.** A watch takes 15–80 seconds to get a fix, and if you set off
+  immediately, that ground is never recorded. Across testing this cost 34–152 m,
+  or 0.3–6.1% of the activity. The corrected *total* is still right, because the
+  device's own figure counts those metres — but they get spread across the part
+  of the route that was recorded, so splits stretch very slightly. This is
+  already true of the raw file; Reckon neither causes it nor repairs it.
 - **Route, timestamps and dates are unchanged.** Strava's *elapsed* time is
   unaffected. Its *moving* time shifts by a few seconds — 24 s on a real upload
   where the distance changed by 10.8% — because Strava derives it from speed, and

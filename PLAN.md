@@ -449,176 +449,90 @@ Still outstanding: the threshold sits in a region no real file occupies — noth
 has been observed between 72% and 89% coverage. `min_gps_coverage` is a parameter
 for that reason, and the Tier 1 corpus items below are what would pin it down.
 
+#### Every GPS file loses distance to acquisition, and that is not fixable
+
+Confirmed by the owner 2026-08-29: in every file except the indoor-start run,
+movement began the moment the activity did. So the acquisition lead-in is not an
+idle period — real ground is covered before the first fix, and no stream records
+it.
+
+| | lead-in | distance lost | as % of activity |
+|---|---|---|---|
+| ten normal activities | 15-79 s | 34-152 m | 0.3-6.1% |
+| the indoor-start run | 170 s | (none — stationary) | — |
+| the partial-GPS walk | 383 s | ~593 m | 28.1% |
+
+**The output total is unaffected.** The target is the stride total, which already
+includes the pre-lock distance, so the corrected total is right. What is affected
+is the *distribution*: the recorded track covers slightly less ground than it is
+assigned, so every split stretches by the same fraction. On a long run that is
+0.3%; on the short canyon walk it is 6.1%.
+
+This is a property of the source file, not of the transform — the raw stream is
+already missing that distance. Reckon neither introduces nor worsens it, and
+cannot repair it, because nothing records where the missing metres were. It
+belongs in the honest limits and nowhere else. **Do not try to compensate for it**:
+that would mean inventing a route.
+
 #### Corpus checklist for v1.0
 
-Tier 1, blocking — validates the detector above:
+Satisfied:
 
-- [ ] Two or three activities with a **short dropout, 30 s to 2 min**: started
-      indoors, in a car park, under cover, among tall buildings.
-- [ ] One **mid-activity dropout** — tunnel, underpass, dense woods.
-      Structurally different from a start gap: it is unknown whether the stream
-      keeps counting, pauses, or restarts from zero, and the single start-gap
-      example cannot answer that.
+- [x] **A dropout while moving.** The partial-GPS walk is exactly this — 383 s
+      unlocked while walking, ~593 m lost — and it is detected and refused.
+- [x] **Small dropouts while moving.** Ubiquitous, quantified above, correctly
+      left alone: at 0.3-6.1% they are far smaller than the jitter running the
+      other way.
+- [x] **A second device.** The Charge 6 is structurally identical.
+- [x] **A stationary period with GPS running.** Measured at ~78 m/min of phantom
+      distance.
+- [x] **An activity with no GPS at all**, twice: yoga, and a walk whose distance
+      came from stride counting alone.
 
-Tier 2, blocking — paths covered only by synthetic builders:
+Still wanted, in descending value:
 
-- [ ] Any **multi-lap** activity. All eleven real files have exactly one `Lap`.
-- [ ] A **paused and resumed** activity, if the device supports it. Nothing in
-      the corpus has a gap between trackpoints larger than 3 s.
-- [ ] A **winter activity** at `+00:00`, ideally one spanning the DST change.
-      Every file so far is `+01:00`. Timestamps are copied rather than parsed, so
-      the risk is low — but low is not tested.
-- [ ] One **very short** activity (under 5 min) and one **very long** (over 2.5 h).
+1. **The paired walk with both devices' GPS enabled.** Offered by the owner. Two
+   watches, one route, one moment. Their GPS streams should measure the same
+   physical route, so if the streams agree while the stride totals do not, the
+   28% divergence already recorded (1249 m against 974 m) is stride calibration
+   rather than route measurement. That puts a number on how much **the target
+   itself** varies between wearers, which is the largest unquantified limit in
+   the method. It is also a perfectly controlled jitter comparison: same route,
+   same time, same sky, so any difference in wiggle is the device alone.
+2. **A mid-activity dropout** — tunnel, underpass, dense woods. Every dropout in
+   the corpus is at the start. It is unknown whether a mid-activity loss pauses
+   the stream or restarts it, and the two would need different handling.
+3. **A dropout of 100-300 s while moving.** The corpus jumps from 79 s (benign,
+   correctly ignored) to 383 s (caught). `MIN_GPS_COVERAGE` sits in that gap and
+   is a judgement rather than a measurement. Reproducible: start an activity
+   indoors or under cover and set off immediately.
+4. **A long deliberate stop, 5-10 minutes.** Tests whether the 78 m/min jitter
+   rate is linear or saturates as the receiver settles.
+5. **An open-sky extreme** — coast, moor, open field. The cleanest track so far
+   is a bike at wiggle 1.014; this would anchor the low end and test whether the
+   metric has a floor.
+6. **Any route recorded twice.** Not a special trip: whatever route gets repeated
+   naturally. Two recordings of one route are the only controlled comparison
+   available, and the only thing that could *falsify* the wiggle hypothesis
+   rather than corroborate it.
+7. **Multi-lap**, via auto-lap or an interval workout if the device offers one.
+   All fourteen files are single-lap; that path is exercised by builders alone.
+8. **Duration extremes** — over 2.5 h, and under 5 min.
+9. **A winter activity** at `+00:00`, ideally spanning the DST change. Not
+   obtainable before late October.
 
-Tier 3, not blocking:
+Withdrawn:
 
-- [ ] A second device model. Everything so far is one Charge 5.
-- [ ] Activities spread over enough months that a firmware change would show.
+- ~~"Start moving before lock"~~ — already true of every file, quantified above.
+- ~~"Repeat the canyon route under clear sky"~~ — it **was** clear sky. The 38%
+  came from three-storey concrete geometry, not sky obstruction, and the owner
+  will not repeat the route.
 
-**Explicitly not needed:** more clean runs, walks or rides in good conditions.
-The invariants hold on eleven of eleven files; another good track does not move
-v1.0. No volume of data is required for the wiggle metric, because it is not used.
-
-### Premise confirmed against Strava, 2026-08-29
-
-The gating question — does Strava honour a *modified* distance stream, or does it
-recompute? — has been answered by experiment rather than inference. Until now the
-evidence was indirect: eleven activities Strava had ingested itself, all
-unmodified.
-
-**Method.** The 21.46 km run was uploaded to Strava by hand, twice: once
-unmodified (control) and once rescaled (treatment). Both were backdated a year so
-Strava would not reject them as duplicates of the native sync; every coordinate,
-altitude and distance value was otherwise byte-identical to what the transform
-produced. The control existed to isolate the variable, since a hand upload of a
-modified file changes two things at once.
-
-| | control (unmodified) | treatment (rescaled) |
-|---|---|---|
-| distance | 24.0 km | **21.4 km** |
-| moving time | 1:54:45 | 1:54:21 |
-| elevation gain | 179 m | 177 m |
-
-**Results.**
-
-1. **The control reproduced the native sync exactly** — 24.0 km, moving 1:54:45,
-   the same figures Strava produced when it ingested the file itself. A hand
-   upload is not a different code path, which is what the control was for.
-2. **The treatment returned the target.** 21.4 km, against 24.06 km for the
-   original stream and 24.08 km for a raw haversine sum of the coordinates. The
-   three candidate answers were 2.6 km apart, so this is unambiguous: **Strava
-   takes the distance stream at face value and does not recompute from
-   position.** The premise the whole project rests on is confirmed, and phases
-   4-7 are worth building.
-3. **Moving time moved by 24 s**, as predicted — Strava derives it from speed,
-   which is distance over time. A 10.8% distance change shifted it 0.35%.
-   "Seconds rather than minutes" is now measured rather than asserted.
-4. **Elevation gain moved by 2 m, which was not predicted.** Reckon never touches
-   `AltitudeMeters` and the values are byte-identical between the two files, so
-   the change comes from Strava. The likely explanation is that its elevation
-   smoothing works over distance-based windows, so compressing the distance
-   stream slightly changes what registers as a climb. Treat the mechanism as a
-   hypothesis; the effect is real and belongs in the README's honest limits.
-
-**A useful asymmetry.** Strava reported 179 m of climb against a raw
-`AltitudeMeters` delta-sum of 2279 m in the file — it smooths altitude by a
-factor of about 13. It is therefore entirely willing to post-process a stream it
-considers noisy, and specifically declines to do so for distance. That is what
-makes this correction possible at all.
-
-### The jitter rate, measured directly
-
-A run recorded 2026-08-29 was produced deliberately to exercise two edge cases,
-with the behaviour described before the file was examined: over two minutes
-indoors before starting, then running, then a stop of a few minutes to talk, then
-the rest of the run. **Both events are visible in the data**, and together they
-give the corpus its only direct measurement of GPS jitter.
-
-- **Minutes 0-1 carry no GPS fix at all** — the time indoors.
-- **A stationary window at 45.5-47.0 min shows 15.7 m of net displacement against
-  118.8 m of path length.** The wearer did not move; the track moved 119 m. That
-  is **roughly 78 m per minute of phantom distance while standing still**.
-
-Two things follow.
-
-**Jitter is wildly disproportionate to time.** The stop accounts for 22% of the
-run's 537 m of total inflation while occupying 2% of its elapsed time. An
-activity's inflation is therefore not a property of its distance or duration so
-much as of what happened during it — which is the same conclusion the wiggle
-metric reaches from a different direction, and it is why no fixed factor can work.
-
-**A GPS-less period is only harmful if you were moving through it.** The indoor
-two minutes did *not* trigger partial-GPS detection, and should not have: no
-distance was lost, because no distance was travelled. Coverage stayed at 95.6%
-and the factor stayed below 1. The detector keys on missing *distance*, not on
-missing *fixes*, and this file confirms the distinction holds in practice. Contrast
-the partial-GPS walk, where 383 s of missing lock cost 522 m of real distance.
-
-**Corroboration from Strava.** Its stopped time for this activity is 214 s. The
-two windows found here are 120 s indoors and 91 s talking, totalling 211 s — a
-3-second agreement, arrived at independently.
-
-This also settles a question left open earlier. When looking for a stationary
-period in the partial-GPS walk, a detector based on the *distance stream going
-flat* found nothing, and the conclusion drawn was that no such period existed.
-The detector was wrong for the reason this project exists: standing still does
-not flatten the distance stream, because jitter keeps adding to it. Net
-displacement is the signal; path length is not.
-
-### The tolerance guard is asymmetric
-
-Changed 2026-08-29, after a real file exposed a false refusal.
-
-A short walk measured **factor 0.723** — 38.3% inflation, by far the worst in the
-corpus. Everything says the correction is legitimate: GPS coverage 91.6%, so not
-a dropout; wiggle 1.229, the highest measured, so genuinely a noisy track; and
-the factor is below 1, the jitter direction. The old symmetric
-`DEFAULT_TOLERANCE = 0.2` refused it — **a false refusal on the activity with the
-most to correct**, which defeats the point of the tool.
-
-The mistake was treating one number as bounding two different failures:
-
-- **Below 1** the stream over-measured. That is ordinary GPS jitter, and the
-  corpus now shows it reaching 38%. The bound should be loose.
-- **Above 1** the stream measured *short*, which jitter cannot cause. When the
-  target came from the file this is partial GPS and is reported as such; when it
-  was supplied explicitly it is a caller error. Either way it is not the same
-  thing as jitter and does not want the same bound.
-
-So `tolerance` now bounds only the low side, `DEFAULT_TOLERANCE` is **0.4**
-(admitting 0.723 with headroom while still catching an order-of-magnitude error
-such as metres supplied where kilometres were meant), and the high side is
-`MAX_CREDIBLE_FACTOR` for file targets and `1 + tolerance` for explicit ones.
-
-This is the third time the same mistake has appeared: one mechanism standing in
-for two distinct meanings. `Lap` versus `Trackpoint` `DistanceMeters` was the
-first, `skipped` versus `withheld` the second. Worth watching for a fourth.
-
-### Elevation is out of scope, deliberately
-
-Decided 2026-08-29. The altitude stream is at least as noisy as the distance
-stream — the raw delta-sums across the corpus run to 1567, 2280, 2613, 589, 259,
-498 and 1872 m, none of them plausible. It is tempting to treat that as a second
-thing to fix. **Do not.**
-
-- **There is no target.** The distance correction works only because the file
-  carries a trustworthy total in `Lap/DistanceMeters`, confirmed against what the
-  activity app displays. There is no equivalent for elevation: Google Health does
-  not report it at all, so there is no reference figure to rescale to and no way
-  to validate a result. The transform's entire discipline is that it never
-  invents a number it cannot check, and it must not make an exception here.
-- **Strava already does it, and does it well.** 179 m for that route is
-  reasonable where 2279 m plainly is not. Strava has better elevation data than
-  this tool does — terrain models, and every other activity crossing the same
-  ground — and it is not information a TCX rescaler can improve on.
-
-So `AltitudeMeters` is copied through byte-identically and interpretation is left
-to Strava. Note the one visible consequence: **Strava's elevation figure moves
-slightly after a correction**, 179 m to 177 m on the acceptance-test upload,
-because its smoothing appears to work over distance-based windows. Reckon does
-not touch the altitudes; Strava recomputes. About 1%, in a figure that was always
-an estimate. Do not chase it, and do not add altitude to `_SCALED_TAGS` or any
-successor — scaling altitude by a distance-derived factor would be meaningless.
+**Environment is about reflectors near the receiver, not about being outdoors or
+urban.** The canyon walk is the corpus's worst at wiggle 1.229 under clear sky,
+while in the park-then-city walk the *park* half wiggled more than the city
+centre (1.108 against 1.067). Close concrete and tree canopy both scatter the
+signal; open city streets do not. Do not use "urban" as a proxy for noisy.
 
 ### Partial GPS: the case where rescaling is wrong
 
