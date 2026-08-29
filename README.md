@@ -52,11 +52,16 @@ Upload `fixed.tcx` to Strava by hand and the distance will match your watch.
 Fitbit and Strava disagree because they compute distance differently, and one of
 them is summing noise.
 
-**Strava sums the distance stream in the file, unchanged.** Verified across eight
-exports: Strava's reported distance matches the file's final cumulative
-`DistanceMeters` to within 0.2% every time, and it does *not* recompute from the
-coordinates — on one run the stream and a raw haversine sum of the same track
-differ by 127 m, and Strava reported the stream.
+**Strava sums the distance stream in the file, unchanged.** Verified across
+eleven exports, and then tested directly: a rescaled file uploaded by hand came
+back reporting the rescaled total, 21.4 km, where the original stream said
+24.06 km and a raw haversine sum of the same coordinates said 24.08 km. Strava
+takes the stream at face value and does not recompute from position.
+
+It is not that Strava never post-processes. On the same upload it reported 179 m
+of climb from an altitude stream whose raw deltas sum to 2279 m — it smooths
+elevation by a factor of thirteen. It simply does not do that to distance, which
+is what makes this correction possible.
 
 **Fitbit's own total is lower, and it is not a raw GPS sum.** Fitbit writes it to
 `Lap/DistanceMeters`, it matches what Google Health displays to within 0.06%, and
@@ -88,8 +93,14 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   the *shape* of your pace curve is preserved exactly, but Reckon cannot tell
   which specific kilometre carried the error.
 - **Route, timestamps and dates are unchanged.** Strava's *elapsed* time is
-  unaffected. Its *moving* time may shift by a few seconds, because Strava
-  derives that from speed and speed is distance over time.
+  unaffected. Two derived figures move slightly, both measured on a real upload
+  where the distance changed by 10.8%:
+  - **Moving time** shifted by 24 seconds (0.35%). Strava derives it from speed,
+    and speed is distance over time.
+  - **Elevation gain** shifted by 2 metres (1.1%), from 179 m to 177 m. Reckon
+    does not touch altitude — the values are byte-identical — so this is Strava
+    recomputing. Its elevation smoothing appears to work over distance-based
+    windows, so changing the distance stream nudges the result.
 - **The factor is not a constant.** Across eleven activities it ranged 0.89–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that
   particular track was. Reckon computes it per file and refuses to guess.

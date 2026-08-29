@@ -479,6 +479,53 @@ Tier 3, not blocking:
 The invariants hold on eleven of eleven files; another good track does not move
 v1.0. No volume of data is required for the wiggle metric, because it is not used.
 
+### Premise confirmed against Strava, 2026-08-29
+
+The gating question — does Strava honour a *modified* distance stream, or does it
+recompute? — has been answered by experiment rather than inference. Until now the
+evidence was indirect: eleven activities Strava had ingested itself, all
+unmodified.
+
+**Method.** The 21.46 km run was uploaded to Strava by hand, twice: once
+unmodified (control) and once rescaled (treatment). Both were backdated a year so
+Strava would not reject them as duplicates of the native sync; every coordinate,
+altitude and distance value was otherwise byte-identical to what the transform
+produced. The control existed to isolate the variable, since a hand upload of a
+modified file changes two things at once.
+
+| | control (unmodified) | treatment (rescaled) |
+|---|---|---|
+| distance | 24.0 km | **21.4 km** |
+| moving time | 1:54:45 | 1:54:21 |
+| elevation gain | 179 m | 177 m |
+
+**Results.**
+
+1. **The control reproduced the native sync exactly** — 24.0 km, moving 1:54:45,
+   the same figures Strava produced when it ingested the file itself. A hand
+   upload is not a different code path, which is what the control was for.
+2. **The treatment returned the target.** 21.4 km, against 24.06 km for the
+   original stream and 24.08 km for a raw haversine sum of the coordinates. The
+   three candidate answers were 2.6 km apart, so this is unambiguous: **Strava
+   takes the distance stream at face value and does not recompute from
+   position.** The premise the whole project rests on is confirmed, and phases
+   4-7 are worth building.
+3. **Moving time moved by 24 s**, as predicted — Strava derives it from speed,
+   which is distance over time. A 10.8% distance change shifted it 0.35%.
+   "Seconds rather than minutes" is now measured rather than asserted.
+4. **Elevation gain moved by 2 m, which was not predicted.** Reckon never touches
+   `AltitudeMeters` and the values are byte-identical between the two files, so
+   the change comes from Strava. The likely explanation is that its elevation
+   smoothing works over distance-based windows, so compressing the distance
+   stream slightly changes what registers as a climb. Treat the mechanism as a
+   hypothesis; the effect is real and belongs in the README's honest limits.
+
+**A useful asymmetry.** Strava reported 179 m of climb against a raw
+`AltitudeMeters` delta-sum of 2279 m in the file — it smooths altitude by a
+factor of about 13. It is therefore entirely willing to post-process a stream it
+considers noisy, and specifically declines to do so for distance. That is what
+makes this correction possible at all.
+
 ### Partial GPS: the case where rescaling is wrong
 
 One walk in the corpus is its most
@@ -763,11 +810,8 @@ design, not a reason to relax the threshold.
    real corpus output, not invented numbers.
 4. **Clients** — draw `upload-lifecycle.puml` first, then `http.py` with the
    `Transport` seam and its loopback-server tests, then `fitbit.py`, `strava.py`,
-   `authorize.py` against `fakes.py`. **Acceptance test for the whole premise:**
-   upload one rescaled file by hand and assert the resulting Strava activity's
-   distance equals the target within rounding. If Strava recomputes from the
-   coordinates instead of honouring the stream, everything downstream is moot —
-   stop and reassess before phase 5.
+   `authorize.py` against `fakes.py`. **The acceptance test for the whole premise
+   has already been run and passed — see §"Premise confirmed" below.**
 5. **Stores + pipeline** — draw `token-refresh.puml` first and settle what the
    losing CAS branch does. Then protocols, `file.py`, `pipeline.py`,
    `reckon sync`. This is a fully working local tool; tag it.
