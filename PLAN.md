@@ -526,6 +526,45 @@ factor of about 13. It is therefore entirely willing to post-process a stream it
 considers noisy, and specifically declines to do so for distance. That is what
 makes this correction possible at all.
 
+### The jitter rate, measured directly
+
+A run recorded 2026-08-29 was produced deliberately to exercise two edge cases,
+with the behaviour described before the file was examined: over two minutes
+indoors before starting, then running, then a stop of a few minutes to talk, then
+the rest of the run. **Both events are visible in the data**, and together they
+give the corpus its only direct measurement of GPS jitter.
+
+- **Minutes 0-1 carry no GPS fix at all** — the time indoors.
+- **A stationary window at 45.5-47.0 min shows 15.7 m of net displacement against
+  118.8 m of path length.** The wearer did not move; the track moved 119 m. That
+  is **roughly 78 m per minute of phantom distance while standing still**.
+
+Two things follow.
+
+**Jitter is wildly disproportionate to time.** The stop accounts for 22% of the
+run's 537 m of total inflation while occupying 2% of its elapsed time. An
+activity's inflation is therefore not a property of its distance or duration so
+much as of what happened during it — which is the same conclusion the wiggle
+metric reaches from a different direction, and it is why no fixed factor can work.
+
+**A GPS-less period is only harmful if you were moving through it.** The indoor
+two minutes did *not* trigger partial-GPS detection, and should not have: no
+distance was lost, because no distance was travelled. Coverage stayed at 95.6%
+and the factor stayed below 1. The detector keys on missing *distance*, not on
+missing *fixes*, and this file confirms the distinction holds in practice. Contrast
+the partial-GPS walk, where 383 s of missing lock cost 522 m of real distance.
+
+**Corroboration from Strava.** Its stopped time for this activity is 214 s. The
+two windows found here are 120 s indoors and 91 s talking, totalling 211 s — a
+3-second agreement, arrived at independently.
+
+This also settles a question left open earlier. When looking for a stationary
+period in the partial-GPS walk, a detector based on the *distance stream going
+flat* found nothing, and the conclusion drawn was that no such period existed.
+The detector was wrong for the reason this project exists: standing still does
+not flatten the distance stream, because jitter keeps adding to it. Net
+displacement is the signal; path length is not.
+
 ### The tolerance guard is asymmetric
 
 Changed 2026-08-29, after a real file exposed a false refusal.

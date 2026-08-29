@@ -67,6 +67,12 @@ is what makes this correction possible.
 `Lap/DistanceMeters`, it matches what Google Health displays to within 0.06%, and
 across the corpus it runs 0.6–12% below the stream.
 
+How large the gap gets depends on what happened during the activity rather than
+on how far you went. In testing, two minutes spent standing still talking to
+someone added **119 m** of distance to a track that had not moved — about 78 m
+per minute of pure noise. That single stop produced 22% of the whole run's
+over-measurement while occupying 2% of its time.
+
 The gap looks like high-frequency GPS noise. Sample a track at full resolution
 and again at one fix per five seconds: real movement is smooth at that scale, so
 the two lengths should agree, and the excess is jitter. That excess tracks the
@@ -100,7 +106,7 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   where the distance changed by 10.8% — because Strava derives it from speed, and
   speed is distance over time.
 - **Elevation is not corrected.** See below; this is deliberate.
-- **The factor is not a constant.** Across thirteen activities it ranged 0.72–0.99
+- **The factor is not a constant.** Across fourteen activities it ranged 0.72–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that
   particular track was. Reckon computes it per file and refuses to guess.
 - **A partial GPS track cannot be corrected, and Reckon detects that and
