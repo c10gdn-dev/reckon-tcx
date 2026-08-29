@@ -97,7 +97,7 @@ def gps_coverage(activity: ET.Element) -> float:
         element = point.find(TIME)
         if element is None:
             raise MalformedTCX("trackpoint has no Time; cannot measure GPS coverage")
-        marks.append((_read_time(element), point.find(POSITION) is not None))
+        marks.append((read_time(element), point.find(POSITION) is not None))
     if not marks:
         return 0.0
     span = (marks[-1][0] - marks[0][0]).total_seconds()
@@ -111,7 +111,7 @@ def gps_coverage(activity: ET.Element) -> float:
     return max(0.0, 1.0 - unlocked / span)
 
 
-def _read_time(element: ET.Element) -> dt.datetime:
+def read_time(element: ET.Element) -> dt.datetime:
     """Parse a TCX timestamp for measurement only — it is never written back."""
     text = (element.text or "").strip()
     try:

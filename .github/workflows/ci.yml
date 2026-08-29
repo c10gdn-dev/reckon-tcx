@@ -29,3 +29,24 @@ jobs:
           uv run ruff format --check .
       - name: Test with 100% coverage gate
         run: uv run pytest
+
+  mutation:
+    # Non-blocking. Mutation testing is a signal about the tests, not a gate on
+    # the code, and a slow flaky gate gets ignored or disabled. It runs on the
+    # transform only, where an undetected mutant would mean a wrong number
+    # rather than a crash.
+    name: mutation (advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.14"
+          enable-cache: true
+      - run: uv sync
+      - name: Mutate reckon.core
+        run: uv run mutmut run --no-progress || true
+      - name: Report surviving mutants
+        if: always()
+        run: uv run mutmut results || true

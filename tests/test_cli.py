@@ -233,3 +233,119 @@ def test_main_defaults_to_the_real_streams(tcx_file, capsysbinary):
     captured = capsysbinary.readouterr()
     assert b"<DistanceMeters>900</DistanceMeters>" in captured.out
     assert b"factor 0.900000" in captured.err
+
+
+# --- analyse -----------------------------------------------------------------
+
+
+@pytest.fixture
+def corpus(tmp_path):
+    """Two correctable files and one indoor one, as a miniature training-data/."""
+    directory = tmp_path / "corpus"
+    directory.mkdir()
+    (directory / "a.tcx").write_bytes(
+        builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=900.0)
+    )
+    (directory / "b.tcx").write_bytes(
+        builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=800.0)
+    )
+    (directory / "c.tcx").write_bytes(builders.tcx(with_position=False))
+    return directory
+
+
+def analyse(*argv: str):
+    """Invoke `analyse`, whose stdout is text rather than the rescaled bytes."""
+    out, err = io.StringIO(), io.StringIO()
+    code = main(["analyse", *argv], stdout=out, stderr=err)
+    return code, out.getvalue(), err.getvalue()
+
+
+def test_analyse_reports_every_file_and_a_summary(corpus):
+    code, report, _ = analyse("--corpus", str(corpus))
+
+    assert code == 0
+    for name in ("a", "b", "c"):
+        assert name in report
+    assert "2 of 3 corrected" in report
+    assert "0.8000-0.9000" in report
+    assert "mean 0.8500" in report
+    assert "no_gps" in report
+
+
+def test_analyse_reports_a_single_file_without_a_stdev(tmp_path):
+    directory = tmp_path / "one"
+    directory.mkdir()
+    (directory / "a.tcx").write_bytes(
+        builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=900.0)
+    )
+
+    code, report, _ = analyse("--corpus", str(directory))
+
+    assert code == 0
+    assert "stdev" not in report
+
+
+def test_analyse_writes_a_plot_when_asked(corpus, tmp_path):
+    destination = tmp_path / "out" / "factors.svg"
+
+    code, report, _ = analyse("--corpus", str(corpus), "--plot", str(destination))
+
+    assert code == 0
+    assert destination.read_bytes().startswith(b"<?xml")
+    assert str(destination) in report
+
+
+def test_analyse_plot_has_a_default_destination(corpus, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    code, _, _ = analyse("--corpus", str(corpus), "--plot")
+
+    assert code == 0
+    assert (tmp_path / "docs" / "factor-distribution.svg").is_file()
+
+
+def test_analyse_writes_no_plot_by_default(corpus, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    analyse("--corpus", str(corpus))
+
+    assert not (tmp_path / "docs").exists()
+
+
+def test_analyse_refuses_to_plot_when_nothing_was_corrected(tmp_path):
+    directory = tmp_path / "indoor"
+    directory.mkdir()
+    (directory / "a.tcx").write_bytes(builders.tcx(with_position=False))
+
+    code, _, err = analyse("--corpus", str(directory), "--plot", str(tmp_path / "p.svg"))
+
+    assert code == 1
+    assert "nothing to plot" in err
+
+
+def test_analyse_on_an_empty_directory_exits_one(tmp_path):
+    empty = tmp_path / "empty"
+    empty.mkdir()
+
+    code, _, err = analyse("--corpus", str(empty))
+
+    assert code == 1
+    assert "no .tcx files" in err
+
+
+def test_analyse_on_a_missing_directory_exits_one(tmp_path):
+    code, _, err = analyse("--corpus", str(tmp_path / "nope"))
+
+    assert code == 1
+    assert "no .tcx files" in err
+
+
+def test_analyse_reports_a_malformed_file_by_name(tmp_path):
+    directory = tmp_path / "bad"
+    directory.mkdir()
+    (directory / "broken.tcx").write_bytes(b"<NotATCX/>")
+
+    code, _, err = analyse("--corpus", str(directory))
+
+    assert code == 1
+    assert "broken.tcx" in err

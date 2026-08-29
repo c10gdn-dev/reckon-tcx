@@ -11,8 +11,13 @@ from pathlib import Path
 from typing import IO, Any
 
 from reckon import __version__
+from reckon.core import svg
+from reckon.core.analyse import ActivityStats, analyse_tcx, summarise
 from reckon.core.errors import ReckonError
 from reckon.core.rescale import DEFAULT_TOLERANCE, RescaleResult, ToleranceAction, rescale_tcx
+
+DEFAULT_CORPUS = Path("training-data")
+DEFAULT_PLOT = Path("docs/factor-distribution.svg")
 
 _DISTANCE_PATTERN = re.compile(r"(?P<value>\d+(?:\.\d+)?)(?P<unit>km|mi)?", re.IGNORECASE)
 _UNITS_IN_METRES = {"": 1.0, "km": 1000.0, "mi": 1609.344}
@@ -76,6 +81,32 @@ def build_parser() -> argparse.ArgumentParser:
         help="what to do when the factor is outside tolerance (default abort)",
     )
     rescale.set_defaults(handler=_rescale_command)
+
+    analyse = subcommands.add_parser(
+        "analyse",
+        help="report the factor distribution across a corpus of TCX files",
+        description=(
+            "Measure every TCX file in a directory: the correction factor, how "
+            "much of the activity GPS actually covered, how noisy the track was, "
+            "and how far the derived figures move when the stream is rescaled. "
+            "Reads only; nothing is written unless --plot is given."
+        ),
+    )
+    analyse.add_argument(
+        "--corpus",
+        type=Path,
+        default=DEFAULT_CORPUS,
+        help=f"directory of .tcx files to measure (default {DEFAULT_CORPUS})",
+    )
+    analyse.add_argument(
+        "--plot",
+        nargs="?",
+        type=Path,
+        const=DEFAULT_PLOT,
+        metavar="SVG",
+        help=f"also write a factor histogram here (default {DEFAULT_PLOT})",
+    )
+    analyse.set_defaults(handler=_analyse_command)
     return parser
 
 
@@ -133,6 +164,78 @@ def _report(result: RescaleResult, args: argparse.Namespace, err: Any) -> None:
         f"factor {result.factor:.6f}",
         file=err,
     )
+
+
+def _analyse_command(args: argparse.Namespace, out: Any, err: Any) -> int:
+    paths = sorted(args.corpus.glob("*.tcx"))
+    if not paths:
+        print(f"reckon: no .tcx files in {args.corpus}", file=err)
+        return 1
+
+    measured: list[tuple[str, ActivityStats]] = []
+    for path in paths:
+        try:
+            measured.append((path.stem, analyse_tcx(path.read_bytes())))
+        except (OSError, ReckonError) as exc:
+            print(f"reckon: {path.name}: {exc}", file=err)
+            return 1
+
+    _print_table(measured, out)
+    summary = summarise([s for _, s in measured])
+    print("", file=out)
+    print(f"{summary.corrected} of {summary.files} corrected", file=out)
+    if summary.factor_mean is not None:
+        spread = "" if summary.factor_stdev is None else f"  stdev {summary.factor_stdev:.4f}"
+        print(
+            f"factor  {summary.factor_min:.4f}-{summary.factor_max:.4f}"
+            f"  mean {summary.factor_mean:.4f}{spread}",
+            file=out,
+        )
+    print(f"worst moving-time change  {summary.worst_moving_delta_s:.0f}s", file=out)
+    for reason, count in summary.skipped:
+        print(f"skipped  {reason}  x{count}", file=out)
+
+    if args.plot is not None:
+        factors = [s.factor for _, s in measured if s.factor is not None]
+        if not factors:
+            print("reckon: nothing to plot; no file produced a factor", file=err)
+            return 1
+        args.plot.parent.mkdir(parents=True, exist_ok=True)
+        args.plot.write_bytes(
+            svg.histogram(
+                factors,
+                title=f"Correction factor across {len(factors)} activities",
+                x_label="factor  (corrected total / GPS total)",
+            )
+        )
+        print(f"wrote {args.plot}", file=out)
+    return 0
+
+
+def _print_table(measured: list[tuple[str, ActivityStats]], out: Any) -> None:
+    header = (
+        f"{'file':<12}{'sport':<9}{'factor':>8}{'infl':>8}"
+        f"{'cover':>7}{'wiggle':>8}{'lead':>7}{'lag':>6}{'dMove':>7}"
+    )
+    print(header, file=out)
+    print("-" * len(header), file=out)
+    for name, s in measured:
+        print(
+            f"{name[:11]:<12}{s.sport[:8]:<9}"
+            f"{_num(s.factor, '.4f'):>8}{_pct(s.inflation):>8}"
+            f"{s.gps_coverage * 100:>6.1f}%{_num(s.wiggle, '.3f'):>8}"
+            f"{_num(s.lead_in_s, '.0f'):>6}s{_num(s.start_lag_s, '.0f'):>5}s"
+            f"{s.moving_delta_s:>+6.0f}s",
+            file=out,
+        )
+
+
+def _num(value: float | None, spec: str) -> str:
+    return "-" if value is None else format(value, spec)
+
+
+def _pct(value: float | None) -> str:
+    return "-" if value is None else f"{value * 100:.1f}%"
 
 
 def _binary(stream: Any) -> IO[bytes]:

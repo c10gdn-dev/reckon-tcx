@@ -300,6 +300,22 @@ place to find out how much they matter in practice:
 
 That analysis is worth doing early and is genuinely informative.
 
+**Both temporal measurements, answered 2026-08-29 by `reckon analyse`.**
+
+- **Start-time lag is 0-2 s on every file, and the concern does not materialise.**
+  The worry was that with `includePartialTCX=true` a lost lock at the start would
+  push the first trackpoint past the activity's true start. It does not happen:
+  Fitbit emits *positionless* trackpoints from the true start rather than
+  truncating the track. Even the partial-GPS walk, which held no fix for 383 s,
+  reports a lag of 0 s — its first trackpoint is on time, it simply has no
+  `Position`. Nothing downstream needs to compensate for start-time lag.
+- **Moving-time delta is 0 to -33 s**, worst on the urban-canyon walk, which is
+  also the largest correction. Always negative, because shrinking the distance
+  stream lowers every derived speed and pushes marginal samples below the moving
+  threshold. This is the estimate; the acceptance-test upload measured Strava's
+  own figure moving 24 s on a 10.8% correction. "Seconds rather than minutes"
+  holds, and is now measured twice by different means.
+
 **Calibration result, eleven activities, 2026-08-28.** The transform holds on
 every file; the *explanation* of why it works did not survive cycling, and has
 been replaced.

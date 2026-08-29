@@ -21,8 +21,15 @@ fmt:  ## Apply formatting and autofixes
 	uv run ruff format .
 	uv run ruff check --fix .
 
+analyse:  ## Report the factor distribution over training-data/ and plot it
+	uv run reckon analyse --plot
+
+mutate:  ## Mutation-test the transform (advisory, slow)
+	uv run mutmut run --no-progress || true
+	uv run mutmut results
+
 check: lint test  ## Everything CI runs
 
 clean:
-	rm -rf .pytest_cache .ruff_cache .coverage coverage.xml htmlcov build dist
+	rm -rf .pytest_cache .ruff_cache .coverage coverage.xml htmlcov build dist .mutmut-cache
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +

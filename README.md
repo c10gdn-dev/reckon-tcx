@@ -29,8 +29,13 @@ Real activities from a Fitbit Charge 5:
 | cycle, 30 min | 9.57 km | 9.76 km | +2.1% | 9.57 km |
 | cycle, 31 min | 9.32 km | 9.37 km | +0.6% | 9.32 km |
 
-Reckon rescales the distance stream so the total matches the stride-fused
+Reckon rescales the distance stream so the total matches the device's own
 figure, leaving the GPS geometry and every timestamp untouched.
+
+The size of the correction is not fixed. Across fourteen activities it ranged
+from 0.6% to 38%, depending almost entirely on how noisy the track was:
+
+![Distribution of the correction factor across the test corpus](docs/factor-distribution.svg)
 
 ## Quickstart
 
@@ -183,6 +188,29 @@ The report line goes to stderr and the file to stdout, so
 written through byte-identically rather than dropped, so an indoor session still
 reaches Strava — just with the numbers it came with. Running Reckon twice is a
 no-op: the second pass computes a factor of exactly 1.
+
+### Measuring a corpus
+
+`reckon analyse` runs over a directory of exports and reports what they have in
+common — how far the factor varies, how much of each activity GPS actually
+covered, how noisy each track was, and how far the derived figures move when the
+stream is rescaled.
+
+```console
+$ reckon analyse --corpus training-data/ --plot
+file        sport      factor    infl  cover  wiggle   lead   lag  dMove
+...
+11 of 14 corrected
+factor  0.7229-0.9943  mean 0.9345  stdev 0.0769
+worst moving-time change  33s
+skipped  no_gps  x2
+skipped  partial_gps  x1
+wrote docs/factor-distribution.svg
+```
+
+`--plot` writes a histogram as hand-emitted SVG. There is no plotting library
+here; a histogram is a few dozen rectangles, and the zero-dependency property is
+worth more than the convenience.
 
 **Guards.** Reckon leaves an activity alone, with a warning naming the reason,
 rather than fabricating data:

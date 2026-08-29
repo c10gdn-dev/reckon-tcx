@@ -1,0 +1,1902 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
+    <Activities>
+        <Activity Sport="Other">
+            <Id>2024-01-01T09:00:00.000Z</Id>
+            <Lap StartTime="2024-01-01T09:00:00.000Z">
+                <TotalTimeSeconds>771.0</TotalTimeSeconds>
+                <DistanceMeters>1248.742</DistanceMeters>
+                <Calories>114</Calories>
+                <Intensity>Active</Intensity>
+                <TriggerMethod>Manual</TriggerMethod>
+                <Track>
+                    <Trackpoint>
+                        <Time>2024-01-01T09:00:01.000Z</Time>
+                        <HeartRateBpm>
+                            <Value>60</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:00:13.000Z</Time>
+                        <HeartRateBpm>
+                            <Value>63</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:00:26.000Z</Time>
+                        <HeartRateBpm>
+                            <Value>67</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:00:37.000Z</Time>
+                        <HeartRateBpm>
+                            <Value>72</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:00:46.000Z</Time>
+                        <HeartRateBpm>
+                            <Value>76</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:00:52.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8811867</LatitudeDegrees>
+                            <LongitudeDegrees>37.7270683</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-38.599</AltitudeMeters>
+                        <DistanceMeters>43.191456458023616</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>75</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:00:58.000Z</Time>
+                        <HeartRateBpm>
+                            <Value>77</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:01:05.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8810933</LatitudeDegrees>
+                            <LongitudeDegrees>37.7267950</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-9.0</AltitudeMeters>
+                        <DistanceMeters>70.96329033907736</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>79</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:01:11.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8810617</LatitudeDegrees>
+                            <LongitudeDegrees>37.7267683</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-6.799</AltitudeMeters>
+                        <DistanceMeters>76.02220436288536</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:01:17.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8810617</LatitudeDegrees>
+                            <LongitudeDegrees>37.7267367</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-9.599</AltitudeMeters>
+                        <DistanceMeters>78.46821170534578</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>84</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:01:25.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8810533</LatitudeDegrees>
+                            <LongitudeDegrees>37.7266617</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>80.1</AltitudeMeters>
+                        <DistanceMeters>83.97052172489856</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>89</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:01:32.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8810067</LatitudeDegrees>
+                            <LongitudeDegrees>37.7265283</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>82.6</AltitudeMeters>
+                        <DistanceMeters>96.49358760299742</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:01:39.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8807867</LatitudeDegrees>
+                            <LongitudeDegrees>37.7263450</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>82.6</AltitudeMeters>
+                        <DistanceMeters>124.1110444570939</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>94</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:01:46.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8805750</LatitudeDegrees>
+                            <LongitudeDegrees>37.7262933</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>82.5</AltitudeMeters>
+                        <DistanceMeters>149.73328671467027</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:01:52.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8803750</LatitudeDegrees>
+                            <LongitudeDegrees>37.7262300</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>85.3</AltitudeMeters>
+                        <DistanceMeters>179.80580543073083</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>91</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:01:59.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8802833</LatitudeDegrees>
+                            <LongitudeDegrees>37.7263167</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>75.0</AltitudeMeters>
+                        <DistanceMeters>196.61762219863638</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>87</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:02:05.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8803817</LatitudeDegrees>
+                            <LongitudeDegrees>37.7264733</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>77.8</AltitudeMeters>
+                        <DistanceMeters>228.77389852265824</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>92</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:02:12.000Z</Time>
+                        <HeartRateBpm>
+                            <Value>89</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:02:18.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8800850</LatitudeDegrees>
+                            <LongitudeDegrees>37.7266383</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>67.5</AltitudeMeters>
+                        <DistanceMeters>265.4035998999707</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:02:24.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8800300</LatitudeDegrees>
+                            <LongitudeDegrees>37.7265517</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-10.399</AltitudeMeters>
+                        <DistanceMeters>282.0967132473981</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>90</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:02:30.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8799000</LatitudeDegrees>
+                            <LongitudeDegrees>37.7264700</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-11.999</AltitudeMeters>
+                        <DistanceMeters>298.4615138771623</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:02:36.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8798233</LatitudeDegrees>
+                            <LongitudeDegrees>37.7264083</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-11.799</AltitudeMeters>
+                        <DistanceMeters>311.6211425503747</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:02:43.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8797117</LatitudeDegrees>
+                            <LongitudeDegrees>37.7263800</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>81.8</AltitudeMeters>
+                        <DistanceMeters>324.6239912019791</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:02:49.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8797717</LatitudeDegrees>
+                            <LongitudeDegrees>37.7265933</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>59.8</AltitudeMeters>
+                        <DistanceMeters>348.4127470749977</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>96</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:02:55.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8796200</LatitudeDegrees>
+                            <LongitudeDegrees>37.7264100</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>64.599</AltitudeMeters>
+                        <DistanceMeters>369.92203684875244</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:03:01.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8795500</LatitudeDegrees>
+                            <LongitudeDegrees>37.7262350</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>56.3</AltitudeMeters>
+                        <DistanceMeters>389.0174777815231</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:03:07.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8795000</LatitudeDegrees>
+                            <LongitudeDegrees>37.7262667</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>61.499</AltitudeMeters>
+                        <DistanceMeters>398.06209469016824</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:03:13.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8793883</LatitudeDegrees>
+                            <LongitudeDegrees>37.7262933</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>44.8</AltitudeMeters>
+                        <DistanceMeters>415.95548995482403</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>106</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:03:19.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8793483</LatitudeDegrees>
+                            <LongitudeDegrees>37.7263317</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>52.8</AltitudeMeters>
+                        <DistanceMeters>421.3085500671391</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:03:25.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8792200</LatitudeDegrees>
+                            <LongitudeDegrees>37.7261917</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>93.0</AltitudeMeters>
+                        <DistanceMeters>451.4332605093116</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:03:31.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8790433</LatitudeDegrees>
+                            <LongitudeDegrees>37.7257733</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>94.5</AltitudeMeters>
+                        <DistanceMeters>484.3582479677472</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>110</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:03:37.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8789883</LatitudeDegrees>
+                            <LongitudeDegrees>37.7258600</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>94.6</AltitudeMeters>
+                        <DistanceMeters>495.28730380853847</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:03:43.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8788783</LatitudeDegrees>
+                            <LongitudeDegrees>37.7259817</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>95.8</AltitudeMeters>
+                        <DistanceMeters>511.2962471346881</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:03:49.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8788500</LatitudeDegrees>
+                            <LongitudeDegrees>37.7261317</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>86.8</AltitudeMeters>
+                        <DistanceMeters>525.2072327342922</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:03:55.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8788467</LatitudeDegrees>
+                            <LongitudeDegrees>37.7263017</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>79.8</AltitudeMeters>
+                        <DistanceMeters>539.3133577519436</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:04:01.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8787933</LatitudeDegrees>
+                            <LongitudeDegrees>37.7263633</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>78.1</AltitudeMeters>
+                        <DistanceMeters>548.1706341808622</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>114</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:04:07.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8787033</LatitudeDegrees>
+                            <LongitudeDegrees>37.7263483</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>76.8</AltitudeMeters>
+                        <DistanceMeters>559.1271116709488</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>113</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:04:13.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8785550</LatitudeDegrees>
+                            <LongitudeDegrees>37.7263400</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>70.3</AltitudeMeters>
+                        <DistanceMeters>575.6752721146519</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:04:19.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8785000</LatitudeDegrees>
+                            <LongitudeDegrees>37.7264317</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>68.8</AltitudeMeters>
+                        <DistanceMeters>588.1241453536337</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:04:25.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8784683</LatitudeDegrees>
+                            <LongitudeDegrees>37.7264600</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>68.3</AltitudeMeters>
+                        <DistanceMeters>592.6497570796722</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:04:31.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8784033</LatitudeDegrees>
+                            <LongitudeDegrees>37.7264650</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>69.5</AltitudeMeters>
+                        <DistanceMeters>600.0875588820736</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>113</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:04:37.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8783333</LatitudeDegrees>
+                            <LongitudeDegrees>37.7264317</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>71.6</AltitudeMeters>
+                        <DistanceMeters>608.2962290013712</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:04:43.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8782883</LatitudeDegrees>
+                            <LongitudeDegrees>37.7264500</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>71.3</AltitudeMeters>
+                        <DistanceMeters>614.2446528077539</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>107</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:04:49.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8781917</LatitudeDegrees>
+                            <LongitudeDegrees>37.7264583</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>70.3</AltitudeMeters>
+                        <DistanceMeters>625.2550501915915</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:04:55.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8781583</LatitudeDegrees>
+                            <LongitudeDegrees>37.7265233</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>68.3</AltitudeMeters>
+                        <DistanceMeters>632.247294574745</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:05:02.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8780900</LatitudeDegrees>
+                            <LongitudeDegrees>37.7265833</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>69.1</AltitudeMeters>
+                        <DistanceMeters>640.8427544238076</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>110</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:05:08.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8780250</LatitudeDegrees>
+                            <LongitudeDegrees>37.7265600</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>63.3</AltitudeMeters>
+                        <DistanceMeters>648.6390214058696</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:05:14.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8779783</LatitudeDegrees>
+                            <LongitudeDegrees>37.7265200</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>53.3</AltitudeMeters>
+                        <DistanceMeters>656.8996137825827</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:05:20.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8779017</LatitudeDegrees>
+                            <LongitudeDegrees>37.7264367</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>48.6</AltitudeMeters>
+                        <DistanceMeters>667.9534063235678</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>112</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:05:26.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8778500</LatitudeDegrees>
+                            <LongitudeDegrees>37.7264083</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>50.0</AltitudeMeters>
+                        <DistanceMeters>675.9285452031821</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>112</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:05:32.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8778267</LatitudeDegrees>
+                            <LongitudeDegrees>37.7264317</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>50.8</AltitudeMeters>
+                        <DistanceMeters>683.1937196365318</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>112</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:05:38.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8777300</LatitudeDegrees>
+                            <LongitudeDegrees>37.7264517</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>51.1</AltitudeMeters>
+                        <DistanceMeters>694.1669410055225</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:05:44.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8776733</LatitudeDegrees>
+                            <LongitudeDegrees>37.7265117</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>50.5</AltitudeMeters>
+                        <DistanceMeters>702.0757502824451</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:05:50.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8776200</LatitudeDegrees>
+                            <LongitudeDegrees>37.7265833</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>50.099</AltitudeMeters>
+                        <DistanceMeters>710.0594454535475</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:05:56.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8775317</LatitudeDegrees>
+                            <LongitudeDegrees>37.7265117</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>52.0</AltitudeMeters>
+                        <DistanceMeters>724.4456222560799</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:06:02.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8773850</LatitudeDegrees>
+                            <LongitudeDegrees>37.7262383</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>45.799</AltitudeMeters>
+                        <DistanceMeters>748.1343083158167</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>118</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:06:08.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8772517</LatitudeDegrees>
+                            <LongitudeDegrees>37.7262300</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>46.6</AltitudeMeters>
+                        <DistanceMeters>769.3552649742174</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>118</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:06:14.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8771717</LatitudeDegrees>
+                            <LongitudeDegrees>37.7263167</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>49.8</AltitudeMeters>
+                        <DistanceMeters>782.7277841662057</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>118</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:06:21.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8771450</LatitudeDegrees>
+                            <LongitudeDegrees>37.7259567</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>50.6</AltitudeMeters>
+                        <DistanceMeters>819.4972970986404</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:06:27.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8771500</LatitudeDegrees>
+                            <LongitudeDegrees>37.7260600</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>48.0</AltitudeMeters>
+                        <DistanceMeters>826.5999147626701</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:06:33.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8770333</LatitudeDegrees>
+                            <LongitudeDegrees>37.7258917</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>49.1</AltitudeMeters>
+                        <DistanceMeters>847.4574167845028</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:06:39.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8769983</LatitudeDegrees>
+                            <LongitudeDegrees>37.7257267</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>48.6</AltitudeMeters>
+                        <DistanceMeters>860.9105255018435</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>113</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:06:45.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8770467</LatitudeDegrees>
+                            <LongitudeDegrees>37.7256300</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>48.5</AltitudeMeters>
+                        <DistanceMeters>871.89132295691</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>112</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:06:51.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8769700</LatitudeDegrees>
+                            <LongitudeDegrees>37.7255200</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>51.0</AltitudeMeters>
+                        <DistanceMeters>883.2628752055598</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>112</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:06:57.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8769650</LatitudeDegrees>
+                            <LongitudeDegrees>37.7254167</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>51.8</AltitudeMeters>
+                        <DistanceMeters>896.9773080891662</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>110</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:07:03.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8769417</LatitudeDegrees>
+                            <LongitudeDegrees>37.7253033</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>52.0</AltitudeMeters>
+                        <DistanceMeters>905.8022075160648</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:07:09.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8768267</LatitudeDegrees>
+                            <LongitudeDegrees>37.7252017</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>51.3</AltitudeMeters>
+                        <DistanceMeters>923.3818150166024</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>113</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:07:15.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8768083</LatitudeDegrees>
+                            <LongitudeDegrees>37.7250950</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>53.1</AltitudeMeters>
+                        <DistanceMeters>937.0609128820787</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:07:21.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8765867</LatitudeDegrees>
+                            <LongitudeDegrees>37.7250267</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>55.8</AltitudeMeters>
+                        <DistanceMeters>963.0968596253126</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:07:27.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8765683</LatitudeDegrees>
+                            <LongitudeDegrees>37.7248933</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>57.599</AltitudeMeters>
+                        <DistanceMeters>975.5241090636463</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:07:33.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8765500</LatitudeDegrees>
+                            <LongitudeDegrees>37.7247867</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>58.3</AltitudeMeters>
+                        <DistanceMeters>984.5930947890243</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:07:39.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8765467</LatitudeDegrees>
+                            <LongitudeDegrees>37.7246767</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>58.599</AltitudeMeters>
+                        <DistanceMeters>992.598473662269</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:07:45.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8766700</LatitudeDegrees>
+                            <LongitudeDegrees>37.7245600</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>55.8</AltitudeMeters>
+                        <DistanceMeters>1008.3734393761112</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:07:51.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8767383</LatitudeDegrees>
+                            <LongitudeDegrees>37.7244000</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>54.8</AltitudeMeters>
+                        <DistanceMeters>1021.0846523592621</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:07:57.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8767800</LatitudeDegrees>
+                            <LongitudeDegrees>37.7243150</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>49.3</AltitudeMeters>
+                        <DistanceMeters>1029.0966608245596</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>115</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:08:03.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8768650</LatitudeDegrees>
+                            <LongitudeDegrees>37.7241867</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>46.599</AltitudeMeters>
+                        <DistanceMeters>1041.6463379267066</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>115</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:08:09.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8769700</LatitudeDegrees>
+                            <LongitudeDegrees>37.7240767</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>44.3</AltitudeMeters>
+                        <DistanceMeters>1055.2363769629992</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>114</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:08:15.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8769883</LatitudeDegrees>
+                            <LongitudeDegrees>37.7239650</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>41.5</AltitudeMeters>
+                        <DistanceMeters>1063.4435478349164</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>114</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:08:21.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8770300</LatitudeDegrees>
+                            <LongitudeDegrees>37.7238600</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>40.8</AltitudeMeters>
+                        <DistanceMeters>1076.7280593213206</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>117</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:08:27.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8771117</LatitudeDegrees>
+                            <LongitudeDegrees>37.7237900</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>42.0</AltitudeMeters>
+                        <DistanceMeters>1087.036234425652</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>115</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:08:33.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8767583</LatitudeDegrees>
+                            <LongitudeDegrees>37.7231833</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>111.0</AltitudeMeters>
+                        <DistanceMeters>1145.0795034035466</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>106</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:08:39.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8767433</LatitudeDegrees>
+                            <LongitudeDegrees>37.7234917</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>33.3</AltitudeMeters>
+                        <DistanceMeters>1171.1272449010205</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:08:45.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8766883</LatitudeDegrees>
+                            <LongitudeDegrees>37.7233900</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-53.299</AltitudeMeters>
+                        <DistanceMeters>1187.4052072514392</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>112</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:08:51.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8768050</LatitudeDegrees>
+                            <LongitudeDegrees>37.7234317</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-71.5</AltitudeMeters>
+                        <DistanceMeters>1202.5643045036472</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>109</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:08:57.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8767667</LatitudeDegrees>
+                            <LongitudeDegrees>37.7234467</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-64.3</AltitudeMeters>
+                        <DistanceMeters>1212.5557395043638</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>109</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:09:03.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8767200</LatitudeDegrees>
+                            <LongitudeDegrees>37.7234917</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-59.999</AltitudeMeters>
+                        <DistanceMeters>1220.3309736027095</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:09:09.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8766417</LatitudeDegrees>
+                            <LongitudeDegrees>37.7235600</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-52.8</AltitudeMeters>
+                        <DistanceMeters>1230.333142312042</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:09:15.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8766467</LatitudeDegrees>
+                            <LongitudeDegrees>37.7238233</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-48.1</AltitudeMeters>
+                        <DistanceMeters>1250.4830256639416</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>108</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:09:21.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8765600</LatitudeDegrees>
+                            <LongitudeDegrees>37.7239233</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-41.2</AltitudeMeters>
+                        <DistanceMeters>1263.326734046548</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>111</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:09:27.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8764767</LatitudeDegrees>
+                            <LongitudeDegrees>37.7239383</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-38.6</AltitudeMeters>
+                        <DistanceMeters>1272.7160646209236</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>115</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:09:33.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8764483</LatitudeDegrees>
+                            <LongitudeDegrees>37.7241050</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-36.0</AltitudeMeters>
+                        <DistanceMeters>1286.9855274325805</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:09:39.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8763650</LatitudeDegrees>
+                            <LongitudeDegrees>37.7241917</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-30.5</AltitudeMeters>
+                        <DistanceMeters>1301.6234416818384</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:09:45.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8762600</LatitudeDegrees>
+                            <LongitudeDegrees>37.7241833</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>-26.3</AltitudeMeters>
+                        <DistanceMeters>1313.3296083172133</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:09:51.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8761550</LatitudeDegrees>
+                            <LongitudeDegrees>37.7241933</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>37.0</AltitudeMeters>
+                        <DistanceMeters>1325.3661379251148</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>114</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:09:57.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8760750</LatitudeDegrees>
+                            <LongitudeDegrees>37.7242067</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>31.0</AltitudeMeters>
+                        <DistanceMeters>1334.6883360498339</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>115</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:10:03.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8759883</LatitudeDegrees>
+                            <LongitudeDegrees>37.7242200</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>26.6</AltitudeMeters>
+                        <DistanceMeters>1344.633471556932</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:10:09.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8758767</LatitudeDegrees>
+                            <LongitudeDegrees>37.7242567</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>29.5</AltitudeMeters>
+                        <DistanceMeters>1357.4976726335142</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:10:15.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8758133</LatitudeDegrees>
+                            <LongitudeDegrees>37.7243683</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>14.1</AltitudeMeters>
+                        <DistanceMeters>1368.0745729636542</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:10:21.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8757400</LatitudeDegrees>
+                            <LongitudeDegrees>37.7243250</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>27.6</AltitudeMeters>
+                        <DistanceMeters>1377.9044005695905</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>114</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:10:27.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8756683</LatitudeDegrees>
+                            <LongitudeDegrees>37.7241867</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>128.8</AltitudeMeters>
+                        <DistanceMeters>1389.9695526060543</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:10:33.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8756700</LatitudeDegrees>
+                            <LongitudeDegrees>37.7240917</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>82.8</AltitudeMeters>
+                        <DistanceMeters>1396.801775418581</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>116</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:10:39.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8756650</LatitudeDegrees>
+                            <LongitudeDegrees>37.7239850</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>15.8</AltitudeMeters>
+                        <DistanceMeters>1404.026203935942</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>114</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:10:45.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8756800</LatitudeDegrees>
+                            <LongitudeDegrees>37.7239117</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>42.3</AltitudeMeters>
+                        <DistanceMeters>1409.5601336478276</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>112</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:10:51.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8756100</LatitudeDegrees>
+                            <LongitudeDegrees>37.7238783</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>23.1</AltitudeMeters>
+                        <DistanceMeters>1419.9850075310271</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:10:57.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8756050</LatitudeDegrees>
+                            <LongitudeDegrees>37.7237950</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>60.3</AltitudeMeters>
+                        <DistanceMeters>1428.3748753237976</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>109</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:11:03.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8755900</LatitudeDegrees>
+                            <LongitudeDegrees>37.7236250</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>57.0</AltitudeMeters>
+                        <DistanceMeters>1439.2484680670111</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>111</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:11:09.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8755767</LatitudeDegrees>
+                            <LongitudeDegrees>37.7234633</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>49.1</AltitudeMeters>
+                        <DistanceMeters>1449.76457234731</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:11:15.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8755783</LatitudeDegrees>
+                            <LongitudeDegrees>37.7233950</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>49.3</AltitudeMeters>
+                        <DistanceMeters>1455.0192389555818</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>112</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:11:21.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8755267</LatitudeDegrees>
+                            <LongitudeDegrees>37.7232567</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>38.099</AltitudeMeters>
+                        <DistanceMeters>1466.2549811154986</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:11:28.000Z</Time>
+                        <HeartRateBpm>
+                            <Value>112</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:11:34.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8753967</LatitudeDegrees>
+                            <LongitudeDegrees>37.7227767</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>22.0</AltitudeMeters>
+                        <DistanceMeters>1500.0446239931284</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>112</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:11:40.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8751900</LatitudeDegrees>
+                            <LongitudeDegrees>37.7223117</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>19.8</AltitudeMeters>
+                        <DistanceMeters>1537.4955082924728</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>112</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:11:46.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8750567</LatitudeDegrees>
+                            <LongitudeDegrees>37.7221650</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>18.0</AltitudeMeters>
+                        <DistanceMeters>1573.5838580157229</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:11:52.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8750100</LatitudeDegrees>
+                            <LongitudeDegrees>37.7223250</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>16.3</AltitudeMeters>
+                        <DistanceMeters>1587.0002246719052</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:11:58.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8749867</LatitudeDegrees>
+                            <LongitudeDegrees>37.7225267</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>11.8</AltitudeMeters>
+                        <DistanceMeters>1607.0282519260168</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:12:04.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8749450</LatitudeDegrees>
+                            <LongitudeDegrees>37.7227183</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>11.8</AltitudeMeters>
+                        <DistanceMeters>1622.842348728447</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>108</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:12:10.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8748967</LatitudeDegrees>
+                            <LongitudeDegrees>37.7229467</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>9.799</AltitudeMeters>
+                        <DistanceMeters>1638.2211643115927</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>102</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:12:16.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8748783</LatitudeDegrees>
+                            <LongitudeDegrees>37.7231833</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>8.299</AltitudeMeters>
+                        <DistanceMeters>1653.7914151642017</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:12:22.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8748250</LatitudeDegrees>
+                            <LongitudeDegrees>37.7232567</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>9.3</AltitudeMeters>
+                        <DistanceMeters>1663.7666554869415</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>95</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:12:28.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8747850</LatitudeDegrees>
+                            <LongitudeDegrees>37.7233900</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>8.6</AltitudeMeters>
+                        <DistanceMeters>1678.734515253951</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>94</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:12:34.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8747467</LatitudeDegrees>
+                            <LongitudeDegrees>37.7234767</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>6.8</AltitudeMeters>
+                        <DistanceMeters>1693.1369877292068</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:12:40.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8746383</LatitudeDegrees>
+                            <LongitudeDegrees>37.7234367</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>7.6</AltitudeMeters>
+                        <DistanceMeters>1705.7290548087765</DistanceMeters>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:12:46.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8745033</LatitudeDegrees>
+                            <LongitudeDegrees>37.7233850</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>8.1</AltitudeMeters>
+                        <DistanceMeters>1721.3503015603615</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>87</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                    
+                    
+                    
+                    
+                    <Trackpoint>
+                        <Time>2024-01-01T09:12:51.000Z</Time>
+                        <Position>
+                            <LatitudeDegrees>38.8744483</LatitudeDegrees>
+                            <LongitudeDegrees>37.7233900</LongitudeDegrees>
+                        </Position>
+                        <AltitudeMeters>8.8</AltitudeMeters>
+                        <DistanceMeters>1727.2945967752519</DistanceMeters>
+                        <HeartRateBpm>
+                            <Value>89</Value>
+                        </HeartRateBpm>
+                    </Trackpoint>
+                </Track>
+            </Lap>
+            <Creator xsi:type="Device_t" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                <Name>Charge 5</Name>
+                <UnitId>0</UnitId>
+                <ProductID>0</ProductID>
+            </Creator>
+        </Activity>
+    </Activities>
+</TrainingCenterDatabase>

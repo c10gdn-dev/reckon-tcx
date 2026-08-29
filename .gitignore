@@ -33,6 +33,8 @@ dist/
 # Test and coverage artefacts
 .pytest_cache/
 .ruff_cache/
+.mutmut-cache
+mutants/
 .coverage
 .coverage.*
 coverage.xml
