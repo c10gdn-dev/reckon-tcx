@@ -526,6 +526,32 @@ factor of about 13. It is therefore entirely willing to post-process a stream it
 considers noisy, and specifically declines to do so for distance. That is what
 makes this correction possible at all.
 
+### Elevation is out of scope, deliberately
+
+Decided 2026-08-29. The altitude stream is at least as noisy as the distance
+stream — the raw delta-sums across the corpus run to 1567, 2280, 2613, 589, 259,
+498 and 1872 m, none of them plausible. It is tempting to treat that as a second
+thing to fix. **Do not.**
+
+- **There is no target.** The distance correction works only because the file
+  carries a trustworthy total in `Lap/DistanceMeters`, confirmed against what the
+  activity app displays. There is no equivalent for elevation: Google Health does
+  not report it at all, so there is no reference figure to rescale to and no way
+  to validate a result. The transform's entire discipline is that it never
+  invents a number it cannot check, and it must not make an exception here.
+- **Strava already does it, and does it well.** 179 m for that route is
+  reasonable where 2279 m plainly is not. Strava has better elevation data than
+  this tool does — terrain models, and every other activity crossing the same
+  ground — and it is not information a TCX rescaler can improve on.
+
+So `AltitudeMeters` is copied through byte-identically and interpretation is left
+to Strava. Note the one visible consequence: **Strava's elevation figure moves
+slightly after a correction**, 179 m to 177 m on the acceptance-test upload,
+because its smoothing appears to work over distance-based windows. Reckon does
+not touch the altitudes; Strava recomputes. About 1%, in a figure that was always
+an estimate. Do not chase it, and do not add altitude to `_SCALED_TAGS` or any
+successor — scaling altitude by a distance-derived factor would be meaningless.
+
 ### Partial GPS: the case where rescaling is wrong
 
 One walk in the corpus is its most

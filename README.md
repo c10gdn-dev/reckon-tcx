@@ -93,14 +93,10 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   the *shape* of your pace curve is preserved exactly, but Reckon cannot tell
   which specific kilometre carried the error.
 - **Route, timestamps and dates are unchanged.** Strava's *elapsed* time is
-  unaffected. Two derived figures move slightly, both measured on a real upload
-  where the distance changed by 10.8%:
-  - **Moving time** shifted by 24 seconds (0.35%). Strava derives it from speed,
-    and speed is distance over time.
-  - **Elevation gain** shifted by 2 metres (1.1%), from 179 m to 177 m. Reckon
-    does not touch altitude — the values are byte-identical — so this is Strava
-    recomputing. Its elevation smoothing appears to work over distance-based
-    windows, so changing the distance stream nudges the result.
+  unaffected. Its *moving* time shifts by a few seconds — 24 s on a real upload
+  where the distance changed by 10.8% — because Strava derives it from speed, and
+  speed is distance over time.
+- **Elevation is not corrected.** See below; this is deliberate.
 - **The factor is not a constant.** Across eleven activities it ranged 0.89–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that
   particular track was. Reckon computes it per file and refuses to guess.
@@ -117,6 +113,37 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
 - **Reckon does not touch activity type.** It edits distances and speeds only;
   whatever decides whether Strava calls something a run, a ride or yoga is
   outside this tool and is left alone.
+
+## Elevation is left alone, on purpose
+
+The altitude stream in a Fitbit export is at least as noisy as the distance
+stream. On one 21 km run its raw deltas sum to **2279 m** of climb, which is not
+a plausible number for the route.
+
+Reckon does not correct it, and that is a deliberate scope decision rather than
+an omission:
+
+- **There is no target to correct it against.** The distance fix works because
+  the file already carries a trustworthy total in `Lap/DistanceMeters`. Nothing
+  equivalent exists for elevation — Google Health does not report it at all — so
+  there is no reference figure to rescale to. Correcting a number with nothing to
+  check it against would be inventing one.
+- **Strava already handles it, and handles it well.** On that same 21 km run
+  Strava reported **179 m**, which is reasonable for the route. It smooths the
+  altitude stream by roughly a factor of thirteen. That is a job it already does
+  properly, with better data than this tool has.
+
+So Reckon copies every `AltitudeMeters` value through byte-identically and leaves
+the interpretation to Strava. The one visible consequence is that Strava's
+elevation figure moves very slightly after a correction — 179 m to 177 m on that
+upload. Reckon did not change the altitudes; Strava recomputed. Its smoothing
+appears to operate over distance-based windows, so a shorter distance stream
+nudges the result. The effect is about 1%, in a figure that was always an
+estimate.
+
+**This asymmetry is the whole opportunity.** Strava is perfectly willing to
+post-process a stream it judges noisy — it does exactly that to elevation. It
+simply does not do it to distance. That gap is where this tool lives.
 
 ## Usage
 
