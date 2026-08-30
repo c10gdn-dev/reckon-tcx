@@ -1,0 +1,124 @@
+@startuml upload-lifecycle
+' One notification, from webhook to Strava activity.
+'
+' The question this diagram exists to answer: where does the flow retry, where
+' does it stop, and where does it deliberately do nothing? Getting those three
+' apart is what keeps the DLQ free of messages no retry could ever fix.
+'
+' Rendered by `make diagrams` (phase 8). Do not hand-edit the SVG.
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam ParticipantPadding 12
+skinparam BoxPadding 12
+
+participant "Google\nHealth" as GH
+participant "receiver\n(Function URL)" as RX
+queue "SQS\n(+DLQ)" as Q
+participant "worker" as W
+database "DynamoDB" as DB
+participant "Strava" as ST
+
+== notification ==
+
+GH -> RX : POST /  (Authorization: <secret>)
+note right of RX
+  hmac.compare_digest on the header.
+  The ECDSA signature is *not* checked —
+  stdlib cannot, and the receiver trusts
+  nothing in the body. See PLAN.md §8.
+end note
+RX -> Q : {"type":"notification", body}
+RX --> GH : **204**
+note left of GH
+  204 specifically. Anything else is a
+  failed delivery: retried with backoff
+  for 7 days, then discarded.
+end note
+
+== fetch and correct ==
+
+Q -> W : notification
+W -> DB : read TOKEN#google
+W -> GH : GET .../exercise/dataPoints?filter=interval
+note right of W
+  The notification carries the interval,
+  so no day-wide listing and no diffing.
+  Dedupe is still required: at-least-once.
+end note
+
+loop each exercise in the window
+  W -> DB : read LOG#{exerciseId}
+  alt already processed
+    W -> W : drop, silently
+  else new
+    W -> GH : GET ...:exportExerciseTcx?alt=media&partialData=true
+    W -> W : rescale_tcx(bytes)
+    note right of W
+      Pure, offline, no network.
+      Three outcomes, and only one
+      of them means "do not upload".
+    end note
+
+    alt corrected
+      W -> ST : POST /uploads  (external_id = exerciseId)
+    else uncorrectable — yoga, no GPS, partial GPS
+      W -> ST : POST /uploads  (unchanged bytes)
+      note right of W
+        **Pass through, never drop.**
+        Correcting is not a precondition
+        for reaching Strava.
+      end note
+    else withheld
+      W -> DB : write LOG#{id} = withheld(reason)
+      note right of W : deterministic; never retried
+    end
+    W -> Q : {"type":"upload_check", attempt:1} (DelaySeconds 20)
+  end
+end
+
+== the upload is asynchronous ==
+
+Q -> W : upload_check
+W -> ST : GET /uploads/{id}
+alt activity_id set
+  W -> DB : write LOG#{id} = uploaded(activity_id)
+else error names a duplicate
+  W -> DB : write LOG#{id} = uploaded(duplicate)
+  note right of W
+    Strava dedupes on external_id.
+    A redelivered webhook costs one
+    rejected upload, not a second
+    activity in someone's feed.
+  end note
+else error otherwise
+  W -> DB : write LOG#{id} = failed(error)
+  note right of W : deterministic; do not re-upload
+else still processing
+  alt attempt < 5
+    W -> Q : upload_check, attempt+1 (DelaySeconds 20, 40, 80...)
+    note right of W
+      Re-enqueue, never sleep. A sleeping
+      Lambda is billed wall-clock time.
+    end note
+  else attempt == 5
+    W -> DB : write LOG#{id} = failed(timeout)
+    note right of W
+      Stop. A slow Strava is not a
+      poisoned message, and does not
+      belong in the DLQ.
+    end note
+  end
+end
+
+== what is allowed to reach the DLQ ==
+
+note across
+  Only **transient** faults propagate: NetworkError, RateLimited, ServerError —
+  everything carrying the `Transient` marker. `http.retrying` has already tried
+  them four times with backoff, honouring Retry-After. Everything else is a
+  decision written to DynamoDB and never seen again.
+end note
+
+@enduml
