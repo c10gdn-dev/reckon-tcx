@@ -85,8 +85,9 @@ reckon/
 │   │   ├── svg.py             # hand-emitted histogram, no plotting library
 │   │   └── errors.py          # the exception hierarchy callers catch
 │   ├── clients/
-│   │   ├── http.py            # urllib wrapper: retries, backoff, 429
-│   │   ├── fitbit.py
+│   │   ├── http.py            # urllib wrapper: retries, backoff, 429 — the one seam
+│   │   ├── oauth.py           # the OAuth 2.0 both services share
+│   │   ├── health.py          # Google Health API — replaced fitbit.py, see §8
 │   │   └── strava.py
 │   ├── stores/
 │   │   ├── base.py            # TokenStore, ProcessedLogStore protocols
@@ -103,13 +104,14 @@ reckon/
 │   ├── terraform.tfvars.example  backend.tf.example
 ├── scripts/
 │   ├── authorize.py           # one-time local OAuth, both services
-│   ├── subscribe.py           # create the Fitbit subscription
+│   ├── subscribe.py           # create the Google Health webhook subscription
 │   └── anonymise.py           # training-data -> shareable test fixture
 ├── tests/
 │   ├── fixtures/*.tcx         # committed, anonymised real-world samples
 │   ├── builders.py            # synthetic TCX generator for guard cases
 │   ├── fakes.py               # Transport fake, controllable clock, no-op sleep
-│   ├── test_rescale.py  test_signature.py  test_stores.py
+│   ├── test_rescale.py  test_stores.py
+│   ├── test_oauth.py  test_health.py  test_strava.py
 │   ├── test_analyse.py  test_svg.py  test_fixtures.py
 │   ├── test_http.py           # against a real loopback http.server
 │   ├── test_layering.py       # asserts core/ and pipeline/ are AWS-free
@@ -247,8 +249,9 @@ Two consequences worth understanding, neither caused by the rescale:
 
 **Outcomes: deterministic skips are not failures.**
 
-The pipeline maps every activity to exactly one of three outcomes, and the
-distinction drives retry behaviour everywhere downstream:
+The pipeline maps every activity to exactly one of **four** outcomes, and the
+distinction drives retry behaviour everywhere downstream. Built in phase 5 as
+`stores.base.Status` plus a raised exception:
 
 - `uploaded` — Strava accepted it; record the activity id.
 - `passed_through(reason)` — a *deterministic* result where the numbers could not
@@ -268,9 +271,16 @@ partial-GPS walk. Collapsing these into `skipped` would silently drop activities
 `reckon rescale` already behaves correctly — it writes every input out — and
 `RescaleResult.skips` carries the structured reasons the pipeline routes on.
 
-`ProcessedLogStore` therefore stores a status (`uploaded` | `skipped` | `failed`)
-and a reason, not a bare seen-marker. `reckon sync` prints the same three-way
-outcome per activity.
+`ProcessedLogStore` therefore stores a status — `uploaded` | `passed_through` |
+`withheld` | `failed` — and a reason, not a bare seen-marker. Every stored status
+is final; transient faults are raised and nothing is written, which is what keeps
+a redelivery from being mistaken for a decision.
+
+`Status.on_strava` is the property that keeps the two facts apart: *did it reach
+Strava* (`uploaded` and `passed_through`) is a different question from *were the
+numbers improved* (`uploaded` alone). `reckon sync` exits non-zero when anything
+did not reach Strava, and zero when everything did — a yoga session uploaded
+uncorrected is a success.
 
 ---
 
@@ -667,8 +677,8 @@ These are architecture decisions to take now, not test-time tricks applied later
 
 **One network seam.** All urllib usage lives in a single function in
 `clients/http.py`, behind `Transport = Callable[[Request], Response]`.
-`fitbit.py` and `strava.py` accept a `Transport` at construction and never import
-urllib themselves. Above the seam, tests inject a canned-response fake — no mock
+`health.py` and `strava.py` accept a `Transport` at construction and never import
+urllib themselves, and `test_layering.py` enforces that rather than trusting it. Above the seam, tests inject a canned-response fake — no mock
 library, no patching. This matters given the zero-dependency stance: there is no
 stdlib equivalent of `responses`, and monkeypatching `urllib.request.urlopen` is
 brittle.
@@ -747,30 +757,132 @@ These fail silently if got wrong. Verify each against current docs during
 implementation. **On divergence, the live API wins**: prefer observed behaviour,
 and update this plan file to match rather than silently deviating from it.
 
-### Fitbit
+### Google Health — replacing the Fitbit Web API
 
-- **Scopes:** `activity` and `location`. Without `location` the TCX has no GPS.
-- **Refresh tokens are single-use and rotate on every refresh.** Losing one forces
-  a manual re-auth. The DynamoDB conditional write on a version attribute (or an
-  exclusive file lock locally) is the *primary and sufficient* guard: persist the
-  new pair *before* using the new access token, and a loser of the race re-reads
-  and proceeds with the winner's tokens. Concurrency limiting (§9) is best-effort
-  reduction of contention, not the correctness mechanism.
-- **The webhook notification does not contain the activity log ID.** Body is a
-  JSON array of `{collectionType, date, ownerId, ownerType, subscriptionId}`. The
-  worker must call
-  `GET /1/user/-/activities/list.json?afterDate={date}&sort=asc&limit=20&offset=0`
-  and diff against the processed-log store. `date` is in the user's Fitbit
-  timezone; to cover the midnight boundary, query from the day *before* the
-  notification date — the dedupe store makes the overlap harmless. Verify this
-  edge during implementation.
-- **Signature:** `X-Fitbit-Signature` is `base64(HMAC-SHA1(raw_body, client_secret + "&"))`.
-  Use `hmac.compare_digest` and the *raw* body bytes, not a re-serialised dict.
-- **Units:** the summary `distance` field follows the `Accept-Language` header.
-  Send `en_GB` explicitly on every call and assert `distanceUnit`.
-- **TCX:** `GET /1/user/-/activities/{logId}.tcx?includePartialTCX=true` with
-  `Accept: application/vnd.garmin.tcx+xml`.
-- Rate limit 150/hour/user. Back off on 429.
+**This section was rewritten in phase 4, and the change is structural.** The plan
+was built on the Fitbit Web API. Google retired the standalone Fitbit app, stopped
+issuing new Fitbit developer accounts, and deprecated the legacy Web API as of
+September 2026. Building phase 4 against it would have produced something that
+could not be registered and then stopped working. Its documented successor, the
+Google Health API, went GA in May 2026 and carries the one endpoint this project
+cannot do without: an exercise exported as TCX, GPS route included.
+
+Verified against the live documentation on 2026-08-30. Where this and the API
+disagree, the API wins and this section gets updated — the rule at the top of §8
+is unchanged.
+
+- **Access is self-serve.** A Google Cloud project, an OAuth client, and the
+  owner's own account added as a test user. This is what unblocked phases 4-7,
+  which were held on whether a Fitbit developer account could still be obtained.
+- **Scopes:** `googlehealth.activity_and_fitness.readonly` **and**
+  `googlehealth.location.readonly`. Both are required by `exportExerciseTcx`.
+  Omitting the location scope does not fail the call — it returns a route-less
+  file, which is precisely the silent failure this section exists to prevent.
+  All Google Health scopes are *restricted*.
+- **Refresh tokens do not rotate on use.** This retires the single-use rotation
+  the plan treated as the central correctness problem. The compare-and-swap write
+  in §5/§9 stays, but it is now protecting the *access* token from a wasteful
+  double refresh, not protecting a refresh token from being destroyed. Downgrade
+  its weight accordingly; do not remove it.
+- **A refresh token is issued only with `access_type=offline&prompt=consent`,
+  and `prompt=consent` is needed on *every* re-authorisation.** Without it a
+  returning user gets an access token and no refresh token, and the unattended
+  half of the pipeline stops working an hour later with no error at the time.
+- **A client in "Testing" publishing status is issued refresh tokens that expire
+  after seven days.** This gates phases 6-7, not phase 4, and it cannot be
+  automated away: renewing the grant needs the browser consent flow, and the only
+  ways round that are a Workspace service account with domain-wide delegation
+  (unavailable to a gmail.com account) or driving a headless browser through
+  Google's login with a stored password and 2FA — which Google blocks, and which
+  would put a far more valuable credential into the pipeline than the one it
+  protects. **Do not build it.** `clients/oauth.AuthorisationExpired` makes the
+  failure legible instead: it names the service and the command that fixes it.
+
+  **Publishing the client to "In production" is documented to remove the expiry** —
+  refresh tokens then last until revoked or unused for about six months. Whether
+  a single-user project can publish without Google's third-party security
+  assessment is **not settled by the documentation**, which points two ways:
+
+  - Personal use — "if you are the only user of your app" — is a **listed
+    exception** to the assessment, alongside testing, internal use and
+    domain-wide installation. Google Health's own setup page ties the review
+    specifically to *supporting more than 100 users*. Unverified apps are not
+    blocked; they show a warning screen the user clicks past, with a cap of 100
+    new users over the project's lifetime.
+  - The restricted-scope verification page also reads as though production plus
+    restricted scopes requires verification regardless.
+
+  **Settle it in the console, not by reading.** Create the project, publish the
+  app, authorise, and check the `expires_in` and whether a `refresh_token` comes
+  back at all. That one action also checks every field name in `health.py`, none
+  of which has met the live API. See "The console test" below.
+- **List exercises:** `GET /v4/users/me/dataTypes/exercise/dataPoints` with
+  `pageSize` (max **25** for exercise, far below other data types), `pageToken`,
+  and a `filter` such as
+  `exercise.interval.start_time >= "..." AND exercise.interval.start_time < "..."`.
+  Response is `{dataPoints: [...], nextPageToken}`.
+- **TCX:** `GET /v4/users/me/dataTypes/exercise/dataPoints/{id}:exportExerciseTcx`
+  with **`alt=media`** — without it the response is JSON, not the file — and
+  `partialData=true`, which is the successor to `includePartialTCX` and must stay
+  on: a GPS dropout is passed through, never dropped (§"Partial GPS").
+- **Distance in the summary is `exercise.metricsSummary.distanceMillimiters`** —
+  the misspelling is Google's, in their own published example. `health.py` accepts
+  both spellings. The field is advisory only; the target the transform rescales to
+  still comes from the file's own `Lap/DistanceMeters`.
+- **Exercise type** is `exercise.exerciseType`: `RUNNING`, `WALKING`, `BIKING`.
+  Better than TCX `Sport`, which the corpus showed is information-free for walks
+  — but still map it explicitly to Strava's `sport_type` (§12).
+- **Webhooks exist and cover Exercise.** The notification carries
+  `{version, healthUserId, operation, dataType, intervals, clientProvidedSubscriptionName}`.
+  Unlike Fitbit's, it **includes the time interval**, so the worker can query that
+  window directly instead of listing a whole day and diffing. Dedupe is still
+  required — delivery is at-least-once.
+- **Subscriber verification** is a two-step handshake on create and update: an
+  authorised request must answer 200/201, and an unauthenticated one must answer
+  401/403. Both carry `{"type": "verification"}` and `User-Agent:
+  Google-Health-API-Webhooks`. This replaces the `?verify=CODE` handshake in §9.
+- **Signature:** `GOOGLE-HEALTH-API-SIGNATURE` is base64 ECDSA P-256/SHA-256 over
+  a keyset at `https://www.gstatic.com/googlehealthapi/webhooks/webhooks_public_keyset.json`,
+  rotated every 30 days. **This cannot be verified with the standard library**, so
+  the HMAC-SHA1 scheme the plan assumed is gone. **Decision: authenticate on the
+  configured `Authorization` header instead**, compared with `hmac.compare_digest`
+  — stdlib-only, and the zero-dependency property in §3 survives. The receiver
+  does no work beyond enqueueing and the worker re-fetches from the API, so a
+  forged notification costs an empty query, not a bad upload. Revisit if the
+  receiver ever starts trusting the notification body.
+- **Failed deliveries retry with backoff for up to 7 days**, then are discarded.
+  Once the endpoint answers 204 the backlog is delivered.
+
+### The console test
+
+The single unblocking action, and it settles four things at once. Ten minutes.
+
+1. Create a Google Cloud project and enable the Google Health API.
+2. Configure the OAuth consent screen, **External** user type. Add the owner's
+   own account under Audience.
+3. Create an OAuth client, type **Web application**, redirect URI
+   `http://localhost:8721/callback` — the value `scripts/authorize.py` defaults
+   to.
+4. Add both scopes: `googlehealth.activity_and_fitness.readonly` and
+   `googlehealth.location.readonly`. Without the second, the TCX comes back with
+   no route and nothing errors.
+5. **Press "Publish app"** to move the client from Testing to In production, and
+   record what Google says when you do — whether it publishes, demands
+   verification, or offers the unverified-app path.
+6. `python scripts/authorize.py google --client-id ... --client-secret ...`
+
+What to check in the result, in order of how much each changes:
+
+| Check | Why it matters |
+|---|---|
+| Is there a `refresh_token` at all? | Absent means `access_type=offline&prompt=consent` did not take, and nothing unattended can work. |
+| Publishing status after step 5 | "In production" means the refresh token should be long-lived and phases 6-7 are worth building. Stuck on "Testing" means a weekly re-auth, and a local timer beats a cloud deployment. |
+| `reckon fetch <id>` on a real activity | Every field name in `health.py` is documentation-derived. This is where a wrong one surfaces. |
+| `exercise.metricsSummary.distanceMillimiters` | Google's own example spells it with the typo. `health.py` accepts both; this says which is real. |
+| Does the TCX carry `Position` elements? | Confirms the location scope took effect. |
+
+Until step 5's answer is known, **do not build `stores/dynamo.py` or `aws/`** —
+they exist only to serve a deployment that a seven-day token makes pointless.
 
 ### Strava
 
@@ -790,42 +902,45 @@ and update this plan file to match rather than silently deviating from it.
 ## 9. AWS deployment
 
 ```
-Fitbit ──POST──► Lambda receiver ──► SQS ──► Lambda worker ──► Strava
-                 (Function URL)      +DLQ      │
-                                               └──► DynamoDB (tokens, dedupe)
+Google Health ──POST──► Lambda receiver ──► SQS ──► Lambda worker ──► Strava
+                        (Function URL)      +DLQ      │
+                                                      └──► DynamoDB (tokens, dedupe)
 ```
 
-- **receiver:** `GET ?verify=CODE` → 204 if it matches the configured code, else
-  404 (one-time subscriber handshake). `POST` → verify signature, enqueue, return
-  204. No real work; Fitbit expects a fast ack.
+- **receiver:** answers the two-step subscriber verification handshake (§8) —
+  200/201 with the configured `Authorization` header, 401/403 without it. `POST` →
+  compare the `Authorization` header with `hmac.compare_digest`, enqueue, return
+  **204**; Google reads 204 specifically as "delivered" and releases the backlog.
+  No real work; the ack has to be fast.
 - **worker:** SQS-triggered, timeout 60s, 256MB, `batch_size = 1`. Concurrency is
   bounded with `scaling_config { maximum_concurrency = 2 }` on the event source
   mapping — **not** `reserved_concurrent_executions = 1`. Reserved concurrency 1
   has a known failure mode with SQS: the poller scales independently, throttled
   deliveries expire their visibility timeout, receive counts climb, and healthy
   messages poison into the DLQ. Correctness under the residual concurrency of 2
-  comes from the token CAS (§8), which must be right regardless.
+  comes from the token CAS (§8) — which now guards a wasted refresh rather than a
+  destroyed token, since Google's refresh tokens do not rotate.
 - **Message schemas** — the queue carries exactly two shapes:
   ```json
   {"type": "notification", "received_at": "<iso8601>", "body": "<raw webhook body, string>"}
-  {"type": "upload_check", "strava_upload_id": 123, "fitbit_log_id": 456, "attempt": 1}
+  {"type": "upload_check", "strava_upload_id": 123, "exercise_id": "456", "attempt": 1}
   ```
   The receiver wraps; the worker discriminates on `type`. `upload_check` is
   re-enqueued with `DelaySeconds` 20, 40, 80… and a **cap of 5 attempts**; on the
   final attempt with the upload still processing, mark the log `failed` in
   DynamoDB and stop — no unbounded polling, no DLQ entry for a slow Strava.
-- **DynamoDB:** single table, on-demand. `TOKEN#fitbit`, `TOKEN#strava`,
-  `LOG#{logId}` carrying `{status: uploaded|skipped|failed, reason, strava_activity_id}`
+- **DynamoDB:** single table, on-demand. `TOKEN#google`, `TOKEN#strava`,
+  `LOG#{exerciseId}` carrying `{status: uploaded|skipped|failed, reason, strava_activity_id}`
   with TTL.
 - **SSM Parameter Store SecureString** for client IDs/secrets and the webhook
-  verification code. Free; mention Secrets Manager as the alternative.
+  the webhook `Authorization` secret. Free; mention Secrets Manager as the alternative.
 - **Terraform:** `required_version = ">= 1.10"` — the floor is imposed by S3
   native state locking (`use_lockfile = true`); no legacy DynamoDB lock table.
   Provider pinned `~> 6.0`. `backend.tf.example` only. Separate least-privilege
   role per Lambda: receiver gets SQS send + SSM read; worker gets SQS
   receive/send/delete, DynamoDB on the one table, SSM read. Function URL
-  `authorization_type = "NONE"` — the HMAC check is the auth, say so loudly in
-  the README. SQS visibility timeout ≥ 6× worker timeout, `maxReceiveCount = 3`
+  `authorization_type = "NONE"` — the shared-secret header check is the auth, say
+  so loudly in the README. SQS visibility timeout ≥ 6× worker timeout, `maxReceiveCount = 3`
   → DLQ. Log retention 14 days, CloudWatch alarm on DLQ depth > 0.
 - Within the AWS free tier; realistic steady-state cost is pence a month.
 
@@ -853,12 +968,21 @@ design, not a reason to relax the threshold.
    Produce the README's before/after table and the factor-distribution plot from
    real corpus output, not invented numbers.
 4. **Clients** — draw `upload-lifecycle.puml` first, then `http.py` with the
-   `Transport` seam and its loopback-server tests, then `fitbit.py`, `strava.py`,
-   `authorize.py` against `fakes.py`. **The acceptance test for the whole premise
-   has already been run and passed — see §"Premise confirmed" below.**
+   `Transport` seam and its loopback-server tests, then `oauth.py`, `health.py`,
+   `strava.py`, `authorize.py` against `fakes.py`. **The acceptance test for the
+   whole premise has already been run and passed — see §"Premise confirmed"
+   below.** Phase 4 is against the **Google Health API**, not the Fitbit Web API
+   (§8). `test_layering.py` gains the network-seam check here, while `http.py` is
+   the only module that could violate it.
 5. **Stores + pipeline** — draw `token-refresh.puml` first and settle what the
    losing CAS branch does. Then protocols, `file.py`, `pipeline.py`,
    `reckon sync`. This is a fully working local tool; tag it.
+   The losing branch, settled: **re-read and continue with the winner's tokens,
+   and never repeat the refresh.** A conflict means the work was already done, so
+   refreshing again turns a bounded race into an unbounded one. `reckon fetch`
+   was built here too — §4 specifies it and it is what makes `sync` debuggable.
+   `test_layering.py` gains a third check: `pipeline.py` imports the store
+   *protocols* only, never `stores/file.py` or `stores/dynamo.py`.
 6. **AWS** — `dynamo.py` (tested under moto, including the conditional-write CAS
    path with a simulated race), thin handlers with the §9 message schemas.
 7. **Terraform** — deploy, register the subscriber URL, run `subscribe.py`.
@@ -1004,11 +1128,16 @@ place to discover that a flag is awkward or a subcommand is misnamed.
 
 ## 12. Decisions — closed
 
-Nothing on the critical path is left open; an implementer needs no further input.
+Nothing on the critical path is left open **for phases 4-6**. Phase 7 has one:
+whether a single-user personal project can publish an OAuth client with restricted
+scopes, or is stuck with Testing status and its seven-day refresh tokens (§8).
 
 - **AWS region:** a Terraform variable, default `eu-west-2`.
-- **Token storage:** DynamoDB. Decided — the CAS semantics are the point (§8);
-  SSM SecureString has no conditional writes.
+- **Token storage:** DynamoDB on AWS, one JSON file locally. Decided — the CAS
+  semantics are the point (§8); SSM SecureString has no conditional writes. The
+  local file holds both stores, is 0600 and re-chmodded on every open, and every
+  read-modify-write happens under `flock`. POSIX only; Windows would need
+  `msvcrt.locking`.
 - **PyPI:** deferred. Check the name is free during phase 1 and record the result
   here; do not publish in v1. `reckon-tcx` is the fallback package name; the CLI
   stays `reckon` regardless.
@@ -1016,5 +1145,31 @@ Nothing on the critical path is left open; an implementer needs no further input
   name is therefore `reckon-tcx`; the import package stays `reckon` and so does
   the CLI. Nothing else changes.
 - **Elevation correction:** out of scope for v1.
-- **`sport_type` mapping:** small dict Fitbit activity name → Strava `sport_type`,
-  default `Run`; unknown types log a warning and use the default.
+- **`sport_type` mapping:** small dict Google Health `exerciseType` → Strava
+  `sport_type` (`RUNNING`→`Run`, `WALKING`→`Walk`, `BIKING`→`Ride`), default
+  `Run`; unknown types log a warning and use the default. It belongs in
+  `pipeline.py`, not in either client — neither service should have to know the
+  other's vocabulary. **Built in phase 5** as `pipeline.SPORT_TYPES`, and the
+  default is `Run` rather than `Workout` because a wrong-but-plausible type is
+  two taps to fix in Strava's UI, while refusing to upload is the dropping the
+  design forbids.
+- **Local configuration:** client id and secret come from the environment
+  (`RECKON_GOOGLE_CLIENT_ID` and friends), not a config file — the same values
+  the AWS side reads from SSM, and one fewer place to leak them from. `cli.py` is
+  the only module that reads `os.environ`.
+- **Ingest API:** Google Health, decided in phase 4. The legacy Fitbit Web API is
+  deprecated as of September 2026 and no longer issues developer accounts (§8).
+- **Cloud platform: AWS.** Azure was weighed once the ingest change forced §8 open
+  anyway, and rejected. It would cost the zero-dependency property — `boto3` ships
+  in the Lambda runtime, `azure-functions` does not, so a `requirements.txt` and a
+  build step come back — and the `moto` work with it. Its one technical advantage,
+  ETag `If-Match` on Table Storage being a neater fit for the token CAS than a
+  hand-rolled version attribute, does not outweigh that. The deciding factor was
+  the owner's AWS experience: familiarity is the argument that would have carried
+  Azure, and it points the other way. Note that the port/adapter boundary means
+  this stays a cheap decision to revisit until `stores/dynamo.py` exists —
+  `pipeline.py` and `stores/base.py` are platform-agnostic and `test_layering.py`
+  enforces it.
+- **Webhook authentication:** the configured `Authorization` header, compared with
+  `hmac.compare_digest`. The real ECDSA signature would cost a crypto dependency
+  and with it the zero-dependency property §3 is built on (§8).

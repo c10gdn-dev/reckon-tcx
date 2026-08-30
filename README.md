@@ -229,13 +229,74 @@ factor below 1 is the normal case and can legitimately be large — one real wal
 in testing measured 0.723, a 38% over-read. A factor above 1 means something
 quite different and gets handled separately.
 
+### Syncing to Strava
+
+Two commands need credentials. Authorise each service once — this opens a URL,
+you approve it, and paste the address bar back:
+
+```console
+$ python scripts/authorize.py google --client-id ... --client-secret ... -o ~/.config/reckon/tokens.json
+$ python scripts/authorize.py strava --client-id ... --client-secret ... -o ~/.config/reckon/tokens.json
+```
+
+Client ids and secrets are read from the environment, the same values the AWS
+side will read from SSM:
+
+```
+RECKON_GOOGLE_CLIENT_ID   RECKON_GOOGLE_CLIENT_SECRET
+RECKON_STRAVA_CLIENT_ID   RECKON_STRAVA_CLIENT_SECRET
+```
+
+```
+reckon fetch ACTIVITY_ID [--raw] [-o OUTPUT] [--store PATH]
+reckon sync [--since DATE] [--until DATE] [--dry-run] [--store PATH]
+```
+
+`fetch` downloads one activity and corrects it; `--raw` gives you Google's bytes
+untouched, which is what you want when reporting a bug. `sync` walks every
+activity in the window, uploads each one, and records what it did so a second run
+does nothing. Start with `--dry-run`: it does everything except upload and
+record, and prints what it would have done.
+
+```console
+$ reckon sync --since 2026-08-20 --dry-run
+  8896720705  Morning Walk       uploaded         factor 0.9312  dry run
+  8896720706  Yoga               passed_through   dry run: no_gps
+
+  1 passed_through  1 uploaded
+```
+
+Each line is one activity: its id, its name, what happened, and why. A `=` in the
+first column means the decision was already on record and nothing was done.
+
+**`sync` exits non-zero only when something did not reach Strava.** A yoga session
+uploaded without correction is a success; a file Reckon refused is not.
+
+The store at `~/.config/reckon/store.json` holds both the OAuth tokens and the
+record of what has been uploaded. It is created `0600` and re-chmodded on every
+open, because it contains refresh tokens.
+
 ## Status
 
 Alpha, and honest about it. The offline commands — `rescale` and `analyse` —
 work and are validated against fourteen real exports, including a hand upload to
-Strava confirming it honours the corrected stream. Automatic fetching from
-Fitbit, uploading to Strava, and the AWS deployment are planned but not built.
-See `PLAN.md`.
+Strava confirming it honours the corrected stream.
+
+`reckon fetch` and `reckon sync` are built: authorise both services once, and
+`sync` will correct each new activity and upload it to Strava, keeping a local
+record so nothing is done twice. Activities come in from the **Google Health
+API**, not the Fitbit Web API — Google retired the standalone Fitbit app, stopped
+issuing Fitbit developer accounts, and the legacy Web API is deprecated as of
+September 2026. See `PLAN.md` §8.
+
+Two caveats worth stating plainly. **The online path has not yet been run against
+the live APIs** — it is tested end to end against a fake transport, so the first
+real run is where any wrong field name will show up. And there is no AWS
+deployment yet, so `sync` is something you run yourself.
+
+Activities Reckon cannot correct — yoga, an indoor walk, a track whose GPS
+dropped out — are uploaded **unchanged** rather than skipped. Correcting is not a
+precondition for reaching Strava.
 
 ## Alternatives
 
