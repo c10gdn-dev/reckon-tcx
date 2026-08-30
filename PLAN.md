@@ -348,7 +348,7 @@ That analysis is worth doing early and is genuinely informative.
   own figure moving 24 s on a 10.8% correction. "Seconds rather than minutes"
   holds, and is now measured twice by different means.
 
-**Calibration result, fourteen activities, 2026-08-29.** The transform holds on
+**Calibration result, fifteen activities, 2026-08-30.** The transform holds on
 every file; the *explanation* of why it works did not survive cycling, and has
 been replaced.
 
@@ -371,7 +371,7 @@ Sorted by wiggle, which very nearly sorts by inflation:
 | walk, 13 min | Other | 0.97 km | 0.90 km | *no GPS* | — | — | 0.0% |
 | yoga, 57 min | Other | 0.00 km | 0.00 km | *no GPS* | — | — | 0.0% |
 
-Eleven were corrected: factor 0.7229-0.9943, mean 0.9345, stdev 0.0769. The last
+Twelve were corrected: factor 0.7229-0.9943, mean 0.9219, stdev 0.0852. The last
 two rows carry no GPS at all and nothing to correct; the partial-GPS walk is
 refused. Regenerate this table with `reckon analyse` rather than editing it.
 
@@ -402,7 +402,12 @@ wiggle as full-resolution path length over the same path decimated to one fix pe
 isolates high-frequency noise from genuine cornering.
 
 Across the corrected tracks wiggle correlates with inflation at **r = +0.873,
-Spearman rho = +0.867**, well ahead of duration (+0.65), GPS dropout (+0.63) and
+Spearman rho = +0.867 across the first eleven. Adding a twelfth dropped Pearson
+r to +0.854 and cost it its ranking: that file has the highest wiggle in the
+corpus (1.422 against a previous maximum of 1.229) and only the second highest
+inflation (27.5% against 38.3%). Sampling rate was checked as a confound and
+ruled out — every corpus file samples at 1.00-1.07 s. The metric remains well
+ahead of duration (+0.65), GPS dropout (+0.63) and
 distance (+0.58). It has strengthened with every file added — +0.76 at n = 6,
 +0.81 at n = 7, +0.86 at n = 8, +0.87 at n = 9 — which is not how a spurious
 correlation usually behaves.
@@ -433,7 +438,7 @@ only those three. Phase 6 can trust `Running` and `Biking` and needs the activit
 summary only to disambiguate `Other`.
 
 **A fixed fallback factor is not defensible.** Over the eleven corrected tracks the
-factor ranges 0.7229-0.9943, mean 0.9345, stdev 0.0769. Where the target total is
+factor ranges 0.7229-0.9943, mean 0.9219, stdev 0.0852. Where the target total is
 unavailable, skip the correction; do not substitute a guessed factor, and do not
 use wiggle to synthesise one.
 
@@ -537,8 +542,13 @@ Satisfied:
       left alone: at 0.3-6.1% they are far smaller than the jitter running the
       other way.
 - [x] **A second device.** The Charge 6 is structurally identical.
-- [x] **A stationary period with GPS running.** Measured at ~78 m/min of phantom
-      distance.
+- [x] **A stationary period with GPS running.** Measured **twice, and the two
+      disagree by 2.7x**: 119 m over two minutes (78 m/min), and 39.6 m over an
+      81-second wait at a crossing (29 m/min, stable at 24-29 m/min across every
+      plausible definition of "stationary"). There is no single jitter rate; it
+      is a property of conditions, not of the device. This also answers item 4
+      below in part — the question was whether the rate is linear or saturates,
+      and the answer is that it is not one rate to begin with.
 - [x] **An activity with no GPS at all**, twice: yoga, and a walk whose distance
       came from stride counting alone.
 
@@ -559,8 +569,11 @@ Still wanted, in descending value:
    correctly ignored) to 383 s (caught). `MIN_GPS_COVERAGE` sits in that gap and
    is a judgement rather than a measurement. Reproducible: start an activity
    indoors or under cover and set off immediately.
-4. **A long deliberate stop, 5-10 minutes.** Tests whether the 78 m/min jitter
-   rate is linear or saturates as the receiver settles.
+4. **A long deliberate stop, 5-10 minutes.** Partly answered: two stops of 81 s
+   and 120 s gave 29 and 78 m/min, so the rate varies by conditions rather than
+   being a constant to extrapolate. A longer stop would still say whether it
+   saturates *within* one sitting as the receiver settles, which neither of
+   these can.
 5. **An open-sky extreme** — coast, moor, open field. The cleanest track so far
    is a bike at wiggle 1.014; this would anchor the low end and test whether the
    metric has a floor.

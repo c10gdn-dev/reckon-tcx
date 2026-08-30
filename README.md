@@ -32,7 +32,7 @@ Real activities from a Fitbit Charge 5:
 Reckon rescales the distance stream so the total matches the device's own
 figure, leaving the GPS geometry and every timestamp untouched.
 
-The size of the correction is not fixed. Across fourteen activities it ranged
+The size of the correction is not fixed. Across fifteen activities it ranged
 from 0.6% to 38%, depending almost entirely on how noisy the track was:
 
 ![Distribution of the correction factor across the test corpus](docs/factor-distribution.svg)
@@ -58,7 +58,7 @@ Fitbit and Strava disagree because they compute distance differently, and one of
 them is summing noise.
 
 **Strava sums the distance stream in the file, unchanged.** Verified across
-fourteen exports, and then tested directly: a rescaled file uploaded by hand came
+fifteen exports, and then tested directly: a rescaled file uploaded by hand came
 back reporting the rescaled total, 21.4 km, where the original stream said
 24.06 km and a raw haversine sum of the same coordinates said 24.08 km. Strava
 takes the stream at face value and does not recompute from position.
@@ -73,10 +73,16 @@ is what makes this correction possible.
 across the corpus it runs 0.6–12% below the stream.
 
 How large the gap gets depends on what happened during the activity rather than
-on how far you went. In testing, two minutes spent standing still talking to
-someone added **119 m** of distance to a track that had not moved — about 78 m
-per minute of pure noise. That single stop produced 22% of the whole run's
-over-measurement while occupying 2% of its time.
+on how far you went. Standing still is the clearest case, because a stationary
+receiver keeps inventing movement: two minutes of standing still added **119 m**
+to a track that had not moved, and on a short walk an 81-second wait at a
+crossing added **40 m**, which was 38% of that walk's whole over-measurement
+while occupying 29% of its time.
+
+Those two work out at 78 and 29 m per minute, and the gap between them is the
+point: **the rate is not a property of the device**, it depends on the sky, the
+buildings and the day. That is one of several reasons Reckon measures the
+correction from the file in front of it rather than applying a rate.
 
 The gap looks like high-frequency GPS noise. Sample a track at full resolution
 and again at one fix per five seconds: real movement is smooth at that scale, so
@@ -118,7 +124,7 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   where the distance changed by 10.8% — because Strava derives it from speed, and
   speed is distance over time.
 - **Elevation is not corrected.** See below; this is deliberate.
-- **The factor is not a constant.** Across fourteen activities it ranged 0.72–0.99
+- **The factor is not a constant.** Across fifteen activities it ranged 0.72–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that
   particular track was. Reckon computes it per file and refuses to guess.
 - **A partial GPS track cannot be corrected, and Reckon detects that and
@@ -200,8 +206,8 @@ stream is rescaled.
 $ reckon analyse --corpus training-data/ --plot
 file        sport      factor    infl  cover  wiggle   lead   lag  dMove
 ...
-11 of 14 corrected
-factor  0.7229-0.9943  mean 0.9345  stdev 0.0769
+12 of 15 corrected
+factor  0.7229-0.9943  mean 0.9219  stdev 0.0852
 worst moving-time change  33s
 skipped  no_gps  x2
 skipped  partial_gps  x1
@@ -288,7 +294,7 @@ open, because it contains refresh tokens.
 ## Status
 
 Alpha, and honest about it. The offline commands — `rescale` and `analyse` —
-work and are validated against fourteen real exports, including a hand upload to
+work and are validated against fifteen real exports, including a hand upload to
 Strava confirming it honours the corrected stream.
 
 `reckon fetch` and `reckon sync` are built: authorise both services once, and
