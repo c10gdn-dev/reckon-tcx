@@ -348,7 +348,7 @@ That analysis is worth doing early and is genuinely informative.
   own figure moving 24 s on a 10.8% correction. "Seconds rather than minutes"
   holds, and is now measured twice by different means.
 
-**Calibration result, fifteen activities, 2026-08-30.** The transform holds on
+**Calibration result, sixteen activities, 2026-08-30.** The transform holds on
 every file; the *explanation* of why it works did not survive cycling, and has
 been replaced.
 
@@ -541,7 +541,19 @@ Satisfied:
 - [x] **Small dropouts while moving.** Ubiquitous, quantified above, correctly
       left alone: at 0.3-6.1% they are far smaller than the jitter running the
       other way.
-- [x] **A second device.** The Charge 6 is structurally identical.
+- [x] **A second device.** The Charge 6 is structurally identical: same `Lap`
+      children, same `Sport="Other"`, same absence of `Extensions`. It also
+      writes its model into `Creator/Name`, as the Charge 5 does, so a file
+      self-identifies.
+- [x] **The same walk on two devices**, 2026-08-30 — the only controlled
+      comparison in the corpus. Charge 5 with GPS: stream 480.8 m, Lap 377.0 m,
+      Strava reported 0.48 km. Charge 6 on a wearer 10 cm shorter, GPS
+      accidentally off: no distance stream at all, Lap 349.3 m, Strava reported
+      0.3 km. Two results follow. **Strava falls back to `Lap/DistanceMeters`
+      when there is no trackpoint stream**, which is what makes the no-GPS
+      pass-through safe rather than merely harmless. And **stride-derived totals
+      differ by 7.3% between two people on one walk**, which bounds how good the
+      target itself can be.
 - [x] **A stationary period with GPS running.** Measured **twice, and the two
       disagree by 2.7x**: 119 m over two minutes (78 m/min), and 39.6 m over an
       81-second wait at a crossing (29 m/min, stable at 24-29 m/min across every
