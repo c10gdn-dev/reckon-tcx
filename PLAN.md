@@ -348,7 +348,7 @@ That analysis is worth doing early and is genuinely informative.
   own figure moving 24 s on a 10.8% correction. "Seconds rather than minutes"
   holds, and is now measured twice by different means.
 
-**Calibration result, seventeen activities, 2026-08-30.** The transform holds on
+**Calibration result, eighteen activities, 2026-08-30.** The transform holds on
 every file; the *explanation* of why it works did not survive cycling, and has
 been replaced.
 
@@ -371,7 +371,7 @@ Sorted by wiggle, which very nearly sorts by inflation:
 | walk, 13 min | Other | 0.97 km | 0.90 km | *no GPS* | — | — | 0.0% |
 | yoga, 57 min | Other | 0.00 km | 0.00 km | *no GPS* | — | — | 0.0% |
 
-Thirteen were corrected: factor 0.7229-0.9943, mean 0.9066, stdev 0.0985. The last
+Fourteen were corrected: factor 0.7229-0.9943, mean 0.9032, stdev 0.0955. The last
 two rows carry no GPS at all and nothing to correct; the partial-GPS walk is
 refused. Regenerate this table with `reckon analyse` rather than editing it.
 
@@ -384,7 +384,7 @@ Confirmed on every file:
   hardest: the stream sits 25% below the app total there and Strava reported the
   stream.
 - **Strava's elapsed time is the wall-clock span of the trackpoints**, exact to
-  the second on all seventeen.
+  the second on all eighteen.
 
 ### Dead reckoning is not the mechanism
 
@@ -438,8 +438,8 @@ stride-fusion explanation.
 only those three. Phase 6 can trust `Running` and `Biking` and needs the activity
 summary only to disambiguate `Other`.
 
-**A fixed fallback factor is not defensible.** Over the thirteen corrected tracks the
-factor ranges 0.7229-0.9943, mean 0.9066, stdev 0.0985. Where the target total is
+**A fixed fallback factor is not defensible.** Over the fourteen corrected tracks the
+factor ranges 0.7229-0.9943, mean 0.9032, stdev 0.0955. Where the target total is
 unavailable, skip the correction; do not substitute a guessed factor, and do not
 use wiggle to synthesise one.
 
@@ -567,7 +567,9 @@ Satisfied:
 
 Still wanted, in descending value:
 
-1. **A paired walk with both devices' GPS enabled.** Two
+1. ~~**A paired walk with both devices' GPS enabled.**~~ **Done 2026-08-30, and
+   it is the most informative file pair in the corpus.** See "The paired walk"
+   below. Original reasoning kept for the record: two
    watches, one route, one moment. Their GPS streams should measure the same
    physical route, so if the streams agree while the stride totals do not, the
    28% divergence already recorded (1249 m against 974 m) is stride calibration
@@ -595,7 +597,7 @@ Still wanted, in descending value:
    available, and the only thing that could *falsify* the wiggle hypothesis
    rather than corroborate it.
 7. **Multi-lap**, via auto-lap or an interval workout if the device offers one.
-   All seventeen files are single-lap and single-activity; that path is exercised by
+   All eighteen files are single-lap and single-activity; that path is exercised by
    builders alone. Re-checked 2026-08-30.
 8. **Duration extremes** — over 2.5 h, and under 5 min.
 9. **A winter activity** at `+00:00`, ideally spanning the DST change. Not
@@ -613,6 +615,56 @@ urban.** The canyon walk is the corpus's worst at wiggle 1.229 under clear sky,
 while on a walk crossing open ground and then built-up streets, the open half
 wiggled *more* than the built-up half (1.108 against 1.067). Close concrete and tree canopy both scatter the
 signal; open city streets do not. Do not use "urban" as a proxy for noisy.
+
+### The paired walk: the factor is device-dependent
+
+One route, one moment, two receivers, both locked on before the start. This is
+the only controlled comparison in the corpus, and it settles a question the other
+sixteen files could not touch.
+
+| | Charge 5 | Charge 6 |
+|---|---|---|
+| GPS stream | **1192.5 m** | **942.9 m** |
+| Device total | 862.1 m | 809.0 m |
+| Factor | **0.7229** | **0.8580** |
+| Inflation | **38.3%** | **16.5%** |
+| Wiggle | 1.108 | 1.039 |
+| Coverage | 100.0% | 99.2% |
+| Strava moving time | 13:29 | 10:37 |
+
+**The correction factor is a property of the receiver, not of the route.** 0.7229
+against 0.8580 on identical ground. Any fixed or fleet-wide factor would be badly
+wrong for at least one of these devices, and the corpus's own distribution is
+weighted towards whichever device recorded most of it. This is the strongest
+argument yet for measuring the factor per file, and it arrives as a measurement
+rather than an inference.
+
+**The GPS streams disagree five times more than the device totals do** — 249.6 m
+(26%) against 53.1 m (6.6%). The stride-derived total, for all its faults, is the
+*more* reproducible of the two numbers. That is the premise of this project
+stated as a measurement.
+
+**Stationary jitter is nearly identical; the divergence is entirely in motion.**
+Both devices independently show the same stop, within seven seconds of each other
+(51 s and 57 s), and both accumulate almost exactly the same phantom distance
+across it: 18.0 m and 18.3 m, 21.2 and 19.3 m/min. But while moving, the excess
+runs 24.6 m/min against 9.0 m/min — a 2.7x gap. Whatever drives the
+over-measurement is about how a receiver tracks *movement*, not about noise while
+still. This is the sharpest mechanistic constraint the corpus has produced, and
+it rules out the stationary-jitter story on its own.
+
+**Wiggle passes its first controlled test.** It ranks the pair correctly — 1.108
+against 1.039, matching 38.3% against 16.5%. Across files it ranks well and
+scales badly; here, with the route held constant, it gets the direction right.
+That is the strongest evidence for the metric so far and it does not license
+using it to synthesise a factor.
+
+**Correcting does not make two devices agree.** Each file is rescaled to its own
+device's total, so the corrected results still differ by 6.6%. Reckon removes a
+systematic bias against the device's own measurement; it does not arbitrate
+between devices, and nothing in the file would let it.
+
+---
 
 ### Partial GPS: the case where rescaling is wrong
 

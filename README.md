@@ -32,7 +32,7 @@ Real activities from a Fitbit Charge 5:
 Reckon rescales the distance stream so the total matches the device's own
 figure, leaving the GPS geometry and every timestamp untouched.
 
-The size of the correction is not fixed. Across seventeen activities it ranged
+The size of the correction is not fixed. Across eighteen activities it ranged
 from 0.6% to 38%, depending almost entirely on how noisy the track was:
 
 ![Distribution of the correction factor across the test corpus](docs/factor-distribution.svg)
@@ -61,7 +61,7 @@ Fitbit and Strava disagree because they compute distance differently, and one of
 them is summing noise.
 
 **Strava sums the distance stream in the file, unchanged.** Verified across
-seventeen exports, and then tested directly: a rescaled file uploaded by hand came
+eighteen exports, and then tested directly: a rescaled file uploaded by hand came
 back reporting the rescaled total, 21.4 km, where the original stream said
 24.06 km and a raw haversine sum of the same coordinates said 24.08 km. Strava
 takes the stream at face value and does not recompute from position.
@@ -107,13 +107,17 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
 ## Honest limits
 
 - **It corrects a systematic bias; it does not recover ground truth.** The
-  output is as good as the device's own total and no better. If that total is
-  wrong, Reckon faithfully reproduces it. Two watches carried along the same
-  route at the same time have disagreed by 28% in one test (1249 m against
-  974 m) and by 7.3% in another (377 m against 349 m), with nothing to say which
-  was right in either case. Step length differs between wearers and every device
-  estimates it; that estimate is what you are trusting. Treat the result as much
-  better than raw GPS, not as correct.
+  output is as good as the device's own total and no better. Two watches carried
+  along the same route at the same moment have disagreed by 28%, 7.3% and 6.6%
+  in three tests, with nothing to say which was right. Step length differs
+  between wearers and every device estimates it; that estimate is what you are
+  trusting. Treat the result as much better than raw GPS, not as correct.
+- **The correction is device-specific, and so is the problem.** On one route
+  walked side by side, one watch over-measured by 38% and the other by 16%. Their
+  raw GPS totals were 249 m apart on a 900 m walk — five times the gap between
+  their step-counted totals. Reckon reads the factor from each file, so this is
+  handled automatically, but it does mean two people on one walk will still not
+  match afterwards: each is corrected to its own watch.
 - **Splits all shift proportionally.** Every kilometre gets the same factor, so
   the *shape* of your pace curve is preserved exactly, but Reckon cannot tell
   which specific kilometre carried the error.
@@ -129,7 +133,7 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   where the distance changed by 10.8% — because Strava derives it from speed, and
   speed is distance over time.
 - **Elevation is not corrected.** See below; this is deliberate.
-- **The factor is not a constant.** Across seventeen activities it ranged 0.72–0.99
+- **The factor is not a constant.** Across eighteen activities it ranged 0.72–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that
   particular track was. Reckon computes it per file and refuses to guess.
 - **A partial GPS track cannot be corrected, and Reckon detects that and
@@ -211,8 +215,8 @@ stream is rescaled.
 $ reckon analyse --corpus training-data/ --plot
 file        sport      factor    infl  cover  wiggle   lead   lag  dMove
 ...
-13 of 17 corrected
-factor  0.7229-0.9943  mean 0.9066  stdev 0.0985
+14 of 18 corrected
+factor  0.7229-0.9943  mean 0.9032  stdev 0.0955
 worst moving-time change  58s
 skipped  no_gps  x3
 skipped  partial_gps  x1
@@ -299,7 +303,7 @@ open, because it contains refresh tokens.
 ## Status
 
 Alpha, and honest about it. The offline commands — `rescale` and `analyse` —
-work and are validated against seventeen real exports, including a hand upload to
+work and are validated against eighteen real exports, including a hand upload to
 Strava confirming it honours the corrected stream.
 
 `reckon fetch` and `reckon sync` are built: authorise both services once, and
