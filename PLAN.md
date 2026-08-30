@@ -143,12 +143,19 @@ stay `reckon` regardless.
 
 ```
 reckon rescale IN.tcx [--distance 10.2km] -o OUT.tcx # offline, no network
-reckon fetch LOG_ID [--raw]                          # Fitbit -> stdout/file
-reckon sync [--since DATE] [--dry-run]               # full pipeline, local store
-reckon watch [--interval 900]                        # poll loop
 reckon analyse [--corpus training-data/]             # factor distribution
-reckon auth fitbit | strava                          # OAuth dance
+reckon fetch ACTIVITY_ID [--raw]                     # Google Health -> stdout/file
+reckon sync [--since DATE] [--until DATE] [--dry-run] # full pipeline, local store
+reckon watch [--interval 900]                        # poll loop — NOT BUILT
 ```
+
+**Built as of phase 5:** `rescale`, `analyse`, `fetch`, `sync`. Two changes from
+the original list. `reckon auth` was dropped: `scripts/authorize.py google|strava`
+does the job, §7 wants that logic in `clients/` regardless, and a second entry
+point to the same flow is a second thing to keep correct. `reckon watch` is
+unbuilt and only earns its place if phases 6-7 do not happen — if they do, the
+webhook is the trigger and a poll loop is dead weight; if they do not, a
+`launchd` timer calling `sync` beats a bespoke loop.
 
 `rescale` is the one that must work with no credentials, no network and no config
 — it is how the transform gets validated and how anyone else evaluates the project
@@ -1052,8 +1059,14 @@ the first screen must carry the decision.
      differ by seconds since it derives that from speed
    - it is only as good as Fitbit's own total
 7. **Full usage** — the CLI table from §4.
-8. **Fitbit and Strava setup** — app registration, scopes, OAuth. Inside
-   `<details>`; irrelevant to anyone using offline mode.
+8. **Google Health and Strava setup** — a short pointer inside `<details>`, not
+   the walkthrough itself. **Deviation, taken in phase 5:** the walkthrough lives
+   in `docs/setup-google-cloud.md` because it runs to ~290 lines. §11's own
+   warning is that the AWS material must not bury the CLI, and a click-by-click
+   console guide would bury it further. It is written for a non-technical reader
+   and documents the two failures that are silent rather than loud — a missing
+   location scope, and authorising the wrong Google account — plus the console's
+   "OAuth configuration is incomplete" bug.
 9. **AWS deployment** — inside `<details>`, with the Mermaid architecture diagram.
    Leads with the warning to disable the native Fitbit→Strava connection first,
    the note that the Function URL is public and HMAC-protected, the cost estimate,

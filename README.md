@@ -235,12 +235,21 @@ Two commands need credentials. Authorise each service once — this opens a URL,
 you approve it, and paste the address bar back:
 
 ```console
-$ python scripts/authorize.py google --client-id ... --client-secret ... -o ~/.config/reckon/tokens.json
-$ python scripts/authorize.py strava --client-id ... --client-secret ... -o ~/.config/reckon/tokens.json
+$ python scripts/authorize.py google --credentials ~/Downloads/client_secret_*.json
+$ python scripts/authorize.py strava --client-id ... --client-secret ...
 ```
 
-Client ids and secrets are read from the environment, the same values the AWS
-side will read from SSM:
+Prefer `--credentials` with the JSON file Google Cloud gives you: a secret passed
+as a command-line flag ends up in your shell history and in `ps` output. Both
+write into the same store, so `reckon sync` picks them up with no further
+configuration.
+
+Setting Google Cloud up is genuinely fiddly, and its error messages are not
+helpful. **[docs/setup-google-cloud.md](docs/setup-google-cloud.md) walks through
+it click by click**, including the two places it goes wrong silently.
+
+`sync` also needs the client ids and secrets in the environment — the same values
+the AWS side will read from SSM:
 
 ```
 RECKON_GOOGLE_CLIENT_ID   RECKON_GOOGLE_CLIENT_SECRET
@@ -297,6 +306,34 @@ deployment yet, so `sync` is something you run yourself.
 Activities Reckon cannot correct — yoga, an indoor walk, a track whose GPS
 dropped out — are uploaded **unchanged** rather than skipped. Correcting is not a
 precondition for reaching Strava.
+
+### First-time setup
+
+Google Cloud registration is genuinely fiddly and its error messages are poor.
+Two of its failure modes are silent rather than loud: a missing location scope
+gives you activities with no route and no error, and authorising the wrong Google
+account works perfectly until the first request for data.
+
+<details>
+<summary><strong>What is involved</strong> (full walkthrough:
+<a href="docs/setup-google-cloud.md">docs/setup-google-cloud.md</a>)</summary>
+
+Roughly half an hour, once:
+
+1. Enable the Google Health API in a new Google Cloud project. No billing account
+   needed.
+2. Set the consent screen to **External**, and add both scopes — activity **and**
+   location.
+3. Fill in the branding page. **Do not upload a logo**; it commits you to a review
+   process you do not need.
+4. Publish the app. This matters: an unpublished app issues permissions that
+   expire after **seven days**. Publishing is not a public listing and needs no
+   verification, but it does require a home page and privacy policy on a domain
+   verified in Search Console — GitHub Pages is enough.
+5. Create an OAuth client with `http://localhost:8721/callback` as the redirect,
+   download the JSON, and run `scripts/authorize.py`.
+
+</details>
 
 ## Alternatives
 
