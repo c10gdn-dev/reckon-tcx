@@ -41,11 +41,18 @@ end note
 
 Q -> W : notification
 W -> DB : read TOKEN#google
-W -> GH : GET .../exercise/dataPoints?filter=interval
+W -> GH : GET .../exercise/dataPoints  (no filter)
 note right of W
   The notification carries the interval,
   so no day-wide listing and no diffing.
   Dedupe is still required: at-least-once.
+
+  The window is applied *client-side*: the
+  API rejects every documented spelling of
+  its filter for the exercise data type.
+  The listing is newest-first, so paging
+  stops as soon as it passes the window.
+  See PLAN.md §8.
 end note
 
 loop each exercise in the window

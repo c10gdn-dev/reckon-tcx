@@ -263,7 +263,45 @@ You should see one line per activity, with a correction factor for the ones that
 have GPS, and a reason for the ones that do not — a yoga session or a gym session
 has no route to correct, so Reckon leaves it exactly as it is.
 
-Once that looks right, set Strava up the same way and drop `--dry-run`.
+---
+
+## 10. Strava
+
+Strava is far simpler — no projects, no publishing, no verification.
+
+1. Go to **[strava.com/settings/api](https://www.strava.com/settings/api)**.
+2. If you have never done this, it asks you to create an application. Give it any
+   name (`Reckon` is fine), category *Data Importer*, and website — your GitHub
+   page from step 5 will do.
+3. **Authorization Callback Domain: `localhost`** — just the word, no `http://`
+   and no port.
+4. It shows you a **Client ID** and a **Client Secret**.
+
+Then:
+
+```console
+$ python scripts/authorize.py strava --client-id 12345 --client-secret abc...
+```
+
+Same as before: open the link, approve, paste the address back. Strava's
+permission does not expire, so this really is once.
+
+Now put all four values in your environment and run it for real:
+
+```console
+$ export RECKON_GOOGLE_CLIENT_ID=...   RECKON_GOOGLE_CLIENT_SECRET=...
+$ export RECKON_STRAVA_CLIENT_ID=...   RECKON_STRAVA_CLIENT_SECRET=...
+$ reckon sync
+```
+
+> ### ⚠️ Turn off the built-in Fitbit → Strava connection first
+>
+> If Google Health is already sending your activities to Strava automatically,
+> you will get every activity twice — once uncorrected from them, once corrected
+> from Reckon. Reckon can only avoid duplicating *its own* uploads.
+>
+> Disconnect it in Strava, under **Settings → My Apps**, before your first real
+> `reckon sync`.
 
 ---
 

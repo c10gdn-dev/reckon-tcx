@@ -384,7 +384,7 @@ Confirmed on every file:
   hardest: the stream sits 25% below the app total there and Strava reported the
   stream.
 - **Strava's elapsed time is the wall-clock span of the trackpoints**, exact to
-  the second on all fourteen.
+  the second on all sixteen.
 
 ### Dead reckoning is not the mechanism
 
@@ -437,7 +437,7 @@ stride-fusion explanation.
 only those three. Phase 6 can trust `Running` and `Biking` and needs the activity
 summary only to disambiguate `Other`.
 
-**A fixed fallback factor is not defensible.** Over the eleven corrected tracks the
+**A fixed fallback factor is not defensible.** Over the twelve corrected tracks the
 factor ranges 0.7229-0.9943, mean 0.9219, stdev 0.0852. Where the target total is
 unavailable, skip the correction; do not substitute a guessed factor, and do not
 use wiggle to synthesise one.
@@ -594,7 +594,8 @@ Still wanted, in descending value:
    available, and the only thing that could *falsify* the wiggle hypothesis
    rather than corroborate it.
 7. **Multi-lap**, via auto-lap or an interval workout if the device offers one.
-   All fourteen files are single-lap; that path is exercised by builders alone.
+   All sixteen files are single-lap and single-activity; that path is exercised by
+   builders alone. Re-checked 2026-08-30.
 8. **Duration extremes** — over 2.5 h, and under 5 min.
 9. **A winter activity** at `+00:00`, ideally spanning the DST change. Not
    obtainable before late October.
@@ -928,10 +929,16 @@ counts**, which is exactly why §8 opens by saying the live API wins.
 
 **Seventeen activities, ten days, end to end:** eleven corrected, five passed
 through as `no_gps` (Weights and Yoga), one as `partial_gps`, none withheld and
-none failed. Factors ranged 0.7229-0.9887, mean 0.9094 — against the calibration
-corpus's 0.7229-0.9943, mean 0.9345. The minimum matches the corpus to four
-decimal places, so the API's TCX for that activity is equivalent to the manual
-export the transform was calibrated against.
+none failed. Factors ranged 0.7229-0.9887, mean 0.9094, against the corpus range
+of 0.7229-0.9943 as it stood that day.
+
+**Read that comparison carefully.** The corpus was built from manual exports of
+the same account, so several of those seventeen activities were already in it,
+and one has since been added directly. The identical minimum is the *same walk*
+counted twice, not two measurements agreeing. What the run does establish is
+narrower and still worth having: the API path produces files the transform reads,
+corrects and passes through exactly as the manual-export path does, with no
+failures and no refusals across every activity type the account contains.
 
 **Still unconfirmed: the refresh token's lifetime.** The client was published
 before authorisation, which is the documented condition for a long-lived token,

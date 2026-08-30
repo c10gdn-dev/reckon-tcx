@@ -42,12 +42,15 @@ from 0.6% to 38%, depending almost entirely on how noisy the track was:
 No credentials, no config, no network:
 
 ```console
-$ uv tool install reckon-tcx
-$ reckon rescale run.tcx -o fixed.tcx
+$ git clone https://github.com/c10gdn-dev/reckon-tcx && cd reckon-tcx
+$ uv run reckon rescale run.tcx -o fixed.tcx
 reckon: 4747 trackpoints  gps 16148.9 m  target 15229.1 m (from file)  result 15229.1 m  factor 0.943045
 ```
 
 Upload `fixed.tcx` to Strava by hand and the distance will match your watch.
+
+Not on PyPI yet — the name `reckon-tcx` is reserved for when it is, at which
+point that becomes `uv tool install reckon-tcx`.
 
 > **Disable the native Fitbit→Strava connection first**, or the uncorrected
 > version syncs itself and you get a duplicate.
@@ -209,7 +212,7 @@ file        sport      factor    infl  cover  wiggle   lead   lag  dMove
 12 of 16 corrected
 factor  0.7229-0.9943  mean 0.9219  stdev 0.0852
 worst moving-time change  33s
-skipped  no_gps  x2
+skipped  no_gps  x3
 skipped  partial_gps  x1
 wrote docs/factor-distribution.svg
 ```
