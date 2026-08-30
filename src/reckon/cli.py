@@ -1,23 +1,45 @@
 """Command line entry point.
 
-Phase 2 ships one subcommand: `rescale`, which is deliberately the one that
-works with no credentials, no network and no config.
+`rescale` and `analyse` work with no credentials, no network and no config, and
+that stays true — they are how the premise is evaluated in thirty seconds.
+`fetch` and `sync` need both services authorised; everything they do beyond
+argument parsing and configuration belongs to `pipeline.py`.
 """
 
 import argparse
+import datetime as dt
+import os
 import re
 import sys
 from pathlib import Path
 from typing import IO, Any
 
 from reckon import __version__
+from reckon.clients import health as health_api
+from reckon.clients import strava as strava_api
+from reckon.clients.http import retrying, send
 from reckon.core import svg
 from reckon.core.analyse import ActivityStats, analyse_tcx, summarise
 from reckon.core.errors import ReckonError
 from reckon.core.rescale import DEFAULT_TOLERANCE, RescaleResult, ToleranceAction, rescale_tcx
+from reckon.pipeline import Outcome, Pipeline, token_holder
+from reckon.pipeline import summarise as summarise_outcomes
+from reckon.stores.file import DEFAULT_PATH, FileStore
 
 DEFAULT_CORPUS = Path("training-data")
 DEFAULT_PLOT = Path("docs/factor-distribution.svg")
+
+# How far back `sync` looks when not told. Long enough that a first run picks up
+# a normal week, short enough not to burn the exercise quota 25 at a time.
+DEFAULT_SINCE_DAYS = 7
+
+# Client credentials come from the environment rather than a config file: they
+# are the same values the AWS side reads from SSM, and a file would be a second
+# place to leak them from.
+_ENV = {
+    "google": ("RECKON_GOOGLE_CLIENT_ID", "RECKON_GOOGLE_CLIENT_SECRET"),
+    "strava": ("RECKON_STRAVA_CLIENT_ID", "RECKON_STRAVA_CLIENT_SECRET"),
+}
 
 _DISTANCE_PATTERN = re.compile(r"(?P<value>\d+(?:\.\d+)?)(?P<unit>km|mi)?", re.IGNORECASE)
 _UNITS_IN_METRES = {"": 1.0, "km": 1000.0, "mi": 1609.344}
@@ -107,12 +129,95 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"also write a factor histogram here (default {DEFAULT_PLOT})",
     )
     analyse.set_defaults(handler=_analyse_command)
+
+    fetch = subcommands.add_parser(
+        "fetch",
+        help="download one activity's TCX from Google Health",
+        description=(
+            "Fetch one activity as TCX and correct it. The target distance is "
+            "already in the file, so this needs no second request for it. "
+            "Nothing is uploaded and nothing is recorded."
+        ),
+    )
+    fetch.add_argument("activity_id", help="the Google Health data point id")
+    fetch.add_argument(
+        "--raw", action="store_true", help="write Google's bytes untouched, without rescaling"
+    )
+    fetch.add_argument("-o", "--output", type=Path, help="write here instead of stdout")
+    _add_store_argument(fetch)
+    fetch.set_defaults(handler=_fetch_command)
+
+    sync = subcommands.add_parser(
+        "sync",
+        help="correct and upload every new activity in a window",
+        description=(
+            "Fetch each activity Google Health recorded in the window, correct "
+            "what can be corrected, and upload all of it to Strava. Activities "
+            "that cannot be corrected are uploaded unchanged rather than "
+            "dropped. Anything already recorded is left alone."
+        ),
+    )
+    sync.add_argument(
+        "--since", type=_timestamp, metavar="DATE", help=f"default: {DEFAULT_SINCE_DAYS} days ago"
+    )
+    sync.add_argument("--until", type=_timestamp, metavar="DATE", help="default: now")
+    sync.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="do everything except upload and record; print what would happen",
+    )
+    _add_store_argument(sync)
+    sync.set_defaults(handler=_sync_command)
     return parser
 
 
-def main(argv: list[str] | None = None, *, stdout: Any = None, stderr: Any = None) -> int:
+def _add_store_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--store",
+        type=Path,
+        default=DEFAULT_PATH,
+        metavar="PATH",
+        help=f"token and dedupe store (default {DEFAULT_PATH})",
+    )
+
+
+def _timestamp(text: str) -> str:
+    """Accept a date or a full timestamp, and return RFC 3339 UTC.
+
+    A bare date means midnight UTC. Google's filter wants RFC 3339 and its
+    notifications already speak it, so this is the one place the two meet.
+    """
+    try:
+        moment = dt.datetime.fromisoformat(text)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            f"{text!r}: expected a date like 2026-08-01 or a timestamp like 2026-08-01T09:30:00Z"
+        ) from exc
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=dt.UTC)
+    return _rfc3339(moment)
+
+
+def _rfc3339(moment: dt.datetime) -> str:
+    return moment.astimezone(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def main(
+    argv: list[str] | None = None,
+    *,
+    stdout: Any = None,
+    stderr: Any = None,
+    transport: Any = None,
+) -> int:
+    """Run one command.
+
+    Streams and transport are parameters for the same reason: so a test supplies
+    real objects that happen to be boring, rather than patching module globals.
+    The default transport is the retrying urllib one — production passes nothing.
+    """
     parser = build_parser()
     args = parser.parse_args(argv)
+    args.transport = retrying(send) if transport is None else transport
     out = sys.stdout if stdout is None else stdout
     err = sys.stderr if stderr is None else stderr
     return args.handler(args, out, err)
@@ -236,6 +341,113 @@ def _num(value: float | None, spec: str) -> str:
 
 def _pct(value: float | None) -> str:
     return "-" if value is None else f"{value * 100:.1f}%"
+
+
+def _fetch_command(args: argparse.Namespace, out: Any, err: Any) -> int:
+    try:
+        pipeline = _build_pipeline(args)
+        data = pipeline.fetch(args.activity_id, raw=args.raw)
+    except ReckonError as exc:
+        print(f"reckon: {exc}", file=err)
+        return 1
+
+    if args.output is None:
+        _binary(out).write(data)
+    else:
+        args.output.write_bytes(data)
+        print(f"reckon: wrote {args.output}", file=err)
+    return 0
+
+
+def _sync_command(args: argparse.Namespace, out: Any, err: Any) -> int:
+    now = dt.datetime.now(tz=dt.UTC)
+    since = args.since or _rfc3339(now - dt.timedelta(days=DEFAULT_SINCE_DAYS))
+    until = args.until or _rfc3339(now)
+
+    try:
+        pipeline = _build_pipeline(args, dry_run=args.dry_run)
+        outcomes = pipeline.sync(start_time=since, end_time=until)
+    except ReckonError as exc:
+        print(f"reckon: {exc}", file=err)
+        return 1
+
+    if args.dry_run:
+        print("reckon: dry run — nothing uploaded, nothing recorded", file=err)
+    for outcome in outcomes:
+        print(_outcome_line(outcome), file=out)
+    if not outcomes:
+        print(f"nothing recorded between {since} and {until}", file=out)
+        return 0
+
+    print("", file=out)
+    print(
+        "  ".join(
+            f"{count} {label}" for label, count in sorted(summarise_outcomes(outcomes).items())
+        ),
+        file=out,
+    )
+    # A withheld activity is the only outcome a human has to act on: the file was
+    # refused, and it is not on Strava. Failures are reported the same way, since
+    # both mean the activity is missing.
+    return 1 if any(not o.status.on_strava for o in outcomes) else 0
+
+
+def _outcome_line(outcome: Outcome) -> str:
+    factor = "" if outcome.factor is None else f"  factor {outcome.factor:.4f}"
+    detail = f"  {outcome.reason}" if outcome.reason else ""
+    marker = "=" if not outcome.fresh else " "
+    return (
+        f"{marker} {outcome.activity_id:<22}{outcome.name[:18]:<19}"
+        f"{outcome.status:<15}{factor}{detail}"
+    )
+
+
+def _build_pipeline(args: argparse.Namespace, *, dry_run: bool = False) -> Pipeline:
+    """Assemble the pipeline from the environment and the store.
+
+    Configuration lives here rather than in `pipeline.py` so that the pipeline
+    takes constructed clients and can be exercised without an environment
+    (`PLAN.md` §2). This is the only place in the codebase that reads os.environ.
+    """
+    transport = args.transport
+    store = FileStore(args.store)
+    google = token_holder(
+        store,
+        "google",
+        transport=transport,
+        token_url=health_api.TOKEN_URL,
+        **_credentials("google"),
+    )
+    strava = token_holder(
+        store,
+        "strava",
+        transport=transport,
+        token_url=strava_api.TOKEN_URL,
+        **_credentials("strava"),
+    )
+    return Pipeline(
+        health=health_api.GoogleHealth(transport, google),
+        strava=strava_api.Strava(transport, strava),
+        logs=store,
+        dry_run=dry_run,
+    )
+
+
+def _credentials(service: str) -> dict[str, str]:
+    id_var, secret_var = _ENV[service]
+    values = {
+        "client_id": os.environ.get(id_var, ""),
+        "client_secret": os.environ.get(secret_var, ""),
+    }
+    missing = [
+        name
+        for name, key in ((id_var, "client_id"), (secret_var, "client_secret"))
+        if not values[key]
+    ]
+    if missing:
+        verb = "is" if len(missing) == 1 else "are"
+        raise ReckonError(f"{' and '.join(missing)} {verb} not set in the environment")
+    return values
 
 
 def _binary(stream: Any) -> IO[bytes]:

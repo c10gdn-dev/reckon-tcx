@@ -22,11 +22,11 @@ class BinaryStream(io.BytesIO):
         return self
 
 
-def run(*argv: str, stdout=None, stderr=None):
+def run(*argv: str, stdout=None, stderr=None, transport=None):
     """Invoke the CLI, returning (exit code, stdout bytes, stderr text)."""
     out = io.BytesIO() if stdout is None else stdout
     err = io.StringIO() if stderr is None else stderr
-    code = main(list(argv), stdout=out, stderr=err)
+    code = main(list(argv), stdout=out, stderr=err, transport=transport)
     return code, out.getvalue(), err.getvalue()
 
 
@@ -349,3 +349,281 @@ def test_analyse_reports_a_malformed_file_by_name(tmp_path):
 
     assert code == 1
     assert "broken.tcx" in err
+
+
+# --- fetch and sync ---------------------------------------------------------
+#
+# These need both services authorised, so each test seeds a real `FileStore` in
+# a temporary directory and injects a `FakeTransport`. `main` takes the transport
+# for the same reason it takes its streams: so nothing has to be patched.
+
+CORRECTABLE = builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=930.0)
+NO_GPS = builders.tcx(distances=(None, None, None), with_position=False, lap_distance_m=0.0)
+
+
+def json_body(payload):
+    import json
+
+    return json.dumps(payload).encode()
+
+
+def upload_body(**overrides):
+    payload = {"id": 987, "external_id": "1", "error": None, "status": "processing"}
+    payload.update(overrides)
+    return json_body(payload)
+
+
+def listing(*ids, exercise_type="WALKING"):
+    return json_body(
+        {
+            "dataPoints": [
+                {
+                    "name": f"users/me/dataTypes/exercise/dataPoints/{i}",
+                    "exercise": {
+                        "interval": {"startTime": "2026-02-23T13:10:00Z"},
+                        "exerciseType": exercise_type,
+                        "displayName": "Morning Walk",
+                    },
+                }
+                for i in ids
+            ]
+        }
+    )
+
+
+@pytest.fixture
+def authorised(tmp_path, monkeypatch):
+    """A store with both services authorised, and the credentials in the environment."""
+    from reckon.clients.oauth import Tokens
+    from reckon.stores.file import FileStore
+
+    monkeypatch.setenv("RECKON_GOOGLE_CLIENT_ID", "gid")
+    monkeypatch.setenv("RECKON_GOOGLE_CLIENT_SECRET", "gsecret")
+    monkeypatch.setenv("RECKON_STRAVA_CLIENT_ID", "sid")
+    monkeypatch.setenv("RECKON_STRAVA_CLIENT_SECRET", "ssecret")
+
+    path = tmp_path / "store.json"
+    store = FileStore(path)
+    live = Tokens("live-access", "refresh", 4_000_000_000.0)
+    store.save("google", live, expected_version=0)
+    store.save("strava", live, expected_version=0)
+    return path
+
+
+def sync(*argv: str, transport=None):
+    """Invoke `sync`, whose stdout is a report rather than the rescaled bytes."""
+    out, err = io.StringIO(), io.StringIO()
+    code = main(["sync", *argv], stdout=out, stderr=err, transport=transport)
+    return code, out.getvalue(), err.getvalue()
+
+
+def transport_of(*bodies):
+    from fakes import FakeTransport, response
+
+    return FakeTransport(*[response(body=b) for b in bodies])
+
+
+def test_fetch_writes_the_corrected_file_to_stdout(authorised):
+    code, out, _ = run(
+        "fetch", "889672", "--store", str(authorised), transport=transport_of(CORRECTABLE)
+    )
+    assert code == 0
+    assert b"930" in out
+
+
+def test_fetch_raw_writes_googles_bytes_untouched(authorised):
+    code, out, _ = run(
+        "fetch",
+        "889672",
+        "--raw",
+        "--store",
+        str(authorised),
+        transport=transport_of(CORRECTABLE),
+    )
+    assert (code, out) == (0, CORRECTABLE)
+
+
+def test_fetch_can_write_to_a_file(authorised, tmp_path):
+    target = tmp_path / "out.tcx"
+    code, _, err = run(
+        "fetch",
+        "889672",
+        "-o",
+        str(target),
+        "--store",
+        str(authorised),
+        transport=transport_of(CORRECTABLE),
+    )
+    assert code == 0
+    assert b"930" in target.read_bytes()
+    assert str(target) in err
+
+
+def test_fetch_without_authorisation_explains_the_fix(tmp_path, monkeypatch):
+    monkeypatch.setenv("RECKON_GOOGLE_CLIENT_ID", "gid")
+    monkeypatch.setenv("RECKON_GOOGLE_CLIENT_SECRET", "gsecret")
+    code, _, err = run(
+        "fetch", "1", "--store", str(tmp_path / "empty.json"), transport=transport_of()
+    )
+    assert code == 1
+    assert "authorize.py google" in err
+
+
+@pytest.mark.parametrize(
+    "unset",
+    [
+        "RECKON_GOOGLE_CLIENT_ID",
+        "RECKON_GOOGLE_CLIENT_SECRET",
+        "RECKON_STRAVA_CLIENT_ID",
+        "RECKON_STRAVA_CLIENT_SECRET",
+    ],
+)
+def test_a_missing_credential_is_named(authorised, monkeypatch, unset):
+    monkeypatch.delenv(unset)
+    code, _, err = run("fetch", "1", "--store", str(authorised), transport=transport_of())
+    assert code == 1
+    assert unset in err
+
+
+def test_both_missing_credentials_are_named_at_once(authorised, monkeypatch):
+    monkeypatch.delenv("RECKON_GOOGLE_CLIENT_ID")
+    monkeypatch.delenv("RECKON_GOOGLE_CLIENT_SECRET")
+    code, _, err = run("fetch", "1", "--store", str(authorised), transport=transport_of())
+    assert code == 1
+    assert "CLIENT_ID and RECKON_GOOGLE_CLIENT_SECRET are not set" in err
+
+
+def test_an_expired_google_authorisation_says_how_to_fix_it(tmp_path, monkeypatch):
+    """The one OAuth failure a human can act on, so the message has to name the act.
+
+    Expected rather than exceptional until the OAuth client is published: a
+    Testing-status client's refresh tokens expire after seven days.
+    """
+    import json as _json
+
+    from fakes import FakeTransport
+    from reckon.clients.http import HTTPError
+    from reckon.clients.oauth import Tokens
+    from reckon.stores.file import FileStore
+
+    for name in ("GOOGLE", "STRAVA"):
+        monkeypatch.setenv(f"RECKON_{name}_CLIENT_ID", "id")
+        monkeypatch.setenv(f"RECKON_{name}_CLIENT_SECRET", "secret")
+
+    path = tmp_path / "store.json"
+    FileStore(path).save("google", Tokens("dead", "dead", 0.0), expected_version=0)
+    FileStore(path).save("strava", Tokens("live", "r", 4_000_000_000.0), expected_version=0)
+
+    body = _json.dumps(
+        {"error": "invalid_grant", "error_description": "Token has been expired or revoked."}
+    ).encode()
+    transport = FakeTransport(HTTPError(400, "POST", "https://oauth2.googleapis.com/token", body))
+
+    code, _, err = sync("--store", str(path), transport=transport)
+    assert code == 1
+    assert "google authorisation is no longer valid" in err
+    assert "authorize.py google" in err
+
+
+def test_sync_reports_one_line_per_activity(authorised):
+    transport = transport_of(
+        listing("1", "2"),
+        CORRECTABLE,
+        upload_body(activity_id=11),
+        CORRECTABLE,
+        upload_body(activity_id=22),
+    )
+    code, report, _ = sync("--store", str(authorised), transport=transport)
+    assert code == 0
+    assert "889672" not in report
+    assert "2 uploaded" in report
+
+
+def test_sync_accepts_a_bare_date(authorised):
+    transport = transport_of(listing())
+    code, _, _ = sync("--since", "2026-08-01", "--store", str(authorised), transport=transport)
+    assert code == 0
+    assert "2026-08-01T00%3A00%3A00Z" in transport.requests[0].url
+
+
+def test_sync_accepts_a_full_timestamp(authorised):
+    transport = transport_of(listing())
+    code, _, _ = sync(
+        "--since",
+        "2026-08-01T09:30:00+01:00",
+        "--until",
+        "2026-08-02",
+        "--store",
+        str(authorised),
+        transport=transport,
+    )
+    assert code == 0
+    assert "2026-08-01T08%3A30%3A00Z" in transport.requests[0].url  # 09:30 +01:00
+
+
+def test_an_unparseable_date_is_rejected_with_the_accepted_forms():
+    with pytest.raises(SystemExit):
+        sync("--since", "last tuesday")
+
+
+def test_sync_defaults_to_the_last_week(authorised):
+    transport = transport_of(listing())
+    sync("--store", str(authorised), transport=transport)
+    assert "start_time" in transport.requests[0].url
+
+
+def test_sync_over_an_empty_window_says_so(authorised):
+    code, report, _ = sync("--store", str(authorised), transport=transport_of(listing()))
+    assert code == 0
+    assert "nothing recorded" in report
+
+
+def test_a_withheld_activity_makes_the_exit_code_nonzero(authorised):
+    """It is not on Strava, and a human has to look."""
+    transport = transport_of(listing("1"), b"<not-tcx/>")
+    code, report, _ = sync("--store", str(authorised), transport=transport)
+    assert code == 1
+    assert "withheld" in report
+
+
+def test_a_passed_through_activity_is_a_success(authorised):
+    transport = transport_of(listing("1", exercise_type="YOGA"), NO_GPS, upload_body(activity_id=9))
+    code, report, _ = sync("--store", str(authorised), transport=transport)
+    assert code == 0
+    assert "passed_through" in report
+    assert "no_gps" in report
+
+
+def test_a_dry_run_says_so_and_records_nothing(authorised):
+    from reckon.stores.file import FileStore
+
+    transport = transport_of(listing("1"), CORRECTABLE)
+    code, _, err = sync("--dry-run", "--store", str(authorised), transport=transport)
+    assert code == 0
+    assert "dry run" in err
+    assert FileStore(authorised).entries() == []
+
+
+def test_a_second_sync_replays_the_stored_decision(authorised):
+    first = transport_of(listing("1"), CORRECTABLE, upload_body(activity_id=11))
+    sync("--store", str(authorised), transport=first)
+
+    second = transport_of(listing("1"))
+    code, report, _ = sync("--store", str(authorised), transport=second)
+    assert code == 0
+    assert "already done" in report
+    assert second.calls == 1, "the TCX was not fetched again"
+
+
+def test_a_transient_fault_fails_loudly_rather_than_silently(authorised):
+    """Locally there is no retry (`PLAN.md` §2) — say what happened and exit 1.
+
+    The pipeline itself lets transient faults propagate, which is what the SQS
+    worker needs; the CLI is the boundary that turns one into a message.
+    """
+    from fakes import FakeTransport
+    from reckon.core.errors import NetworkError
+
+    code, _, err = sync("--store", str(authorised), transport=FakeTransport(NetworkError("reset")))
+    assert code == 1
+    assert "reset" in err

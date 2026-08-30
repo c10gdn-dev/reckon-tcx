@@ -1,0 +1,95 @@
+@startuml token-refresh
+' Two workers refresh the same token pair at the same time.
+'
+' The question this diagram exists to answer: what does the *loser* do? Not
+' "does it fail" — it must not fail — but which token pair does it go on to use,
+' and who is allowed to have written it.
+'
+' Worker concurrency is capped at 2 (PLAN.md §9), so two is the whole problem.
+'
+' Rendered by `make diagrams` (phase 8). Do not hand-edit the SVG.
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam ParticipantPadding 12
+
+participant "worker A" as A
+participant "worker B" as B
+database "token store\n(version attribute)" as DB
+participant "token endpoint\n(Google / Strava)" as OAUTH
+
+note across
+  **This used to be a correctness problem. It is now a waste problem.**
+  The plan was written against Fitbit, whose refresh tokens were single-use and
+  rotated: a lost race destroyed a credential and forced a manual re-auth. Neither
+  Google nor Strava rotates, so a lost race now costs one wasted refresh. The
+  compare-and-swap stays — it is cheap, and it is what keeps the store's contents
+  coherent — but do not describe it as load-bearing. See PLAN.md §8.
+end note
+
+== both find the access token expired ==
+
+A -> DB : load()
+DB --> A : (tokens, **version 7**)
+B -> DB : load()
+DB --> B : (tokens, **version 7**)
+
+note over A, B
+  Same pair, same version. Neither
+  knows the other exists.
+end note
+
+== both refresh ==
+
+A -> OAUTH : grant_type=refresh_token
+OAUTH --> A : access_A, expires_in
+B -> OAUTH : grant_type=refresh_token
+OAUTH --> B : access_B, expires_in
+
+note over OAUTH
+  Both succeed. The refresh token is
+  unchanged and still valid — that is
+  what "does not rotate" buys.
+end note
+
+== the write decides ==
+
+A -> DB : save(access_A, expected_version=**7**)
+DB --> A : ok, **version 8**
+note right of A
+  **Persist before using.** If the process
+  dies between the refresh and the write,
+  the store must never hold a pair that
+  was already spent.
+end note
+
+B -> DB : save(access_B, expected_version=**7**)
+DB --> B : **conflict** — the row is at version 8
+
+group the losing branch
+  B -> DB : load()
+  DB --> B : (access_A, version 8)
+  B -> B : continue with **A's** tokens
+  note right of B
+    B's own access_B is simply dropped.
+    It is still valid, and using it would
+    also work — but then the store and the
+    caller disagree about what is current,
+    and the next refresh races from two
+    different baselines.
+
+    One rule, no exceptions: **whatever is
+    in the store is what you use.**
+  end note
+end
+
+note across
+  **Retry the write, never the refresh.** A conflict means someone else already
+  did the work. Refreshing again on conflict is how a bounded race becomes an
+  unbounded one. `oauth.TokenHolder` expresses this as a return value: `on_refresh`
+  is handed the new pair and returns the pair to actually use, so `clients/` never
+  learns that a store exists.
+end note
+
+@enduml
