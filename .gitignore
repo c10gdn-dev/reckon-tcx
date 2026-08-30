@@ -12,6 +12,13 @@ training-data/*
 .claude/
 CLAUDE.md
 
+# The implementation plan and calibration record. Excluded for the same reason
+# as CLAUDE.md: it is a working document, and its calibration sections describe
+# specific outings — routes, timings, who was wearing what — in enough detail to
+# say more about a person's movements than a specification needs to. The source
+# cites its section numbers throughout; see the note in ARCHITECTURE.md.
+PLAN.md
+
 # Credentials and local config
 .env
 *.pem

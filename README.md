@@ -358,6 +358,13 @@ None of these correct the inflation — that is the whole reason this exists.
 
 ## Contributing
 
+`ARCHITECTURE.md` covers the source map, the invariants and why the design is
+shaped as it is. Source comments also cite `PLAN.md`, the implementation plan and
+calibration record; that file is kept out of the repository because its
+calibration sections describe specific outings in more detail than a
+specification needs. The invariants it fixes are all restated in
+`ARCHITECTURE.md`.
+
 `make check` runs what CI runs: `ruff` plus the suite at a 100% line-and-branch
 coverage gate. The gate is not negotiable and was set on the first commit rather
 than retrofitted.

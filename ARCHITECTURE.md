@@ -3,6 +3,13 @@
 The README answers "should I use this, and how". This answers "how do I change
 it without breaking something quiet".
 
+> **A note on `PLAN.md`.** Comments throughout the source cite it by section —
+> `PLAN.md` §5, §8 and so on. It is the implementation plan and calibration
+> record, and it is deliberately not published: its calibration sections describe
+> specific outings in enough detail to say more about a person's movements than a
+> specification needs to. Everything those citations carry that a contributor
+> needs is restated here. Treat them as provenance, not as a broken link.
+
 ## Source map
 
 One line each, saying what the module owns.
