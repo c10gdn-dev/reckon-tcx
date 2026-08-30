@@ -71,6 +71,57 @@ class Tokens:
         return now >= self.expires_at - skew
 
 
+@dataclass(frozen=True)
+class ClientCredentials:
+    """What Google Cloud hands you when you create an OAuth client."""
+
+    client_id: str
+    client_secret: str
+    redirect_uris: tuple[str, ...] = ()
+
+
+def read_client_credentials(text: str) -> ClientCredentials:
+    """Parse the credentials JSON downloaded from the Google Cloud console.
+
+    Exists so the client secret can reach Reckon through a 0600 file rather than
+    a command line, where it would land in shell history and in `ps` output for
+    every other user on the machine. Strava has no equivalent download, so its
+    credentials still come from flags or the environment.
+
+    The interesting key is `web` for a Web application client and `installed` for
+    a Desktop one. Both shapes are otherwise identical, and which you get depends
+    on a dropdown chosen minutes earlier, so accept either rather than making
+    someone re-read the console.
+    """
+    try:
+        document = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise OAuthError(f"credentials file is not JSON: {exc}") from exc
+    if not isinstance(document, dict):
+        raise OAuthError("credentials file does not contain a JSON object")
+
+    for key in ("web", "installed"):
+        section = document.get(key)
+        if isinstance(section, dict):
+            break
+    else:
+        raise OAuthError(
+            f"credentials file has no 'web' or 'installed' section, only {sorted(document)}; "
+            f"download it again from the Credentials page of the Google Cloud console"
+        )
+
+    client_id = section.get("client_id")
+    client_secret = section.get("client_secret")
+    if not client_id or not client_secret:
+        raise OAuthError(f"credentials file is missing client_id or client_secret under {key!r}")
+    redirect_uris = section.get("redirect_uris") or []
+    return ClientCredentials(
+        client_id=str(client_id),
+        client_secret=str(client_secret),
+        redirect_uris=tuple(str(uri) for uri in redirect_uris),
+    )
+
+
 def authorization_url(
     authorize_url: str,
     *,

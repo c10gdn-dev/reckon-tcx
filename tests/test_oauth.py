@@ -22,6 +22,7 @@ from reckon.clients.oauth import (
     code_from_redirect,
     exchange_code,
     new_state,
+    read_client_credentials,
     refresh,
     service_of,
 )
@@ -461,3 +462,64 @@ def test_other_token_failures_are_not_reported_as_an_expired_grant(outcome: Any)
 def test_a_json_body_that_is_not_an_object_falls_through() -> None:
     with pytest.raises(HTTPError):
         refresh_against(rejected(payload=["invalid_grant"]))
+
+
+# --- the credentials file ---------------------------------------------------
+#
+# Exists so the client secret reaches Reckon through a 0600 file rather than a
+# command line, where it lands in shell history and in `ps` for every other user
+# on the machine.
+
+
+def credentials_json(section: str = "web", **overrides: Any) -> str:
+    body = {
+        "client_id": "123.apps.googleusercontent.com",
+        "project_id": "reckon-471203",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "client_secret": "GOCSPX-secret",
+        "redirect_uris": ["http://localhost:8721/callback"],
+    }
+    body.update(overrides)
+    return json.dumps({section: body})
+
+
+@pytest.mark.parametrize("section", ["web", "installed"])
+def test_either_client_type_is_accepted(section: str) -> None:
+    """Which key you get depends on a dropdown chosen minutes earlier."""
+    client = read_client_credentials(credentials_json(section))
+    assert client.client_id == "123.apps.googleusercontent.com"
+    assert client.client_secret == "GOCSPX-secret"
+    assert client.redirect_uris == ("http://localhost:8721/callback",)
+
+
+def test_a_file_with_no_redirect_uris_still_parses() -> None:
+    client = read_client_credentials(credentials_json(redirect_uris=None))
+    assert client.redirect_uris == ()
+
+
+def test_a_file_that_is_not_json_says_so() -> None:
+    with pytest.raises(OAuthError, match="not JSON"):
+        read_client_credentials("{oops")
+
+
+def test_a_json_document_that_is_not_an_object_says_so() -> None:
+    with pytest.raises(OAuthError, match="does not contain a JSON object"):
+        read_client_credentials("[]")
+
+
+def test_the_wrong_kind_of_json_file_names_what_it_found() -> None:
+    """Downloading the service-account key instead is an easy mistake to make."""
+    with pytest.raises(OAuthError, match="no 'web' or 'installed' section"):
+        read_client_credentials(json.dumps({"type": "service_account", "private_key": "..."}))
+
+
+@pytest.mark.parametrize("missing", ["client_id", "client_secret"])
+def test_a_section_missing_either_half_is_refused(missing: str) -> None:
+    with pytest.raises(OAuthError, match="missing client_id or client_secret"):
+        read_client_credentials(credentials_json(**{missing: ""}))
+
+
+def test_a_section_that_is_not_an_object_is_not_mistaken_for_one() -> None:
+    with pytest.raises(OAuthError, match="no 'web' or 'installed' section"):
+        read_client_credentials(json.dumps({"web": "nope"}))

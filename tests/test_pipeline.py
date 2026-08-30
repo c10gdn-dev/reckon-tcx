@@ -35,6 +35,10 @@ from reckon.stores.base import LogEntry, Status, StoreError, VersionedTokens
 
 LIVE = Tokens("live-access", "refresh", 10_000.0)
 
+# The client filters the listing itself — the API rejects every documented
+# spelling of its `filter` parameter for the exercise data type.
+WINDOW = {"start_time": "2026-02-01T00:00:00Z", "end_time": "2026-03-01T00:00:00Z"}
+
 # A track that measures long and a Lap total that says so: the ordinary case.
 CORRECTABLE = builders.tcx(distances=[0.0, 500.0, 1000.0], lap_distance_m=930.0)
 # Trackpoints with time and heart rate but no Position — the yoga shape.
@@ -345,6 +349,16 @@ def test_every_mapped_exercise_type_reaches_strava(exercise_type: str, sport_typ
     assert outcome.warnings == ()
 
 
+def test_weight_training_is_mapped() -> None:
+    """Found live: without this, every gym session uploads as a run."""
+    assert SPORT_TYPES["WEIGHTS"] == "WeightTraining"
+
+
+def test_the_default_asserts_nothing_untrue() -> None:
+    """`Workout` is as editable as `Run` and does not claim an activity happened."""
+    assert DEFAULT_SPORT_TYPE == "Workout"
+
+
 def test_an_unmapped_type_uploads_with_a_default_and_a_warning() -> None:
     """Refusing to upload would be the dropping the whole design says never to do."""
     strava = FakeTransport(upload_response(activity_id=1))
@@ -419,15 +433,13 @@ def test_sync_processes_every_activity_in_the_window() -> None:
     )
     health = FakeTransport(listing, response(body=CORRECTABLE), response(body=CORRECTABLE))
     strava = FakeTransport(upload_response(activity_id=11), upload_response(activity_id=22))
-    outcomes = pipeline(health, strava).sync(start_time="a", end_time="b")
+    outcomes = pipeline(health, strava).sync(**WINDOW)
     assert [o.activity_id for o in outcomes] == ["1", "2"]
     assert [o.strava_activity_id for o in outcomes] == [11, 22]
 
 
 def test_sync_over_an_empty_window_is_an_empty_list() -> None:
-    outcomes = pipeline(FakeTransport(json_response({"dataPoints": []}))).sync(
-        start_time="a", end_time="b"
-    )
+    outcomes = pipeline(FakeTransport(json_response({"dataPoints": []}))).sync(**WINDOW)
     assert outcomes == []
 
 

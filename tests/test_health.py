@@ -16,13 +16,14 @@ from reckon.clients.health import (
     AUTHORIZE_EXTRA,
     MAX_PAGES,
     SCOPES,
+    AccountNotLinked,
     Exercise,
     GoogleHealth,
     UnexpectedPayload,
     token_holder,
 )
 from reckon.clients.oauth import TokenHolder, Tokens
-from reckon.core.errors import AuthError
+from reckon.core.errors import AuthError, HTTPError, ReckonError
 
 BASE = "https://health.example.test/v4"
 
@@ -31,12 +32,16 @@ def json_response(payload: Any, status: int = 200) -> Any:
     return response(status=status, body=json.dumps(payload).encode())
 
 
+WINDOW = {"start_time": "2026-02-01T00:00:00Z", "end_time": "2026-03-01T00:00:00Z"}
+
+
 def exercise_payload(point_id: str = "889672", **exercise: Any) -> dict[str, Any]:
     body = {
         "interval": {"startTime": "2026-02-23T13:10:00Z", "endTime": "2026-02-23T13:25:00Z"},
         "exerciseType": "WALKING",
         "displayName": "Walk",
-        "metricsSummary": {"distanceMillimiters": 1609344, "steps": 2000},
+        "metricsSummary": {"distanceMillimeters": 1609344, "steps": 2000},
+        "exerciseMetadata": {"hasGps": True},
     }
     body.update(exercise)
     return {"name": f"users/2515055/dataTypes/exercise/dataPoints/{point_id}", "exercise": body}
@@ -73,7 +78,13 @@ def test_both_scopes_are_requested() -> None:
 
 def test_offline_access_and_a_forced_consent_are_requested() -> None:
     """Without both, a returning user gets no refresh token and the worker dies silently."""
-    assert AUTHORIZE_EXTRA == {"access_type": "offline", "prompt": "consent"}
+    assert AUTHORIZE_EXTRA["access_type"] == "offline"
+    assert "consent" in AUTHORIZE_EXTRA["prompt"]
+
+
+def test_the_account_chooser_is_forced() -> None:
+    """The project's owner account is routinely not the account holding the data."""
+    assert "select_account" in AUTHORIZE_EXTRA["prompt"]
 
 
 # --- listing exercises ------------------------------------------------------
@@ -81,7 +92,7 @@ def test_offline_access_and_a_forced_consent_are_requested() -> None:
 
 def test_one_page_of_exercises_is_parsed() -> None:
     transport = FakeTransport(json_response({"dataPoints": [exercise_payload()]}))
-    found = list(client(transport).exercises(start_time="2026-02-23T00:00:00Z", end_time="X"))
+    found = list(client(transport).exercises(**WINDOW))
     assert found == [
         Exercise(
             name="users/2515055/dataTypes/exercise/dataPoints/889672",
@@ -90,6 +101,7 @@ def test_one_page_of_exercises_is_parsed() -> None:
             start_time="2026-02-23T13:10:00Z",
             end_time="2026-02-23T13:25:00Z",
             distance_m=1609.344,
+            has_gps=True,
         )
     ]
 
@@ -97,6 +109,103 @@ def test_one_page_of_exercises_is_parsed() -> None:
 def test_the_id_is_the_last_segment_of_the_resource_name() -> None:
     """It is what goes into Strava's external_id and the dedupe store."""
     assert Exercise("users/1/dataTypes/exercise/dataPoints/42", "", "", "", "", None).id == "42"
+
+
+# --- the window is applied here, not by the API -----------------------------
+#
+# Every documented `filter` spelling is rejected for the exercise data type, so
+# the client lists and compares. Confirmed against the live API on 2026-08-30.
+
+
+def at(start: str, point_id: str = "1") -> dict[str, Any]:
+    return exercise_payload(point_id, interval={"startTime": start, "endTime": start})
+
+
+def test_no_filter_is_sent() -> None:
+    """The API rejects every spelling of it; sending one fails the whole call."""
+    transport = FakeTransport(json_response({"dataPoints": []}))
+    list(client(transport).exercises(**WINDOW))
+    assert "filter" not in query_of(transport.requests[0].url)
+
+
+def test_points_outside_the_window_are_not_yielded() -> None:
+    page = {
+        "dataPoints": [
+            at("2026-03-05T00:00:00Z", "after"),
+            at("2026-02-15T00:00:00Z", "inside"),
+            at("2026-01-05T00:00:00Z", "before"),
+        ]
+    }
+    found = list(client(FakeTransport(json_response(page))).exercises(**WINDOW))
+    assert [e.id for e in found] == ["inside"]
+
+
+def test_the_end_of_the_window_is_exclusive() -> None:
+    """So adjacent windows cannot double-count a session on the boundary."""
+    page = {"dataPoints": [at("2026-03-01T00:00:00Z", "edge"), at("2026-02-01T00:00:00Z", "start")]}
+    found = list(client(FakeTransport(json_response(page))).exercises(**WINDOW))
+    assert [e.id for e in found] == ["start"]
+
+
+def test_pagination_stops_once_a_page_ends_before_the_window() -> None:
+    """The listing is newest-first, so there is nothing newer further on."""
+    first = {"dataPoints": [at("2026-01-20T00:00:00Z", "old")], "nextPageToken": "more"}
+    transport = FakeTransport(json_response(first), json_response({"dataPoints": []}))
+    list(client(transport).exercises(**WINDOW))
+    assert transport.calls == 1
+
+
+def test_pagination_continues_while_the_page_is_still_inside_the_window() -> None:
+    first = {"dataPoints": [at("2026-02-20T00:00:00Z", "a")], "nextPageToken": "more"}
+    second = {"dataPoints": [at("2026-02-10T00:00:00Z", "b")]}
+    transport = FakeTransport(json_response(first), json_response(second))
+    found = list(client(transport).exercises(**WINDOW))
+    assert [e.id for e in found] == ["a", "b"]
+
+
+def test_a_point_whose_timestamp_cannot_be_read_is_yielded_not_dropped() -> None:
+    """Over-reporting is recoverable and the dedupe store catches it. Losing one is not."""
+    page = {"dataPoints": [at("not a timestamp", "unreadable"), at("2026-02-15T00:00:00Z", "ok")]}
+    found = list(client(FakeTransport(json_response(page))).exercises(**WINDOW))
+    assert [e.id for e in found] == ["unreadable", "ok"]
+
+
+def test_an_unreadable_timestamp_does_not_decide_when_to_stop() -> None:
+    first = {"dataPoints": [at("nonsense", "x")], "nextPageToken": "more"}
+    second = {"dataPoints": [at("2026-02-15T00:00:00Z", "y")]}
+    transport = FakeTransport(json_response(first), json_response(second))
+    assert [e.id for e in client(transport).exercises(**WINDOW)] == ["x", "y"]
+
+
+@pytest.mark.parametrize("bound", ["start_time", "end_time"])
+def test_an_unreadable_window_bound_is_refused(bound: str) -> None:
+    window = {**WINDOW, bound: "whenever"}
+    with pytest.raises(ReckonError, match=f"{bound} is not an RFC 3339 timestamp"):
+        list(client(FakeTransport()).exercises(**window))
+
+
+# --- hasGps -----------------------------------------------------------------
+
+
+def test_has_gps_is_carried_through() -> None:
+    """Explains a pass-through before the file is even opened."""
+    found = next(
+        iter(
+            client(
+                FakeTransport(json_response({"dataPoints": [at("2026-02-15T00:00:00Z")]}))
+            ).exercises(**WINDOW)
+        )
+    )
+    assert found.has_gps is True
+
+
+@pytest.mark.parametrize("metadata", [{"hasGps": False}, {}, "nope", None, {"hasGps": "yes"}])
+def test_missing_or_odd_gps_metadata_does_not_raise(metadata: Any) -> None:
+    raw = exercise_payload(exerciseMetadata=metadata)
+    found = next(
+        iter(client(FakeTransport(json_response({"dataPoints": [raw]}))).exercises(**WINDOW))
+    )
+    assert found.has_gps in (False, None)
 
 
 def test_the_request_targets_the_exercise_collection_with_a_time_filter() -> None:
@@ -109,17 +218,12 @@ def test_the_request_targets_the_exercise_collection_with_a_time_filter() -> Non
     sent = transport.requests[0]
     assert sent.url.startswith(f"{BASE}/users/me/dataTypes/exercise/dataPoints?")
     assert sent.headers["Authorization"] == "Bearer live-access"
-    query = query_of(sent.url)
-    assert query["filter"] == (
-        'exercise.interval.start_time >= "2026-02-23T00:00:00Z" '
-        'AND exercise.interval.start_time < "2026-02-24T00:00:00Z"'
-    )
-    assert query["pageSize"] == "25"
+    assert query_of(sent.url)["pageSize"] == "25"
 
 
 def test_the_page_size_is_capped_at_the_apis_own_maximum() -> None:
     transport = FakeTransport(json_response({"dataPoints": []}))
-    list(client(transport).exercises(start_time="a", end_time="b", page_size=500))
+    list(client(transport).exercises(page_size=500, **WINDOW))
     assert query_of(transport.requests[0].url)["pageSize"] == "25"
 
 
@@ -128,7 +232,7 @@ def test_pagination_follows_the_next_page_token() -> None:
         json_response({"dataPoints": [exercise_payload("1")], "nextPageToken": "more"}),
         json_response({"dataPoints": [exercise_payload("2")]}),
     )
-    found = list(client(transport).exercises(start_time="a", end_time="b"))
+    found = list(client(transport).exercises(**WINDOW))
     assert [e.id for e in found] == ["1", "2"]
     assert "pageToken" not in query_of(transport.requests[0].url)
     assert query_of(transport.requests[1].url)["pageToken"] == "more"
@@ -138,12 +242,12 @@ def test_an_empty_next_page_token_ends_the_walk() -> None:
     transport = FakeTransport(
         json_response({"dataPoints": [exercise_payload()], "nextPageToken": ""})
     )
-    assert len(list(client(transport).exercises(start_time="a", end_time="b"))) == 1
+    assert len(list(client(transport).exercises(**WINDOW))) == 1
 
 
 def test_a_missing_data_points_key_yields_nothing() -> None:
     transport = FakeTransport(json_response({}))
-    assert list(client(transport).exercises(start_time="a", end_time="b")) == []
+    assert list(client(transport).exercises(**WINDOW)) == []
 
 
 def test_endless_pagination_is_refused_rather_than_run_forever() -> None:
@@ -152,7 +256,7 @@ def test_endless_pagination_is_refused_rather_than_run_forever() -> None:
     ]
     transport = FakeTransport(*pages)
     with pytest.raises(UnexpectedPayload, match="still paginating"):
-        list(client(transport).exercises(start_time="a", end_time="b"))
+        list(client(transport).exercises(**WINDOW))
     assert transport.calls == MAX_PAGES
 
 
@@ -162,13 +266,13 @@ def test_endless_pagination_is_refused_rather_than_run_forever() -> None:
 def test_a_non_object_response_is_reported() -> None:
     transport = FakeTransport(json_response([1, 2, 3]))
     with pytest.raises(UnexpectedPayload, match="expected an object"):
-        list(client(transport).exercises(start_time="a", end_time="b"))
+        list(client(transport).exercises(**WINDOW))
 
 
 def test_a_non_list_data_points_is_reported() -> None:
     transport = FakeTransport(json_response({"dataPoints": {"oops": 1}}))
     with pytest.raises(UnexpectedPayload, match="expected a list"):
-        list(client(transport).exercises(start_time="a", end_time="b"))
+        list(client(transport).exercises(**WINDOW))
 
 
 @pytest.mark.parametrize(
@@ -178,19 +282,19 @@ def test_a_non_list_data_points_is_reported() -> None:
 def test_a_data_point_missing_its_name_or_exercise_is_reported(raw: dict[str, Any]) -> None:
     transport = FakeTransport(json_response({"dataPoints": [raw]}))
     with pytest.raises(UnexpectedPayload, match="name/exercise"):
-        list(client(transport).exercises(start_time="a", end_time="b"))
+        list(client(transport).exercises(**WINDOW))
 
 
 def test_an_exercise_without_an_interval_is_reported() -> None:
     transport = FakeTransport(json_response({"dataPoints": [{"name": "n", "exercise": {}}]}))
     with pytest.raises(UnexpectedPayload, match="no interval"):
-        list(client(transport).exercises(start_time="a", end_time="b"))
+        list(client(transport).exercises(**WINDOW))
 
 
 def test_missing_optional_fields_default_rather_than_raise() -> None:
     raw = {"name": "users/1/dataTypes/exercise/dataPoints/9", "exercise": {"interval": {}}}
     transport = FakeTransport(json_response({"dataPoints": [raw]}))
-    (found,) = list(client(transport).exercises(start_time="a", end_time="b"))
+    (found,) = list(client(transport).exercises(**WINDOW))
     assert (found.exercise_type, found.display_name, found.start_time) == ("", "", "")
     assert found.distance_m is None
 
@@ -199,21 +303,21 @@ def test_the_corrected_spelling_of_the_distance_field_is_also_accepted() -> None
     """Google's own example spells it `distanceMillimiters`. Survive them fixing it."""
     raw = exercise_payload(metricsSummary={"distanceMillimeters": 5000})
     transport = FakeTransport(json_response({"dataPoints": [raw]}))
-    (found,) = list(client(transport).exercises(start_time="a", end_time="b"))
+    (found,) = list(client(transport).exercises(**WINDOW))
     assert found.distance_m == 5.0
 
 
 def test_a_summary_that_is_not_an_object_gives_no_distance() -> None:
     raw = exercise_payload(metricsSummary="none")
     transport = FakeTransport(json_response({"dataPoints": [raw]}))
-    found = next(iter(client(transport).exercises(start_time="a", end_time="b")))
+    found = next(iter(client(transport).exercises(**WINDOW)))
     assert found.distance_m is None
 
 
 def test_a_summary_with_no_distance_field_at_all_gives_none() -> None:
     raw = exercise_payload(metricsSummary={"steps": 2000, "caloriesKcal": 120})
     transport = FakeTransport(json_response({"dataPoints": [raw]}))
-    found = next(iter(client(transport).exercises(start_time="a", end_time="b")))
+    found = next(iter(client(transport).exercises(**WINDOW)))
     assert found.distance_m is None
 
 
@@ -221,7 +325,7 @@ def test_a_non_numeric_distance_is_reported() -> None:
     raw = exercise_payload(metricsSummary={"distanceMillimiters": "far"})
     transport = FakeTransport(json_response({"dataPoints": [raw]}))
     with pytest.raises(UnexpectedPayload, match="not a number"):
-        list(client(transport).exercises(start_time="a", end_time="b"))
+        list(client(transport).exercises(**WINDOW))
 
 
 # --- TCX export -------------------------------------------------------------
@@ -302,6 +406,94 @@ def test_an_expired_token_is_refreshed_before_the_call_is_made() -> None:
     subject = GoogleHealth(api, refreshing_tokens(token_transport, expires_at=0.0), base_url=BASE)
     subject.tcx("42")
     assert api.requests[0].headers["Authorization"] == "Bearer renewed"
+
+
+# --- an account with no Google Health data ----------------------------------
+#
+# Found on the very first live call: the OAuth client, both scopes and the token
+# were all correct, and the API still refused, because authorising an account and
+# that account having health data are different things.
+
+
+def not_linked(url: str | None = "https://fitbit.google.com/auth/signup") -> HTTPError:
+    metadata = {} if url is None else {"redirect_uri": url}
+    body = json.dumps(
+        {
+            "error": {
+                "code": 400,
+                "message": "The account is not linked to Google Health.",
+                "status": "FAILED_PRECONDITION",
+                "details": [
+                    {
+                        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+                        "reason": "ACCOUNT_NOT_LINKED",
+                        "domain": "health.googleapis.com",
+                        "metadata": metadata,
+                    }
+                ],
+            }
+        }
+    ).encode()
+    return HTTPError(400, "GET", "https://health.googleapis.com/v4/x", body)
+
+
+def test_an_unlinked_account_is_named_as_such_with_the_signup_url() -> None:
+    with pytest.raises(AccountNotLinked) as caught:
+        client(FakeTransport(not_linked())).tcx("42")
+    assert caught.value.signup_url == "https://fitbit.google.com/auth/signup"
+    assert "not linked to Google Health" in str(caught.value)
+
+
+def test_the_message_suggests_the_other_account_too() -> None:
+    """The usual cause is authorising the account that owns the Cloud project."""
+    with pytest.raises(AccountNotLinked, match="the account your Fitbit data actually lives under"):
+        client(FakeTransport(not_linked())).tcx("42")
+
+
+def test_a_missing_signup_url_still_produces_a_usable_message() -> None:
+    with pytest.raises(AccountNotLinked) as caught:
+        client(FakeTransport(not_linked(url=None))).tcx("42")
+    assert caught.value.signup_url is None
+    assert " at " not in str(caught.value)
+
+
+def test_metadata_that_is_not_an_object_is_survived() -> None:
+    body = json.dumps(
+        {"error": {"details": [{"reason": "ACCOUNT_NOT_LINKED", "metadata": "nope"}]}}
+    ).encode()
+    with pytest.raises(AccountNotLinked) as caught:
+        client(FakeTransport(HTTPError(400, "GET", "u", body))).tcx("42")
+    assert caught.value.signup_url is None
+
+
+def test_it_is_detected_on_a_listing_as_well_as_a_download() -> None:
+    with pytest.raises(AccountNotLinked):
+        list(client(FakeTransport(not_linked())).exercises(**WINDOW))
+
+
+def test_it_is_detected_after_a_token_refresh_too() -> None:
+    tokens = FakeTransport(
+        json_response({"access_token": "second", "refresh_token": "r", "expires_in": 3600})
+    )
+    api = FakeTransport(AuthError(401, "GET", "u", b""), not_linked())
+    with pytest.raises(AccountNotLinked):
+        GoogleHealth(api, refreshing_tokens(tokens), base_url=BASE).tcx("42")
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        b"<html>gateway</html>",
+        b"[]",
+        json.dumps({"error": {"details": [{"reason": "SOMETHING_ELSE"}]}}).encode(),
+        json.dumps({"error": {"details": ["not an object"]}}).encode(),
+        json.dumps({"error": {}}).encode(),
+    ],
+)
+def test_other_bad_requests_are_not_mistaken_for_an_unlinked_account(body: bytes) -> None:
+    with pytest.raises(HTTPError) as caught:
+        client(FakeTransport(HTTPError(400, "GET", "u", body))).tcx("42")
+    assert not isinstance(caught.value, AccountNotLinked)
 
 
 # --- construction -----------------------------------------------------------

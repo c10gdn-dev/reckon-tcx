@@ -853,36 +853,59 @@ is unchanged.
 - **Failed deliveries retry with backoff for up to 7 days**, then are discarded.
   Once the endpoint answers 204 the backlog is delivered.
 
-### The console test
+### What the live API actually does
 
-The single unblocking action, and it settles four things at once. Ten minutes.
+Run against the live API on 2026-08-30 with a real account. Everything below is
+observed, not documented. **The documentation was wrong or incomplete on three
+counts**, which is exactly why §8 opens by saying the live API wins.
 
-1. Create a Google Cloud project and enable the Google Health API.
-2. Configure the OAuth consent screen, **External** user type. Add the owner's
-   own account under Audience.
-3. Create an OAuth client, type **Web application**, redirect URI
-   `http://localhost:8721/callback` — the value `scripts/authorize.py` defaults
-   to.
-4. Add both scopes: `googlehealth.activity_and_fitness.readonly` and
-   `googlehealth.location.readonly`. Without the second, the TCX comes back with
-   no route and nothing errors.
-5. **Press "Publish app"** to move the client from Testing to In production, and
-   record what Google says when you do — whether it publishes, demands
-   verification, or offers the unverified-app path.
-6. `python scripts/authorize.py google --client-id ... --client-secret ...`
+- **Publishing to production without verification works, with restricted
+  scopes.** The consent screen shows an "unverified app" warning that the user
+  clicks past via Advanced. Verification is needed only to remove that screen and
+  the 100-user cap. Branding must be complete first — an application home page
+  and a privacy policy on a domain verified in Search Console — and the console's
+  error for incomplete branding says "OAuth configuration is incomplete" without
+  naming a field, which is a known and widely-reported bug.
+- **The `filter` parameter does not work for the exercise data type.** Every
+  documented spelling was rejected: an `exercise.` prefix gives
+  `INVALID_DATA_POINT_FILTER_DATA_TYPE_MEMBER`, a bare `interval.` gives
+  `INVALID_DATA_POINT_FILTER_DATA_TYPE_RESTRICTION`, and the `startTime`/
+  `endTime` query parameters some pages mention are not bound at all. **The
+  listing is ordered newest first and paginates**, so `health.py` lists and
+  compares client-side, stopping as soon as a page ends before the window. The
+  ordering is observed rather than promised, so it decides only when to stop,
+  never what to yield.
+- **`distanceMillimeters` is spelled correctly on the wire.** The typo
+  `distanceMillimiters` appears only in Google's published example. Both are
+  accepted, correct spelling first.
+- **`exercise.exerciseMetadata.hasGps` exists** and is absent rather than false
+  for activities with no route. It is carried on `Exercise` and is advisory: the
+  file is fetched and uploaded either way.
+- **Int64 fields arrive as JSON strings** — `steps: "496"`,
+  `averageHeartRateBeatsPerMinute: "90"` — while `distanceMillimeters` is a
+  number. Parse permissively.
+- **`ACCOUNT_NOT_LINKED`** is returned as a 400 for a Google account with no
+  Health data, for *every* data type, with the signup URL in
+  `error.details[].metadata.redirect_uri`. Authorising the account that owns the
+  Cloud project rather than the one holding the data is the obvious way to meet
+  it, so `health.py` requests `prompt=select_account consent` to force the
+  chooser, and raises `AccountNotLinked` naming both fixes.
+- **`WEIGHTS` is a real `exerciseType`** and was missing from the sport map.
+- `Sport="Other"` in the exported TCX, confirming §6: the type must come from
+  the API summary.
 
-What to check in the result, in order of how much each changes:
+**Seventeen activities, ten days, end to end:** eleven corrected, five passed
+through as `no_gps` (Weights and Yoga), one as `partial_gps`, none withheld and
+none failed. Factors ranged 0.7229-0.9887, mean 0.9094 — against the calibration
+corpus's 0.7229-0.9943, mean 0.9345. The minimum matches the corpus to four
+decimal places, so the API's TCX for that activity is equivalent to the manual
+export the transform was calibrated against.
 
-| Check | Why it matters |
-|---|---|
-| Is there a `refresh_token` at all? | Absent means `access_type=offline&prompt=consent` did not take, and nothing unattended can work. |
-| Publishing status after step 5 | "In production" means the refresh token should be long-lived and phases 6-7 are worth building. Stuck on "Testing" means a weekly re-auth, and a local timer beats a cloud deployment. |
-| `reckon fetch <id>` on a real activity | Every field name in `health.py` is documentation-derived. This is where a wrong one surfaces. |
-| `exercise.metricsSummary.distanceMillimiters` | Google's own example spells it with the typo. `health.py` accepts both; this says which is real. |
-| Does the TCX carry `Position` elements? | Confirms the location scope took effect. |
-
-Until step 5's answer is known, **do not build `stores/dynamo.py` or `aws/`** —
-they exist only to serve a deployment that a seven-day token makes pointless.
+**Still unconfirmed: the refresh token's lifetime.** The client was published
+before authorisation, which is the documented condition for a long-lived token,
+but that can only be proved by a refresh succeeding after day seven. Until then,
+treat phases 6-7 as probable rather than certain, and expect
+`AuthorisationExpired` to be the signal if the bet was wrong.
 
 ### Strava
 

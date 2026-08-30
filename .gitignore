@@ -46,3 +46,10 @@ mutants/
 .DS_Store
 .idea/
 .vscode/
+
+# Credentials. The OAuth client secret Google Cloud hands you, and the store
+# holding live refresh tokens. Neither is ever committed; both are 0600 on disk.
+client_secret*.json
+*credentials*.json
+store.json
+.reckon/

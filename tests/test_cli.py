@@ -373,19 +373,47 @@ def upload_body(**overrides):
     return json_body(payload)
 
 
-def listing(*ids, exercise_type="WALKING"):
+def ago(days):
+    """A timestamp `days` before now, so it lands inside sync's default window."""
+    import datetime as dt
+
+    moment = dt.datetime.now(tz=dt.UTC) - dt.timedelta(days=days)
+    return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def listing(*ids, exercise_type="WALKING", days_ago=1):
+    """A page of activities. Newest first, as the live API returns them."""
     return json_body(
         {
             "dataPoints": [
                 {
                     "name": f"users/me/dataTypes/exercise/dataPoints/{i}",
                     "exercise": {
-                        "interval": {"startTime": "2026-02-23T13:10:00Z"},
+                        "interval": {"startTime": ago(days_ago)},
                         "exerciseType": exercise_type,
                         "displayName": "Morning Walk",
                     },
                 }
                 for i in ids
+            ]
+        }
+    )
+
+
+def dated_listing(*pairs):
+    """Activities at explicit ages, for exercising the window boundaries."""
+    return json_body(
+        {
+            "dataPoints": [
+                {
+                    "name": f"users/me/dataTypes/exercise/dataPoints/{i}",
+                    "exercise": {
+                        "interval": {"startTime": ago(d)},
+                        "exerciseType": "WALKING",
+                        "displayName": "Walk",
+                    },
+                }
+                for i, d in pairs
             ]
         }
     )
@@ -539,26 +567,31 @@ def test_sync_reports_one_line_per_activity(authorised):
     assert "2 uploaded" in report
 
 
-def test_sync_accepts_a_bare_date(authorised):
-    transport = transport_of(listing())
-    code, _, _ = sync("--since", "2026-08-01", "--store", str(authorised), transport=transport)
+def test_since_excludes_anything_older(authorised):
+    """The window is applied by the client, so assert on what comes through."""
+    import datetime as dt
+
+    cutoff = (dt.datetime.now(tz=dt.UTC) - dt.timedelta(days=5)).strftime("%Y-%m-%d")
+    transport = transport_of(
+        dated_listing(("recent", 2), ("ancient", 40)), CORRECTABLE, upload_body(activity_id=1)
+    )
+    code, report, _ = sync("--since", cutoff, "--store", str(authorised), transport=transport)
     assert code == 0
-    assert "2026-08-01T00%3A00%3A00Z" in transport.requests[0].url
+    assert "recent" in report
+    assert "ancient" not in report
 
 
-def test_sync_accepts_a_full_timestamp(authorised):
+def test_a_full_timestamp_with_an_offset_is_accepted(authorised):
+    from reckon.cli import _timestamp
+
+    assert _timestamp("2026-08-01T09:30:00+01:00") == "2026-08-01T08:30:00Z"
+    assert _timestamp("2026-08-01") == "2026-08-01T00:00:00Z"
+
     transport = transport_of(listing())
     code, _, _ = sync(
-        "--since",
-        "2026-08-01T09:30:00+01:00",
-        "--until",
-        "2026-08-02",
-        "--store",
-        str(authorised),
-        transport=transport,
+        "--since", "2026-08-01T09:30:00+01:00", "--store", str(authorised), transport=transport
     )
     assert code == 0
-    assert "2026-08-01T08%3A30%3A00Z" in transport.requests[0].url  # 09:30 +01:00
 
 
 def test_an_unparseable_date_is_rejected_with_the_accepted_forms():
@@ -567,9 +600,13 @@ def test_an_unparseable_date_is_rejected_with_the_accepted_forms():
 
 
 def test_sync_defaults_to_the_last_week(authorised):
-    transport = transport_of(listing())
-    sync("--store", str(authorised), transport=transport)
-    assert "start_time" in transport.requests[0].url
+    transport = transport_of(
+        dated_listing(("this-week", 3), ("last-month", 30)), CORRECTABLE, upload_body(activity_id=1)
+    )
+    code, report, _ = sync("--store", str(authorised), transport=transport)
+    assert code == 0
+    assert "this-week" in report
+    assert "last-month" not in report
 
 
 def test_sync_over_an_empty_window_says_so(authorised):

@@ -21,6 +21,8 @@ What changed for Reckon, beyond the hostname:
   kind of silent failure §8 exists to catch: `SCOPES` requests both.
 """
 
+import datetime as dt
+import json
 import time
 import urllib.parse
 from collections.abc import Callable, Iterator, Mapping
@@ -29,7 +31,7 @@ from typing import Any
 
 from reckon.clients.http import Request, Response, Transport
 from reckon.clients.oauth import TokenHolder
-from reckon.core.errors import AuthError, ReckonError
+from reckon.core.errors import AuthError, HTTPError, ReckonError
 
 BASE_URL = "https://health.googleapis.com/v4"
 AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -42,11 +44,19 @@ SCOPES = (
     "https://www.googleapis.com/auth/googlehealth.location.readonly",
 )
 
-# Google issues a refresh token only when both are asked for. `prompt=consent`
-# is needed on every re-authorisation, not just the first: without it a user who
-# has already granted access gets an access token and no refresh token, and the
-# unattended half of the pipeline quietly stops working a hour later.
-AUTHORIZE_EXTRA = {"access_type": "offline", "prompt": "consent"}
+# Google issues a refresh token only when `access_type=offline` is asked for, and
+# `prompt=consent` is needed on every re-authorisation, not just the first:
+# without it a user who has already granted access gets an access token and no
+# refresh token, and the unattended half of the pipeline quietly stops working an
+# hour later.
+#
+# `select_account` forces the account chooser even when only one Google session
+# is active. It costs a click, and it is worth it: the account that owns the
+# Cloud project is routinely not the account the health data lives under, and
+# authorising the wrong one succeeds completely — right up to the first API call,
+# which fails with ACCOUNT_NOT_LINKED and no hint that the cause was a choice
+# made several screens earlier.
+AUTHORIZE_EXTRA = {"access_type": "offline", "prompt": "select_account consent"}
 
 # The API's own maximum for exercise, which is far lower than for other data
 # types. Asking for more is not an error; it just does not give you more.
@@ -58,6 +68,31 @@ MAX_PAGE_SIZE = 25
 MAX_PAGES = 200
 
 
+class AccountNotLinked(ReckonError):
+    """The credentials are valid, but the Google account holds no Health data.
+
+    Found on the very first live call. Everything about the request was correct —
+    the OAuth client, both scopes, the token, the URL — and the API still refuses,
+    because authorising an account and that account having health data are
+    different things. Every data type fails identically, so it is not about
+    exercise.
+
+    Deterministic, and no amount of retrying or re-authorising fixes it: someone
+    has to link the account, or authorise a different one. The API returns the
+    address to send them to, so pass it on rather than making them search.
+    """
+
+    def __init__(self, signup_url: str | None) -> None:
+        self.signup_url = signup_url
+        where = f" at {signup_url}" if signup_url else ""
+        super().__init__(
+            f"this Google account is not linked to Google Health, so it has no "
+            f"activities to read; link it{where}, or re-run "
+            f"`python scripts/authorize.py google` and sign in with the account "
+            f"your Fitbit data actually lives under"
+        )
+
+
 class UnexpectedPayload(ReckonError):
     """The API answered 200 with a body this client cannot read.
 
@@ -65,6 +100,21 @@ class UnexpectedPayload(ReckonError):
     told about it loudly is the point — a renamed field is the failure mode
     `PLAN.md` §8 is entirely about.
     """
+
+
+def _moment(text: str) -> "dt.datetime | None":
+    """An RFC 3339 timestamp, or None when it cannot be read."""
+    try:
+        return dt.datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def _required_moment(text: str, name: str) -> dt.datetime:
+    moment = _moment(text)
+    if moment is None:
+        raise ReckonError(f"{name} is not an RFC 3339 timestamp: {text!r}")
+    return moment
 
 
 @dataclass(frozen=True)
@@ -82,6 +132,11 @@ class Exercise:
     start_time: str
     end_time: str
     distance_m: float | None
+    # `exerciseMetadata.hasGps`, absent on activities recorded without a route.
+    # Advisory: the file is still fetched and still uploaded either way, since an
+    # activity Reckon cannot correct must reach Strava regardless. It is worth
+    # carrying because it explains a pass-through before the file is opened.
+    has_gps: bool | None = None
 
     @property
     def id(self) -> str:
@@ -113,30 +168,56 @@ class GoogleHealth:
         end_time: str,
         page_size: int = MAX_PAGE_SIZE,
     ) -> Iterator[Exercise]:
-        """Every exercise starting within `[start_time, end_time)`.
+        """Every exercise starting within `[start_time, end_time)`, newest first.
 
         Times are RFC 3339, the format the webhook notification already uses, so
         a caller can hand the notification's interval straight through. The end
         is exclusive to keep adjacent windows from double-counting a session on
         the boundary — the dedupe store would catch it, but silently.
+
+        **Filtered here rather than by the API.** The documented `filter`
+        parameter — `steps.interval.start_time >= "..."` — is rejected outright
+        for the exercise data type. Every variant tried against the live API on
+        2026-08-30 failed: an `exercise.` prefix gives
+        `INVALID_DATA_POINT_FILTER_DATA_TYPE_MEMBER`, a bare `interval.` gives
+        `INVALID_DATA_POINT_FILTER_DATA_TYPE_RESTRICTION`, and the
+        `startTime`/`endTime` query parameters some documentation mentions are
+        not bound at all. Rather than keep guessing at an undocumented grammar,
+        list and compare.
+
+        That costs little. The listing comes back ordered newest first, so
+        pagination stops as soon as a page ends before the window; a week's sync
+        is normally a single request of 25.
+
+        The ordering is *observed*, not promised, so it decides only when to
+        stop, never what to yield. Each point is checked against the window on
+        its own merits, and one whose timestamp cannot be read is yielded rather
+        than dropped — over-reporting is recoverable, and the dedupe store
+        catches it. Silently losing an activity is not.
         """
+        window_start = _required_moment(start_time, "start_time")
+        window_end = _required_moment(end_time, "end_time")
         page_token: str | None = None
+
         for _ in range(MAX_PAGES):
             payload = self._get_json(
                 f"{self._collection()}/dataPoints",
                 {
                     "pageSize": str(min(page_size, MAX_PAGE_SIZE)),
-                    "filter": (
-                        f'exercise.interval.start_time >= "{start_time}" '
-                        f'AND exercise.interval.start_time < "{end_time}"'
-                    ),
                     **({"pageToken": page_token} if page_token else {}),
                 },
             )
+            oldest: dt.datetime | None = None
             for raw in _sequence(payload, "dataPoints"):
-                yield _exercise(raw)
+                found = _exercise(raw)
+                started = _moment(found.start_time)
+                if started is None or window_start <= started < window_end:
+                    yield found
+                if started is not None:
+                    oldest = started
+
             page_token = payload.get("nextPageToken") or None
-            if page_token is None:
+            if page_token is None or (oldest is not None and oldest < window_start):
                 return
         raise UnexpectedPayload(f"still paginating after {MAX_PAGES} pages; refusing to continue")
 
@@ -180,7 +261,14 @@ class GoogleHealth:
             return self._transport(request)
         except AuthError:
             token = self._tokens.force_refresh()
-            return self._transport(self._request(path, params, accept=accept, token=token))
+            try:
+                return self._transport(self._request(path, params, accept=accept, token=token))
+            except HTTPError as exc:
+                _raise_if_account_unlinked(exc)
+                raise
+        except HTTPError as exc:
+            _raise_if_account_unlinked(exc)
+            raise
 
     def _request(self, path: str, params: Mapping[str, str], *, accept: str, token: str) -> Request:
         url = f"{self._base_url}/{path}?{urllib.parse.urlencode(dict(params))}"
@@ -188,6 +276,25 @@ class GoogleHealth:
         if self._timeout is None:
             return Request("GET", url, headers=headers)
         return Request("GET", url, headers=headers, timeout=self._timeout)
+
+
+# The API reports this as a 400 with a machine-readable reason, and hands back
+# the address the account has to be linked at. Both are worth surfacing verbatim.
+_NOT_LINKED = "ACCOUNT_NOT_LINKED"
+
+
+def _raise_if_account_unlinked(error: HTTPError) -> None:
+    try:
+        payload = json.loads(error.body)
+    except json.JSONDecodeError:
+        return
+    if not isinstance(payload, dict):
+        return
+    for detail in payload.get("error", {}).get("details", []):
+        if isinstance(detail, dict) and detail.get("reason") == _NOT_LINKED:
+            metadata = detail.get("metadata")
+            url = metadata.get("redirect_uri") if isinstance(metadata, dict) else None
+            raise AccountNotLinked(url) from error
 
 
 def _exercise(raw: Mapping[str, Any]) -> Exercise:
@@ -205,7 +312,15 @@ def _exercise(raw: Mapping[str, Any]) -> Exercise:
         start_time=str(interval.get("startTime", "")),
         end_time=str(interval.get("endTime", "")),
         distance_m=_distance_m(exercise.get("metricsSummary")),
+        has_gps=_has_gps(exercise.get("exerciseMetadata")),
     )
+
+
+def _has_gps(metadata: Any) -> bool | None:
+    if not isinstance(metadata, dict):
+        return None
+    value = metadata.get("hasGps")
+    return value if isinstance(value, bool) else None
 
 
 def _distance_m(summary: Any) -> float | None:
@@ -216,13 +331,14 @@ def _distance_m(summary: Any) -> float | None:
     displays to within 0.06%, so no API call is needed to correct an activity.
     This exists to log against, and to notice if that ever stops being true.
 
-    The field is spelled `distanceMillimiters` in Google's published example —
-    a typo carried into the wire format, not a transcription error here. Both
-    spellings are accepted so that a fix on their side does not break Reckon.
+    The live API spells it `distanceMillimeters`, correctly — confirmed against
+    real data on 2026-08-30. Google's *published example* carries the typo
+    `distanceMillimiters`, so that spelling is still accepted second, in case any
+    version of the service matches its own documentation.
     """
     if not isinstance(summary, dict):
         return None
-    for key in ("distanceMillimiters", "distanceMillimeters"):
+    for key in ("distanceMillimeters", "distanceMillimiters"):
         raw = summary.get(key)
         if raw is not None:
             try:

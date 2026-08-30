@@ -60,14 +60,21 @@ SPORT_TYPES: Mapping[str, str] = {
     "HIKING": "Hike",
     "SWIMMING_OPEN_WATER": "Swim",
     "YOGA": "Yoga",
+    "WEIGHTS": "WeightTraining",
     "WORKOUT": "Workout",
 }
 
-# Used when `exerciseType` is one this mapping has never seen. `Run` rather than
-# `Workout` because a wrong-but-plausible type is editable in Strava's UI in two
-# taps, and the alternative — refusing to upload — is the dropping that the whole
-# design says never to do. The warning is what gets the mapping extended.
-DEFAULT_SPORT_TYPE = "Run"
+# Used when `exerciseType` is one this mapping has never seen. Refusing to upload
+# is not an option — that is the dropping the whole design forbids — so the only
+# question is which wrong answer is least wrong.
+#
+# It was `Run`, on the reasoning that a wrong-but-plausible type is two taps to
+# fix in Strava. The first live run corrected that: the account's `WEIGHTS`
+# sessions would have been uploaded as runs, which is not implausible-but-wrong,
+# it is a specific false claim about an activity that involved no running at all.
+# `Workout` is equally editable and asserts nothing untrue. The warning is still
+# what gets the mapping extended.
+DEFAULT_SPORT_TYPE = "Workout"
 
 # Strava's upload is asynchronous. Locally a bounded loop is fine; in Lambda this
 # must become a delayed SQS re-enqueue, because a sleeping handler is billed
