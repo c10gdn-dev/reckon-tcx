@@ -493,7 +493,7 @@ the corpus. A lead-in is normal; only its size is diagnostic.
 
 **Outcome is pass-through, not failure.** A partial-GPS activity is left exactly
 as found and the file is written unchanged, exit 0, with the reason named. It
-still reaches Strava, uncorrected, which is what the owner asked for: Reckon
+still reaches Strava, uncorrected, which is the stated requirement: Reckon
 declines to improve the numbers rather than making the activity disappear.
 Previously this file aborted with exit 1 via the tolerance guard, reporting a
 bare factor breach that named no cause.
@@ -509,7 +509,7 @@ for that reason, and the Tier 1 corpus items below are what would pin it down.
 
 #### Every GPS file loses distance to acquisition, and that is not fixable
 
-Confirmed by the owner 2026-08-29: in every file except the indoor-start run,
+Confirmed against the source app's own figures: in every file except the indoor-start run,
 movement began the moment the activity did. So the acquisition lead-in is not an
 idle period — real ground is covered before the first fix, and no stream records
 it.
@@ -547,13 +547,13 @@ Satisfied:
       self-identifies.
 - [x] **The same walk on two devices**, 2026-08-30 — the only controlled
       comparison in the corpus. Charge 5 with GPS: stream 480.8 m, Lap 377.0 m,
-      Strava reported 0.48 km. Charge 6 on a wearer 10 cm shorter, GPS
-      accidentally off: no distance stream at all, Lap 349.3 m, Strava reported
-      0.3 km. Two results follow. **Strava falls back to `Lap/DistanceMeters`
-      when there is no trackpoint stream**, which is what makes the no-GPS
-      pass-through safe rather than merely harmless. And **stride-derived totals
-      differ by 7.3% between two people on one walk**, which bounds how good the
-      target itself can be.
+      Strava reported 0.48 km. A second device on a different wearer, GPS off:
+      no distance stream at all, Lap 349.3 m, Strava reported 0.3 km. Two results
+      follow. **Strava falls back to `Lap/DistanceMeters` when there is no
+      trackpoint stream**, which is what makes the no-GPS pass-through safe
+      rather than merely harmless. And **stride-derived totals differ by 7.3%
+      between two wearers on one route**, which bounds how good the target itself
+      can be.
 - [x] **A stationary period with GPS running.** Measured **twice, and the two
       disagree by 2.7x**: 119 m over two minutes (78 m/min), and 39.6 m over an
       81-second wait at a crossing (29 m/min, stable at 24-29 m/min across every
@@ -566,7 +566,7 @@ Satisfied:
 
 Still wanted, in descending value:
 
-1. **The paired walk with both devices' GPS enabled.** Offered by the owner. Two
+1. **A paired walk with both devices' GPS enabled.** Two
    watches, one route, one moment. Their GPS streams should measure the same
    physical route, so if the streams agree while the stride totals do not, the
    28% divergence already recorded (1249 m against 974 m) is stride calibration
@@ -603,14 +603,14 @@ Still wanted, in descending value:
 Withdrawn:
 
 - ~~"Start moving before lock"~~ — already true of every file, quantified above.
-- ~~"Repeat the canyon route under clear sky"~~ — it **was** clear sky. The 38%
-  came from three-storey concrete geometry, not sky obstruction, and the owner
-  will not repeat the route.
+- ~~"Repeat the worst-case route under clear sky"~~ — it **was** clear sky. The
+  38% came from close built geometry rather than sky obstruction, so the
+  hypothesis it was meant to test is already answered. Not repeatable.
 
 **Environment is about reflectors near the receiver, not about being outdoors or
 urban.** The canyon walk is the corpus's worst at wiggle 1.229 under clear sky,
-while in the park-then-city walk the *park* half wiggled more than the city
-centre (1.108 against 1.067). Close concrete and tree canopy both scatter the
+while on a walk crossing open ground and then built-up streets, the open half
+wiggled *more* than the built-up half (1.108 against 1.067). Close concrete and tree canopy both scatter the
 signal; open city streets do not. Do not use "urban" as a proxy for noisy.
 
 ### Partial GPS: the case where rescaling is wrong
@@ -641,9 +641,10 @@ recorded.
   rather than a response to standing still. Within the recorded window the track
   is continuous: no pause (largest gap between trackpoints is 3 s), strictly
   time-ordered, and per-minute net displacement never drops below 63 m, including
-  the final minute. Do not infer user behaviour from this file — the owner
-  reports standing still near the end of the walk, and no such period is visible
-  in the recorded track, so the recording evidently stopped before it.
+  the final minute. **Do not infer behaviour from this file.** A stationary
+  period is reported for the end of the activity and no such period appears in
+  the track, so the recording evidently stopped before it. The file describes the
+  recording, not the outing.
 
 Two consequences for the build:
 
@@ -805,7 +806,7 @@ disagree, the API wins and this section gets updated — the rule at the top of 
 is unchanged.
 
 - **Access is self-serve.** A Google Cloud project, an OAuth client, and the
-  owner's own account added as a test user. This is what unblocked phases 4-7,
+  a single account added as a test user. This is what unblocked phases 4-7,
   which were held on whether a Fitbit developer account could still be obtained.
 - **Scopes:** `googlehealth.activity_and_fitness.readonly` **and**
   `googlehealth.location.readonly`. Both are required by `exportExerciseTcx`.
@@ -1089,7 +1090,8 @@ the first screen must carry the decision.
    - splits all shift proportionally; the pace *shape* is preserved
    - timings, dates and route are unchanged, but Strava's *moving* time may
      differ by seconds since it derives that from speed
-   - it is only as good as Fitbit's own total
+   - it is only as good as the device's own total, quantified: two watches on
+     one route have disagreed by 28% and by 7.3%
 7. **Full usage** — the CLI table from §4.
 8. **Google Health and Strava setup** — a short pointer inside `<details>`, not
    the walkthrough itself. **Deviation, taken in phase 5:** the walkthrough lives
@@ -1233,7 +1235,7 @@ scopes, or is stuck with Testing status and its seven-day refresh tokens (§8).
   build step come back — and the `moto` work with it. Its one technical advantage,
   ETag `If-Match` on Table Storage being a neater fit for the token CAS than a
   hand-rolled version attribute, does not outweigh that. The deciding factor was
-  the owner's AWS experience: familiarity is the argument that would have carried
+  existing AWS experience: familiarity is the argument that would have carried
   Azure, and it points the other way. Note that the port/adapter boundary means
   this stays a cheap decision to revisit until `stores/dynamo.py` exists —
   `pipeline.py` and `stores/base.py` are platform-agnostic and `test_layering.py`

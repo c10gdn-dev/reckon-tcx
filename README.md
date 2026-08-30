@@ -108,10 +108,12 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
 
 - **It corrects a systematic bias; it does not recover ground truth.** The
   output is as good as the device's own total and no better. If that total is
-  wrong, Reckon faithfully reproduces it. Two watches walked the same route side
-  by side in testing and reported 1249 m and 974 m — 28% apart, with nothing to
-  say which was right. Treat the result as much better than raw GPS, not as
-  correct.
+  wrong, Reckon faithfully reproduces it. Two watches carried along the same
+  route at the same time have disagreed by 28% in one test (1249 m against
+  974 m) and by 7.3% in another (377 m against 349 m), with nothing to say which
+  was right in either case. Step length differs between wearers and every device
+  estimates it; that estimate is what you are trusting. Treat the result as much
+  better than raw GPS, not as correct.
 - **Splits all shift proportionally.** Every kilometre gets the same factor, so
   the *shape* of your pace curve is preserved exactly, but Reckon cannot tell
   which specific kilometre carried the error.
