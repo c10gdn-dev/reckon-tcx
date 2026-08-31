@@ -38,3 +38,28 @@ def dynamo(aws_credentials: None):
             BillingMode="PAY_PER_REQUEST",
         )
         yield client
+
+
+@pytest.fixture
+def sqs(aws_credentials: None):
+    """A mocked SQS queue, yielding (client, queue_url)."""
+    with mock_aws():
+        client = boto3.client("sqs", region_name=REGION)
+        url = client.create_queue(QueueName="reckon-test")["QueueUrl"]
+        yield client, url
+
+
+@pytest.fixture
+def aws(aws_credentials: None):
+    """DynamoDB and SQS together, for the handler entry points."""
+    with mock_aws():
+        dynamo = boto3.client("dynamodb", region_name=REGION)
+        dynamo.create_table(
+            TableName=TABLE,
+            KeySchema=[{"AttributeName": "pk", "KeyType": "HASH"}],
+            AttributeDefinitions=[{"AttributeName": "pk", "AttributeType": "S"}],
+            BillingMode="PAY_PER_REQUEST",
+        )
+        sqs_client = boto3.client("sqs", region_name=REGION)
+        url = sqs_client.create_queue(QueueName="reckon-test")["QueueUrl"]
+        yield dynamo, sqs_client, url

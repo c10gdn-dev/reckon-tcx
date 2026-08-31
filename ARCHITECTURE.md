@@ -28,7 +28,12 @@ One line each, saying what the module owns.
 | `stores/base.py` | The two persistence ports, as protocols, plus the vocabulary they are defined in. |
 | `stores/file.py` | Local adapter. Both ports in one 0600 JSON file, under `flock`. |
 | `pipeline.py` | Activity id → fetch → rescale → upload → record. Shared by both run modes. |
-| `cli.py` | Argument parsing and configuration. The only module that reads `os.environ`. |
+| `stores/dynamo.py` | AWS adapter. Same two ports over one DynamoDB table; the only place besides `aws/` that may import boto3. |
+| `aws/receiver.py` | Webhook endpoint. Authenticates, enqueues, acknowledges. Nothing else. |
+| `aws/worker.py` | SQS handler. Routes the two message shapes; re-enqueues delayed rather than sleeping. |
+| `aws/queue.py` | The SQS seam, as `http.py` is the network seam. |
+| `aws/config.py` | Assembles the pipeline inside Lambda, as `cli.py` does locally. |
+| `cli.py` | Argument parsing and configuration for the local CLI. |
 
 ## The invariants
 
@@ -64,7 +69,13 @@ transform non-idempotent — a second pass would shrink the file again. This is 
 retry, backoff and expiry branches are untestable or slow. *Convention.*
 
 **No import-time side effects.** `boto3.client(...)` at module scope needs
-credentials and a region, fails in CI, and distorts coverage. *Convention.*
+credentials and a region, fails in CI, and distorts coverage. Both AWS clients
+are therefore built on first use. *Convention, with a test on each.*
+
+**The two stores are interchangeable.** `stores/file.py` and `stores/dynamo.py`
+must be indistinguishable to `pipeline.py` — that is what the whole local/AWS
+split rests on. *Enforced by `tests/test_store_contract.py`, which runs one set
+of behaviours against both.*
 
 ## Why local and AWS share a pipeline
 
