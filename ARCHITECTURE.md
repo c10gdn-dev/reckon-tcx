@@ -34,6 +34,7 @@ One line each, saying what the module owns.
 | `aws/queue.py` | The SQS seam, as `http.py` is the network seam. |
 | `aws/config.py` | Assembles the pipeline inside Lambda, as `cli.py` does locally. |
 | `aws/secrets.py` | Configuration resolution: environment first, then SSM SecureString at run time. |
+| `stores/transfer.py` | Copying one store's contents into another. Direction-agnostic, because both satisfy the same ports. |
 | `deploy/terraform/` | The deployment. Depends on `src/`, never the reverse. |
 | `cli.py` | Argument parsing and configuration for the local CLI. |
 

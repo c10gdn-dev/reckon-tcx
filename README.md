@@ -351,6 +351,75 @@ Roughly half an hour, once:
 
 </details>
 
+## Running it on AWS
+
+Optional, and only worth it if you want activities corrected without running a
+command. Steady-state cost is pennies a month — a handful of Lambda invocations,
+a nearly-empty DynamoDB table and an SQS queue that is idle almost all the time.
+
+<details>
+<summary><strong>Deploying</strong></summary>
+
+```
+Google Health ──POST──► Lambda receiver ──► SQS ──► Lambda worker ──► Strava
+                        (Function URL)      +DLQ      │
+                                                      └──► DynamoDB
+```
+
+The same pipeline the CLI runs. Only storage and trigger differ.
+
+**Order matters.** The table starts empty, so registering the webhook before
+migrating your tokens means the first notification reaches a worker with no
+credentials.
+
+1. **Deploy.**
+   ```console
+   $ cd deploy/terraform
+   $ cp terraform.tfvars.example terraform.tfvars   # set alarm_email
+   $ terraform init && terraform apply
+   ```
+2. **Put the secrets in.** Terraform creates five SSM parameters holding a
+   placeholder and never touches their values again, so no secret enters
+   Terraform state.
+   ```console
+   $ aws ssm put-parameter --name /reckon/google_client_secret \
+       --type SecureString --overwrite --value "$SECRET"
+   ```
+   Repeat for `google_client_id`, `strava_client_id`, `strava_client_secret`,
+   and `webhook_secret` — the last is a value you invent, and Google will send it
+   back on every webhook.
+3. **Migrate your tokens**, and the record of what you have already uploaded:
+   ```console
+   $ python scripts/migrate.py --table reckon
+   ```
+   Skip the second part and the first notification will re-process everything
+   you have already synced. Strava would reject the duplicates, so nothing breaks
+   — it just wastes your API budget and fills the log.
+4. **Register the webhook.**
+   ```console
+   $ URL=$(terraform -chdir=deploy/terraform output -raw webhook_url)
+   $ python scripts/subscribe.py create --url "$URL" --secret "$WEBHOOK_SECRET" \
+       --credentials ~/Downloads/client_secret_*.json
+   ```
+   Google verifies the endpoint as it registers it, so `--secret` must match the
+   `webhook_secret` parameter exactly.
+
+**The Function URL has no AWS authentication**, and that is deliberate: Google
+cannot sign requests with SigV4. The shared secret in the `Authorization` header
+is the authentication, compared in constant time. The receiver does nothing but
+authenticate, copy the body to a queue and return — it never trusts the
+notification's contents, and the worker re-fetches everything from the API.
+
+Two alarms email you when something needs a person: a message reaching the
+dead-letter queue, which means an activity did not get to Strava; and the
+authorisation lapsing, which needs `scripts/authorize.py` re-run and cannot be
+automated.
+
+**Teardown** is `terraform destroy`. The SSM parameters and their values go with
+it.
+
+</details>
+
 ## Alternatives
 
 If you want a click-and-forget bridge rather than a correction tool: FitToStrava,
