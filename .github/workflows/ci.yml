@@ -30,6 +30,25 @@ jobs:
       - name: Test with 100% coverage gate
         run: uv run pytest
 
+  terraform:
+    # `deploy/terraform/` has no unit tests and coverage does not apply to it, so
+    # the gate is the provider's own checking: formatting and a full validate,
+    # which catches a missing argument or a mistyped reference. Neither needs AWS
+    # credentials, so this runs on every pull request like the rest.
+    name: terraform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16"
+      - name: Check formatting
+        run: terraform -chdir=deploy/terraform fmt -check -diff
+      - name: Validate
+        run: |
+          terraform -chdir=deploy/terraform init -backend=false -input=false
+          terraform -chdir=deploy/terraform validate
+
   mutation:
     # Non-blocking. Mutation testing is a signal about the tests, not a gate on
     # the code, and a slow flaky gate gets ignored or disabled. It runs on the

@@ -33,6 +33,8 @@ One line each, saying what the module owns.
 | `aws/worker.py` | SQS handler. Routes the two message shapes; re-enqueues delayed rather than sleeping. |
 | `aws/queue.py` | The SQS seam, as `http.py` is the network seam. |
 | `aws/config.py` | Assembles the pipeline inside Lambda, as `cli.py` does locally. |
+| `aws/secrets.py` | Configuration resolution: environment first, then SSM SecureString at run time. |
+| `deploy/terraform/` | The deployment. Depends on `src/`, never the reverse. |
 | `cli.py` | Argument parsing and configuration for the local CLI. |
 
 ## The invariants
@@ -156,6 +158,31 @@ job.
 coverage of §5's guards needs inputs that mostly do not occur in real data.
 `tests/fixtures/*.tcx` do a different job: they are anonymised real exports,
 proving the parser copes with what the device actually emits.
+
+## The deployment
+
+`archive_file` zips `src/` directly with `source_dir = "../../src"`, so the
+archive root is `reckon/` and handler strings resolve as
+`reckon.aws.receiver.handler`. No layer, no container, no registry, no build
+step. This works **only** because the runtime dependencies are zero and boto3
+ships in the Lambda runtime; adding one third-party package replaces this with a
+build pipeline.
+
+Two deployment decisions are worth knowing before changing them.
+
+**Secrets are read from SSM at run time, not passed as environment variables.**
+Resolving a SecureString in Terraform would write the plaintext into Terraform
+state *and* into the function's configuration, where `lambda:GetFunction` reads
+it back. Non-secret values — the table name, the queue URL — are environment
+variables, and `aws/secrets.py` checks the environment before SSM so a laptop and
+a Lambda are configured identically.
+
+**Concurrency is bounded on the event source mapping, not the function.**
+`scaling_config { maximum_concurrency = 2 }`, never
+`reserved_concurrent_executions = 1`. Reserved concurrency of 1 has a known
+failure mode with SQS: the poller scales independently of the throttle, throttled
+deliveries expire their visibility timeout, receive counts climb, and healthy
+messages poison into the DLQ.
 
 ## Where the bodies are buried
 

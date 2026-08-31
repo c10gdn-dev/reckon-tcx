@@ -38,14 +38,14 @@ UNAUTHORISED = 401
 
 def handler(event: Mapping[str, Any], context: Any = None) -> dict[str, Any]:
     """Lambda Function URL entry point. Wired by Terraform in phase 7."""
-    import os
-
+    from reckon.aws.config import from_environment
     from reckon.aws.queue import Sqs
+    from reckon.aws.secrets import Secrets
 
     return receive(
         event,
-        secret=os.environ["RECKON_WEBHOOK_SECRET"],
-        enqueue=Sqs(os.environ["RECKON_QUEUE_URL"]).send,
+        secret=Secrets()("RECKON_WEBHOOK_SECRET"),
+        enqueue=Sqs(from_environment("RECKON_QUEUE_URL")).send,
     )
 
 

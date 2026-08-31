@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars and edit. Nothing here is secret; the five secrets go
+# into SSM by hand after the first apply, so no plaintext enters Terraform state.
+
+region = "eu-west-2"
+name   = "reckon"
+
+# Leave empty to create the alarm topic without a subscription.
+alarm_email = "you@example.com"
+
+log_retention_days     = 14
+worker_timeout_seconds = 60

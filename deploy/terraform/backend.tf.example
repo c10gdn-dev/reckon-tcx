@@ -1,0 +1,15 @@
+# Copy to backend.tf if you want remote state. Local state is fine for a
+# single-operator deployment, and is the default.
+#
+# `use_lockfile = true` is S3 native locking, which needs Terraform >= 1.10 and
+# replaces the legacy DynamoDB lock table — do not add one.
+
+terraform {
+  backend "s3" {
+    bucket       = "your-terraform-state-bucket"
+    key          = "reckon/terraform.tfstate"
+    region       = "eu-west-2"
+    encrypt      = true
+    use_lockfile = true
+  }
+}

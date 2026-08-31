@@ -63,3 +63,22 @@ def aws(aws_credentials: None):
         sqs_client = boto3.client("sqs", region_name=REGION)
         url = sqs_client.create_queue(QueueName="reckon-test")["QueueUrl"]
         yield dynamo, sqs_client, url
+
+
+@pytest.fixture
+def ssm(aws_credentials: None):
+    """A mocked SSM with one SecureString, yielding (client, recorded reads)."""
+    with mock_aws():
+        client = boto3.client("ssm", region_name=REGION)
+        client.put_parameter(
+            Name="/reckon/google_client_secret", Value="ssm-value", Type="SecureString"
+        )
+        calls: list[str] = []
+        original = client.get_parameter
+
+        def spy(**kwargs):
+            calls.append(kwargs["Name"])
+            return original(**kwargs)
+
+        client.get_parameter = spy
+        yield client, calls

@@ -16,6 +16,7 @@ import os
 import time
 from collections.abc import Callable
 
+from reckon.aws.secrets import Secrets
 from reckon.clients import health as health_api
 from reckon.clients import strava as strava_api
 from reckon.clients.http import Transport, retrying, send
@@ -25,7 +26,12 @@ from reckon.stores.dynamo import DynamoStore
 
 
 def from_environment(name: str) -> str:
-    """The default secret source: an environment variable that must be present."""
+    """An environment variable that must be present.
+
+    Used for values that are not secret — the table name, the queue URL — and as
+    the local-development fallback. Secrets come from `aws.secrets.Secrets`,
+    which checks the environment first and then SSM.
+    """
     try:
         return os.environ[name]
     except KeyError:
@@ -36,11 +42,12 @@ def build_pipeline(
     *,
     store: TokenStore | None = None,
     transport: Transport | None = None,
-    secret: Callable[[str], str] = from_environment,
+    secret: Callable[[str], str] | None = None,
     now: Callable[[], float] = time.time,
     dry_run: bool = False,
 ) -> Pipeline:
     """The same pipeline the CLI builds, pointed at DynamoDB."""
+    secret = Secrets() if secret is None else secret
     transport = retrying(send) if transport is None else transport
     store = DynamoStore(secret("RECKON_TABLE"), now=now) if store is None else store
 

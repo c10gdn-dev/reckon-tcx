@@ -16,6 +16,7 @@ from fakes import Clock, FakeTransport, response
 from reckon.aws import receiver, worker
 from reckon.aws.config import build_pipeline, from_environment
 from reckon.aws.queue import Sqs
+from reckon.aws.secrets import Secrets, parameter_name
 from reckon.clients.oauth import Tokens
 from reckon.stores.base import Status
 from reckon.stores.dynamo import DynamoStore
@@ -177,3 +178,50 @@ def test_the_worker_handler_settles_an_upload(aws, monkeypatch: pytest.MonkeyPat
     assert worker.handler(event) == {"processed": 0}
     assert store.get("889672").status is Status.UPLOADED
     assert store.get("889672").strava_activity_id == 555
+
+
+# --- secrets ----------------------------------------------------------------
+#
+# Two sources on purpose. Non-secret names arrive as environment variables;
+# client secrets are SecureStrings read from SSM at run time, because resolving
+# them in Terraform would write the plaintext into state and into the function's
+# visible configuration.
+
+
+def test_a_parameter_name_is_derived_from_the_variable() -> None:
+    """Derived rather than configured twice, so the two cannot drift apart."""
+    assert parameter_name("RECKON_GOOGLE_CLIENT_ID") == "/reckon/google_client_id"
+    assert parameter_name("RECKON_WEBHOOK_SECRET", "/other") == "/other/webhook_secret"
+
+
+def test_the_environment_wins_over_ssm() -> None:
+    """Which is what lets a laptop and a Lambda be configured identically."""
+    secrets = Secrets(client=None, environ={"RECKON_TABLE": "from-env"}.get)
+    assert secrets("RECKON_TABLE") == "from-env"
+
+
+def test_a_secret_absent_from_the_environment_comes_from_ssm(ssm) -> None:
+    client, _ = ssm
+    secrets = Secrets(client=client, environ=lambda _: None)
+    assert secrets("RECKON_GOOGLE_CLIENT_SECRET") == "ssm-value"
+
+
+def test_an_ssm_read_is_cached_for_the_life_of_the_container(ssm) -> None:
+    client, calls = ssm
+    secrets = Secrets(client=client, environ=lambda _: None)
+    secrets("RECKON_GOOGLE_CLIENT_SECRET")
+    secrets("RECKON_GOOGLE_CLIENT_SECRET")
+    assert calls == ["/reckon/google_client_secret"], "one call per cold start, not per use"
+
+
+def test_a_missing_parameter_names_both_places_it_looked(ssm) -> None:
+    client, _ = ssm
+    secrets = Secrets(client=client, environ=lambda _: None)
+    with pytest.raises(KeyError, match="RECKON_NOWHERE is not in the environment"):
+        secrets("RECKON_NOWHERE")
+
+
+def test_the_ssm_client_is_built_lazily(aws_credentials: None) -> None:
+    secrets = Secrets()
+    assert secrets._injected is None
+    assert secrets.client is secrets.client
