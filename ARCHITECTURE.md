@@ -92,6 +92,15 @@ are nothing alike as faults but identical as decisions; a 429 and a 404 are the
 reverse. Catch `Transient` to decide about retrying, the concrete class to decide
 what to tell the user.
 
+**`gps_coverage` is separate from `recording_gaps`.** One asks whether the
+trackpoints carried a position; the other asks whether there were trackpoints at
+all. They sound like the same question and are not: a real file reported 100%
+coverage while 47% of its elapsed time fell between trackpoints. Folding gaps
+into coverage would have made a warning into a refusal, and the two failures
+deserve different answers — a missing *fix* loses distance, a missing
+*trackpoint* loses only shape, because the distance stream chords straight
+across it.
+
 **`Status.on_strava` is separate from whether a correction happened.** An
 activity that reached Strava uncorrected is a *success*: yoga, an indoor walk, a
 track whose GPS dropped out. Collapsing "cannot correct" into "do not upload"
@@ -149,6 +158,16 @@ Things that will look wrong until you know why.
 - **GPS coverage is measured in seconds, not trackpoints.** The watch samples
   roughly half as often without a fix, so counting trackpoints understates a
   dropout badly enough to hide one.
+- **The recording-gap threshold is relative, not absolute.** A gap is an interval
+  longer than `max(3 s, 3 x the file's own median)`. An absolute threshold was
+  written first and was wrong: real files sample at 1 s and 2 s and the synthetic
+  builders at 10 s, so a fixed 3 s called ordinary sampling a gap on every
+  generated fixture. The multiple is the measured one — seventeen of twenty real
+  files top out at exactly 3 s against a 1 s median.
+- **A recording gap warns and never refuses.** The distance stream joins the two
+  ends with a straight line, so no distance is lost, only the shape of that
+  stretch. Refusing would be the dropping the design forbids; correcting
+  silently would say nothing about a file that is half unrecorded.
 - **The exercise listing is filtered client-side.** The API's documented `filter`
   parameter is rejected for that data type in every spelling. The listing is
   ordered newest-first, so paging stops once it passes the window — but the
