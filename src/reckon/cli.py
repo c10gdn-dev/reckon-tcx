@@ -320,7 +320,7 @@ def _analyse_command(args: argparse.Namespace, out: Any, err: Any) -> int:
 def _print_table(measured: list[tuple[str, ActivityStats]], out: Any) -> None:
     header = (
         f"{'file':<12}{'sport':<9}{'factor':>8}{'infl':>8}"
-        f"{'cover':>7}{'wiggle':>8}{'lead':>7}{'lag':>6}{'dMove':>7}"
+        f"{'cover':>7}{'gaps':>6}{'wiggle':>8}{'lead':>7}{'lag':>6}{'dMove':>7}"
     )
     print(header, file=out)
     print("-" * len(header), file=out)
@@ -328,7 +328,8 @@ def _print_table(measured: list[tuple[str, ActivityStats]], out: Any) -> None:
         print(
             f"{name[:11]:<12}{s.sport[:8]:<9}"
             f"{_num(s.factor, '.4f'):>8}{_pct(s.inflation):>8}"
-            f"{s.gps_coverage * 100:>6.1f}%{_num(s.wiggle, '.3f'):>8}"
+            f"{s.gps_coverage * 100:>6.1f}%{s.gap_fraction * 100:>5.1f}%"
+            f"{_num(s.wiggle, '.3f'):>8}"
             f"{_num(s.lead_in_s, '.0f'):>6}s{_num(s.start_lag_s, '.0f'):>5}s"
             f"{s.moving_delta_s:>+6.0f}s",
             file=out,

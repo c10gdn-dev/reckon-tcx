@@ -46,6 +46,17 @@ MIN_GPS_COVERAGE = 0.80
 # 0.9943. The margin above 1.0 absorbs rounding in the two recorded totals.
 MAX_CREDIBLE_FACTOR = 1.005
 
+# Share of an activity's elapsed time that may fall between trackpoints before
+# the result says so. Distance survives a gap — the stream chords straight across
+# it — so this warns and never refuses.
+#
+# A judgement inside an observed void, and flagged as such. Seventeen of twenty
+# corpus files have no gap at all; the two with minor ones sit at 0.6% and 1.2%;
+# the one real case is 47.5%. Nothing has been seen between 1.2% and 47.5%, so
+# 5% is an order of magnitude clear of the benign cases and an order below the
+# real one, which is the most that can honestly be claimed for it.
+MAX_GAP_FRACTION = 0.05
+
 # Number of decimal places kept when writing a scaled value back. Distances are
 # metres and speeds are m/s; seven places is far beyond the precision of either
 # measurement, so this only exists to stop float repr from writing 17 digits.
@@ -126,6 +137,7 @@ def rescale_tcx(
     tolerance: float = DEFAULT_TOLERANCE,
     on_tolerance: ToleranceAction = ToleranceAction.ABORT,
     min_gps_coverage: float = MIN_GPS_COVERAGE,
+    max_gap_fraction: float = MAX_GAP_FRACTION,
 ) -> RescaleResult:
     """Rescale the distance stream in `tcx_bytes` so its total is `target_distance_m`.
 
@@ -186,6 +198,19 @@ def rescale_tcx(
             # Multiplication preserves monotonicity, so this is worth saying but
             # not worth stopping for.
             warnings.append(f"activity {name}: distance stream is not monotonic")
+
+        gaps = tcx.recording_gaps(activity)
+        if gaps.fraction > max_gap_fraction:
+            # Not a skip. `gps_coverage` asks whether trackpoints carried a fix;
+            # this asks whether there were trackpoints at all, and the answers
+            # differ — a file can be 100% covered and half unrecorded. Distance
+            # is intact either way, so the route's shape is what degrades, and
+            # the caller is told rather than overruled.
+            warnings.append(
+                f"activity {name}: {gaps.fraction * 100:.0f}% of elapsed time has no "
+                f"trackpoint ({gaps.count} gaps, longest {gaps.largest_s:.0f}s); the "
+                f"distance is intact but the route is chorded across them"
+            )
         scalable.append(activity)
         gps_total += final
 

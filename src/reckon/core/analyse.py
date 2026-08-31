@@ -47,6 +47,7 @@ class ActivityStats:
     haversine_m: float
     factor: float | None
     gps_coverage: float
+    gap_fraction: float
     wiggle: float | None
     lead_in_s: float | None
     start_lag_s: float | None
@@ -114,6 +115,7 @@ def analyse_tcx(data: bytes) -> ActivityStats:
         haversine_m=_path([p for _, p in positions]),
         factor=factor,
         gps_coverage=tcx.gps_coverage(activity),
+        gap_fraction=tcx.recording_gaps(activity).fraction,
         wiggle=_wiggle(positions),
         lead_in_s=(positions[0][0] - samples[0][0]).total_seconds() if positions else None,
         start_lag_s=_start_lag(activity, samples[0][0]),

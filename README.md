@@ -213,7 +213,7 @@ stream is rescaled.
 
 ```console
 $ reckon analyse --corpus training-data/ --plot
-file        sport      factor    infl  cover  wiggle   lead   lag  dMove
+file        sport      factor    infl  cover  gaps  wiggle   lead   lag  dMove
 ...
 16 of 20 corrected
 factor  0.7229-0.9943  mean 0.8974  stdev 0.0974
@@ -236,6 +236,7 @@ rather than fabricating data:
 | No `DistanceMeters` in the stream, or a zero total | Passed through unchanged. Reckon will not invent a stream. |
 | Partial GPS — the watch lost its lock for part of the activity | Passed through unchanged. Scaling would attribute the missing distance to the part of the route that *was* recorded. |
 | A non-monotonic stream | Warns and proceeds; multiplication preserves ordering. |
+| Part of the activity has no trackpoints at all | Warns and proceeds. The distance survives — the file joins the two ends with a straight line — but the shape of that stretch is gone, so splits across it are approximate. |
 | A factor further below 1 than `--tolerance` | Aborts by default. The stream over-measured by more than jitter can explain, so the target is probably wrong. |
 | A factor above 1 | The stream measured *short*, which jitter cannot cause. Treated as partial GPS when the target came from the file, or as a bad `--distance` when you supplied one. |
 

@@ -539,3 +539,56 @@ def test_skips_name_the_activity_they_refer_to():
 
     assert [(s.activity, s.reason) for s in result.skips] == [("second", SkipReason.NO_GPS)]
     assert result.modified is True
+
+
+# --- the recording-gap warning ----------------------------------------------
+#
+# Added after a real interval session reported 100% GPS coverage while 47% of its
+# elapsed time fell between trackpoints. It warns and never refuses: the stream
+# chords across a gap, so distance survives and only the route's shape degrades.
+
+
+def gappy(gap_seconds: int) -> bytes:
+    """A track sampled every second, interrupted once."""
+    offsets = [0, 1, 2, 3, 4, 5, 5 + gap_seconds, 6 + gap_seconds]
+    points = [
+        builders.trackpoint(offset_seconds=o, distance_m=float(i * 20))
+        for i, o in enumerate(offsets)
+    ]
+    return builders.document(
+        '<Activity Sport="Running"><Id>gappy</Id>'
+        + builders.lap(trackpoints=points, distance_m=130.0)
+        + "</Activity>"
+    )
+
+
+def test_a_large_recording_gap_warns() -> None:
+    result = rescale_tcx(gappy(120))
+    assert any("no trackpoint" in w for w in result.warnings)
+    assert any("longest 120s" in w for w in result.warnings)
+
+
+def test_the_gap_warning_does_not_refuse_the_file() -> None:
+    """Distance survives a gap; only shape is lost. Refusing would be wrong."""
+    result = rescale_tcx(gappy(120))
+    assert result.modified is True
+    assert result.skips == ()
+
+
+def test_an_uninterrupted_track_does_not_warn_about_gaps() -> None:
+    document = builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=930.0)
+    assert not any("no trackpoint" in w for w in rescale_tcx(document).warnings)
+
+
+def test_the_gap_threshold_is_configurable() -> None:
+    assert not any(
+        "no trackpoint" in w for w in rescale_tcx(gappy(120), max_gap_fraction=1.0).warnings
+    )
+
+
+def test_the_warning_names_the_share_and_the_worst_gap() -> None:
+    """Both, because "many small" and "one long" are different problems."""
+    (warning,) = [w for w in rescale_tcx(gappy(60)).warnings if "no trackpoint" in w]
+    assert "%" in warning
+    assert "1 gaps" in warning
+    assert "longest 60s" in warning

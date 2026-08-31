@@ -6,8 +6,10 @@ depends on. Knows nothing about rescaling.
 
 import datetime as dt
 import math
+import statistics
 import xml.etree.ElementTree as ET
 from collections.abc import Iterator
+from dataclasses import dataclass
 
 from reckon.core.errors import MalformedTCX
 
@@ -109,6 +111,74 @@ def gps_coverage(activity: ET.Element) -> float:
         if not marks[i - 1][1]
     )
     return max(0.0, 1.0 - unlocked / span)
+
+
+# What counts as a break in the recording rather than normal sampling, expressed
+# as a multiple of the file's *own* median interval with an absolute floor.
+#
+# Relative rather than fixed, because "normal" differs per file: the corpus holds
+# files sampling at 1 s and at 2 s, and a synthetic fixture may sample at 10 s.
+# An absolute threshold would call ordinary sampling a gap on any of them.
+#
+# The multiple is measured, not chosen. Seventeen of the twenty corpus files have
+# a maximum interval of exactly 3 s against a 1 s median — three times — and none
+# exceeds it. The 2 s-median files also top out at 3 s, comfortably inside their
+# own 6 s threshold. Both thresholds reproduce the corpus exactly, and the floor
+# stops a hypothetical sub-second recorder from calling every sample a gap.
+GAP_MULTIPLE = 3.0
+GAP_FLOOR_SECONDS = 3.0
+
+
+@dataclass(frozen=True)
+class Gaps:
+    """Time the recorder skipped entirely, as distinct from time without a fix.
+
+    `gps_coverage` answers "did the trackpoints have positions". This answers
+    "were there trackpoints at all". They are different failures and only one of
+    them was visible before: a file whose every trackpoint carries a fix reports
+    100% coverage even when half its elapsed time falls between trackpoints.
+
+    Distance is *not* lost to a gap — the stream chords straight across it — so
+    this is not grounds for refusing to correct. Shape is lost, which is worth
+    saying out loud.
+    """
+
+    count: int
+    total_s: float
+    largest_s: float
+    span_s: float
+
+    @property
+    def fraction(self) -> float:
+        """Share of elapsed time with no trackpoint in it."""
+        return 0.0 if self.span_s <= 0 else self.total_s / self.span_s
+
+
+def recording_gaps(activity: ET.Element, minimum: float | None = None) -> Gaps:
+    """Intervals between consecutive trackpoints that are breaks, not sampling.
+
+    `minimum` defaults to `max(GAP_FLOOR_SECONDS, GAP_MULTIPLE x median interval)`,
+    so the answer does not depend on how often this particular recorder writes.
+    """
+    times: list[dt.datetime] = []
+    for point in trackpoints(activity):
+        element = point.find(TIME)
+        if element is None:
+            raise MalformedTCX("trackpoint has no Time; cannot measure recording gaps")
+        times.append(read_time(element))
+    if len(times) < 2:
+        return Gaps(0, 0.0, 0.0, 0.0)
+
+    spans = [(times[i] - times[i - 1]).total_seconds() for i in range(1, len(times))]
+    if minimum is None:
+        minimum = max(GAP_FLOOR_SECONDS, GAP_MULTIPLE * statistics.median(spans))
+    over = [s for s in spans if s > minimum]
+    return Gaps(
+        count=len(over),
+        total_s=sum(over),
+        largest_s=max(spans),
+        span_s=(times[-1] - times[0]).total_seconds(),
+    )
 
 
 def read_time(element: ET.Element) -> dt.datetime:
