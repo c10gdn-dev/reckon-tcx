@@ -32,7 +32,7 @@ Real activities from a Fitbit Charge 5:
 Reckon rescales the distance stream so the total matches the device's own
 figure, leaving the GPS geometry and every timestamp untouched.
 
-The size of the correction is not fixed. Across eighteen activities it ranged
+The size of the correction is not fixed. Across twenty activities it ranged
 from 0.6% to 38%, depending almost entirely on how noisy the track was:
 
 ![Distribution of the correction factor across the test corpus](docs/factor-distribution.svg)
@@ -61,7 +61,7 @@ Fitbit and Strava disagree because they compute distance differently, and one of
 them is summing noise.
 
 **Strava sums the distance stream in the file, unchanged.** Verified across
-eighteen exports, and then tested directly: a rescaled file uploaded by hand came
+twenty exports, and then tested directly: a rescaled file uploaded by hand came
 back reporting the rescaled total, 21.4 km, where the original stream said
 24.06 km and a raw haversine sum of the same coordinates said 24.08 km. Strava
 takes the stream at face value and does not recompute from position.
@@ -133,7 +133,7 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   where the distance changed by 10.8% — because Strava derives it from speed, and
   speed is distance over time.
 - **Elevation is not corrected.** See below; this is deliberate.
-- **The factor is not a constant.** Across eighteen activities it ranged 0.72–0.99
+- **The factor is not a constant.** Across twenty activities it ranged 0.72–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that
   particular track was. Reckon computes it per file and refuses to guess.
 - **A partial GPS track cannot be corrected, and Reckon detects that and
@@ -215,8 +215,8 @@ stream is rescaled.
 $ reckon analyse --corpus training-data/ --plot
 file        sport      factor    infl  cover  wiggle   lead   lag  dMove
 ...
-14 of 18 corrected
-factor  0.7229-0.9943  mean 0.9032  stdev 0.0955
+16 of 20 corrected
+factor  0.7229-0.9943  mean 0.8974  stdev 0.0974
 worst moving-time change  58s
 skipped  no_gps  x3
 skipped  partial_gps  x1
@@ -303,7 +303,7 @@ open, because it contains refresh tokens.
 ## Status
 
 Alpha, and honest about it. The offline commands — `rescale` and `analyse` —
-work and are validated against eighteen real exports, including a hand upload to
+work and are validated against twenty real exports, including a hand upload to
 Strava confirming it honours the corrected stream.
 
 `reckon fetch` and `reckon sync` are built: authorise both services once, and
