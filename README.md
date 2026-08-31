@@ -2,11 +2,7 @@
 
 **Corrects Fitbit's GPS distance inflation before uploading to Strava.**
 
-![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue)
-![License](https://img.shields.io/badge/license-MIT-blue)
-
-<!-- CI and coverage badges go here once the repository has a remote. They are
-     deliberately omitted rather than pointed at a guessed URL. -->
+<!-- No badges, deliberately. They advertise a repository; this one is a tool. -->
 
 ## The problem
 
@@ -34,8 +30,6 @@ figure, leaving the GPS geometry and every timestamp untouched.
 
 The size of the correction is not fixed. Across twenty activities it ranged
 from 0.6% to 38%, depending almost entirely on how noisy the track was:
-
-![Distribution of the correction factor across the test corpus](docs/factor-distribution.svg)
 
 ## Quickstart
 
@@ -212,7 +206,7 @@ covered, how noisy each track was, and how far the derived figures move when the
 stream is rescaled.
 
 ```console
-$ reckon analyse --corpus training-data/ --plot
+$ reckon analyse --corpus training-data/
 file        sport      factor    infl  cover  gaps  wiggle   lead   lag  dMove
 ...
 16 of 20 corrected
@@ -220,12 +214,8 @@ factor  0.7229-0.9943  mean 0.8974  stdev 0.0974
 worst moving-time change  58s
 skipped  no_gps  x3
 skipped  partial_gps  x1
-wrote docs/factor-distribution.svg
 ```
 
-`--plot` writes a histogram as hand-emitted SVG. There is no plotting library
-here; a histogram is a few dozen rectangles, and the zero-dependency property is
-worth more than the convenience.
 
 **Guards.** Reckon leaves an activity alone, with a warning naming the reason,
 rather than fabricating data:

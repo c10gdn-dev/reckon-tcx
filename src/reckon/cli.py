@@ -18,7 +18,6 @@ from reckon import __version__
 from reckon.clients import health as health_api
 from reckon.clients import strava as strava_api
 from reckon.clients.http import retrying, send
-from reckon.core import svg
 from reckon.core.analyse import ActivityStats, analyse_tcx, summarise
 from reckon.core.errors import ReckonError
 from reckon.core.rescale import DEFAULT_TOLERANCE, RescaleResult, ToleranceAction, rescale_tcx
@@ -27,7 +26,6 @@ from reckon.pipeline import summarise as summarise_outcomes
 from reckon.stores.file import DEFAULT_PATH, FileStore
 
 DEFAULT_CORPUS = Path("training-data")
-DEFAULT_PLOT = Path("docs/factor-distribution.svg")
 
 # How far back `sync` looks when not told. Long enough that a first run picks up
 # a normal week, short enough not to burn the exercise quota 25 at a time.
@@ -111,7 +109,7 @@ def build_parser() -> argparse.ArgumentParser:
             "Measure every TCX file in a directory: the correction factor, how "
             "much of the activity GPS actually covered, how noisy the track was, "
             "and how far the derived figures move when the stream is rescaled. "
-            "Reads only; nothing is written unless --plot is given."
+            "Reads only; nothing is written."
         ),
     )
     analyse.add_argument(
@@ -119,14 +117,6 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=DEFAULT_CORPUS,
         help=f"directory of .tcx files to measure (default {DEFAULT_CORPUS})",
-    )
-    analyse.add_argument(
-        "--plot",
-        nargs="?",
-        type=Path,
-        const=DEFAULT_PLOT,
-        metavar="SVG",
-        help=f"also write a factor histogram here (default {DEFAULT_PLOT})",
     )
     analyse.set_defaults(handler=_analyse_command)
 
@@ -300,20 +290,6 @@ def _analyse_command(args: argparse.Namespace, out: Any, err: Any) -> int:
     for reason, count in summary.skipped:
         print(f"skipped  {reason}  x{count}", file=out)
 
-    if args.plot is not None:
-        factors = [s.factor for _, s in measured if s.factor is not None]
-        if not factors:
-            print("reckon: nothing to plot; no file produced a factor", file=err)
-            return 1
-        args.plot.parent.mkdir(parents=True, exist_ok=True)
-        args.plot.write_bytes(
-            svg.histogram(
-                factors,
-                title=f"Correction factor across {len(factors)} activities",
-                x_label="factor  (corrected total / GPS total)",
-            )
-        )
-        print(f"wrote {args.plot}", file=out)
     return 0
 
 

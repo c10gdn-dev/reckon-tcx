@@ -21,8 +21,8 @@ fmt:  ## Apply formatting and autofixes
 	uv run ruff format .
 	uv run ruff check --fix .
 
-analyse:  ## Report the factor distribution over training-data/ and plot it
-	uv run reckon analyse --plot
+analyse:  ## Report the factor distribution over training-data/
+	uv run reckon analyse
 
 mutate:  ## Mutation-test the transform (advisory, slow)
 	uv run mutmut run --no-progress || true

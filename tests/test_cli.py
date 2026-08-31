@@ -238,6 +238,20 @@ def test_main_defaults_to_the_real_streams(tcx_file, capsysbinary):
 # --- analyse -----------------------------------------------------------------
 
 
+def test_analyse_reports_a_corpus_with_nothing_correctable(tmp_path):
+    """No factor line at all, rather than a summary of an empty set."""
+    directory = tmp_path / "indoor"
+    directory.mkdir()
+    (directory / "yoga.tcx").write_bytes(
+        builders.tcx(distances=(None, None, None), with_position=False, lap_distance_m=0.0)
+    )
+    code, report, _ = analyse("--corpus", str(directory))
+    assert code == 0
+    assert "0 of 1 corrected" in report
+    assert "mean" not in report, "no factors means no distribution to summarise"
+    assert "no_gps" in report
+
+
 @pytest.fixture
 def corpus(tmp_path):
     """Two correctable files and one indoor one, as a miniature training-data/."""
@@ -283,44 +297,6 @@ def test_analyse_reports_a_single_file_without_a_stdev(tmp_path):
 
     assert code == 0
     assert "stdev" not in report
-
-
-def test_analyse_writes_a_plot_when_asked(corpus, tmp_path):
-    destination = tmp_path / "out" / "factors.svg"
-
-    code, report, _ = analyse("--corpus", str(corpus), "--plot", str(destination))
-
-    assert code == 0
-    assert destination.read_bytes().startswith(b"<?xml")
-    assert str(destination) in report
-
-
-def test_analyse_plot_has_a_default_destination(corpus, tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-
-    code, _, _ = analyse("--corpus", str(corpus), "--plot")
-
-    assert code == 0
-    assert (tmp_path / "docs" / "factor-distribution.svg").is_file()
-
-
-def test_analyse_writes_no_plot_by_default(corpus, tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-
-    analyse("--corpus", str(corpus))
-
-    assert not (tmp_path / "docs").exists()
-
-
-def test_analyse_refuses_to_plot_when_nothing_was_corrected(tmp_path):
-    directory = tmp_path / "indoor"
-    directory.mkdir()
-    (directory / "a.tcx").write_bytes(builders.tcx(with_position=False))
-
-    code, _, err = analyse("--corpus", str(directory), "--plot", str(tmp_path / "p.svg"))
-
-    assert code == 1
-    assert "nothing to plot" in err
 
 
 def test_analyse_on_an_empty_directory_exits_one(tmp_path):
