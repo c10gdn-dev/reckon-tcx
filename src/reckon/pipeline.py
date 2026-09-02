@@ -206,6 +206,40 @@ class Pipeline:
             self.logs.record(outcome.entry(self.now()))
         return outcome
 
+    def mark_done(self, *, start_time: str, end_time: str, reason: str) -> list[Outcome]:
+        """Record every activity in a window as handled, without fetching or uploading.
+
+        The adoption step for anyone whose activities already reach Strava by
+        another route. Without it, a first `sync` re-uploads a history that is
+        already there — and Strava's `external_id` deduplication does not save
+        you, because whatever put them there first used its own.
+
+        Recorded as `uploaded` because that is what is true: the activity is on
+        Strava. The reason records that Reckon was not what put it there.
+        """
+        outcomes: list[Outcome] = []
+        for exercise in self.exercises(start_time, end_time):
+            if (known := self.logs.get(exercise.id)) is not None:
+                outcomes.append(
+                    Outcome(
+                        activity_id=known.activity_id,
+                        status=known.status,
+                        name=exercise.display_name,
+                        reason=known.reason,
+                        fresh=False,
+                    )
+                )
+                continue
+            outcome = Outcome(
+                activity_id=exercise.id,
+                status=Status.UPLOADED,
+                name=exercise.display_name,
+                reason=reason,
+            )
+            self.logs.record(outcome.entry(self.now()))
+            outcomes.append(outcome)
+        return outcomes
+
     def fetch(self, activity_id: str, *, raw: bool = False) -> bytes:
         """One activity's TCX, corrected unless `raw`. No store, no upload.
 

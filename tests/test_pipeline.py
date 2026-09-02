@@ -572,3 +572,84 @@ def test_tokens_vanishing_mid_refresh_is_reported_not_guessed_at() -> None:
 
 def test_a_reckon_error_is_what_the_cli_catches() -> None:
     assert issubclass(NotAuthorised, ReckonError)
+
+
+# --- adopting an account that already syncs by another route ----------------
+
+
+def test_mark_done_records_without_fetching_or_uploading() -> None:
+    """The whole point: a first sync must not re-upload a history already there."""
+    listing = json_response(
+        {
+            "dataPoints": [
+                {
+                    "name": f"users/me/dataTypes/exercise/dataPoints/{i}",
+                    "exercise": {
+                        "interval": {"startTime": "2026-02-15T00:00:00Z"},
+                        "exerciseType": "WALKING",
+                        "displayName": "Walk",
+                    },
+                }
+                for i in ("1", "2")
+            ]
+        }
+    )
+    health = FakeTransport(listing)
+    strava = FakeTransport()
+    logs = FakeLogStore()
+    outcomes = pipeline(health, strava, logs).mark_done(reason="already there", **WINDOW)
+
+    assert [o.activity_id for o in outcomes] == ["1", "2"]
+    assert health.calls == 1, "the listing only; no TCX was downloaded"
+    assert strava.calls == 0
+    assert [e.status for e in logs.recorded] == [Status.UPLOADED, Status.UPLOADED]
+    assert logs.recorded[0].reason == "already there"
+
+
+def test_mark_done_leaves_an_existing_decision_alone() -> None:
+    listing = json_response(
+        {
+            "dataPoints": [
+                {
+                    "name": "users/me/dataTypes/exercise/dataPoints/1",
+                    "exercise": {
+                        "interval": {"startTime": "2026-02-15T00:00:00Z"},
+                        "exerciseType": "WALKING",
+                        "displayName": "Walk",
+                    },
+                }
+            ]
+        }
+    )
+    logs = FakeLogStore(LogEntry("1", Status.WITHHELD, reason="malformed"))
+    (outcome,) = pipeline(FakeTransport(listing), FakeTransport(), logs).mark_done(
+        reason="already there", **WINDOW
+    )
+    assert (outcome.status, outcome.fresh, outcome.reason) == (
+        Status.WITHHELD,
+        False,
+        "malformed",
+    )
+    assert logs.recorded == []
+
+
+def test_a_marked_activity_is_then_skipped_by_sync() -> None:
+    """Proves the seeding actually stops the re-upload."""
+    point = {
+        "name": "users/me/dataTypes/exercise/dataPoints/1",
+        "exercise": {
+            "interval": {"startTime": "2026-02-15T00:00:00Z"},
+            "exerciseType": "WALKING",
+            "displayName": "Walk",
+        },
+    }
+    logs = FakeLogStore()
+    pipeline(
+        FakeTransport(json_response({"dataPoints": [point]})), FakeTransport(), logs
+    ).mark_done(reason="already there", **WINDOW)
+    strava = FakeTransport()
+    outcomes = pipeline(FakeTransport(json_response({"dataPoints": [point]})), strava, logs).sync(
+        **WINDOW
+    )
+    assert [o.fresh for o in outcomes] == [False]
+    assert strava.calls == 0

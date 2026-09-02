@@ -386,7 +386,7 @@ def _build_pipeline(args: argparse.Namespace, *, dry_run: bool = False) -> Pipel
     takes constructed clients and can be exercised without an environment
     (`PLAN.md` §2). This is the only place in the codebase that reads os.environ.
     """
-    transport = args.transport
+    transport = retrying(send) if args.transport is None else args.transport
     store = FileStore(args.store)
     google = token_holder(
         store,
