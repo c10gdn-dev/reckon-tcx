@@ -188,11 +188,21 @@ messages poison into the DLQ.
 
 `docs/diagrams/*.puml` are the source; the committed `.svg` files are generated.
 `make diagrams` renders them and `make check-diagrams` fails if a source is
-invalid or a committed SVG is out of date. CI runs the latter against a **pinned**
-plantuml, because layout shifts between releases and the check compares rendered
-bytes — an unpinned renderer would fail on diagrams nobody had touched. The
-renderer stamps its own version into the output, and `make diagrams` strips it
-for the same reason.
+invalid or a committed SVG is out of date.
+
+**The comparison is on rendered text, not bytes**, because plantuml derives box
+geometry from font metrics — a CI runner without this machine's fonts produces a
+different-but-correct SVG for an unchanged diagram. That was measured rather than
+assumed: rendering one diagram under two fonts gives two different files. Editing
+a diagram means editing its labels, so comparing them catches the failure that
+actually happens.
+
+`make diagrams` also strips two things from plantuml's output. Its version stamp,
+so an upgrade is not mistaken for a change. And every `textLength` /
+`lengthAdjust="spacing"` pair: plantuml pins each string to a width computed from
+Java's font metrics, and a browser resolving `sans-serif` differently — Safari
+does — stretches the letter spacing to hit a width for a font it is not using,
+which makes the labels unreadable on GitHub.
 
 **Be clear about what this catches.** A `.puml` that no longer renders, and an
 SVG that no longer matches its source. It does **not** catch a diagram that

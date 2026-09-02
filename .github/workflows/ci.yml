@@ -61,9 +61,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install a pinned plantuml
-        # Pinned to the version the committed SVGs were rendered with. Layout
-        # shifts between releases and the check compares rendered bytes, so the
-        # distro package would fail on diagrams nobody had touched.
+        # Pinned so a plantuml upgrade is a deliberate change rather than a
+        # surprise. The comparison itself is on rendered text, not bytes, because
+        # box geometry is font-derived and a runner's fonts are not this
+        # machine's.
         run: |
           sudo apt-get update && sudo apt-get install -y graphviz
           curl -fsSL -o "$RUNNER_TEMP/plantuml.jar" \

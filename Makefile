@@ -31,11 +31,23 @@ analyse:  ## Report the factor distribution over training-data/
 
 diagrams:  ## Render docs/diagrams/*.puml to SVG
 	$(PLANTUML) -tsvg docs/diagrams/*.puml
-	@# The renderer stamps its own version into the output. That is not part of
-	@# the diagram, and leaving it in would make every plantuml upgrade look
-	@# like a diagram change to the drift check in CI.
+	@# Two post-processing passes, both necessary.
+	@#
+	@# 1. The renderer stamps its own version into the output. That is not part
+	@#    of the diagram, and leaving it in makes every plantuml upgrade look
+	@#    like a diagram change to the drift check in CI.
+	@#
+	@# 2. plantuml measures every string with Java's font metrics and then pins
+	@#    it to that exact width with textLength + lengthAdjust="spacing". A
+	@#    browser resolving sans-serif to different metrics — Safari does — then
+	@#    stretches or crushes the letter spacing to hit a width computed for a
+	@#    font it is not using, and the labels become unreadable. Removing both
+	@#    attributes lets the browser lay the text out normally; the boxes are
+	@#    generously padded, so nothing overflows.
 	@for f in docs/diagrams/*.svg; do \
-		sed -i.bak 's|<?plantuml [^?]*?>||' "$$f" && rm -f "$$f.bak"; \
+		sed -i.bak -e 's|<?plantuml [^?]*?>||g' \
+		           -e 's| textLength="[0-9.]*"||g' \
+		           -e 's| lengthAdjust="[a-zA-Z]*"||g' "$$f" && rm -f "$$f.bak"; \
 	done
 	@# plantuml exits 0 on a file containing no diagram at all, having produced
 	@# nothing, so insist on one SVG per source. (A missing @enduml is not that
@@ -48,8 +60,7 @@ diagrams:  ## Render docs/diagrams/*.puml to SVG
 
 check-diagrams:  ## Fail if a .puml is invalid or its .svg is out of date
 	$(PLANTUML) -failfast2 -checkonly docs/diagrams/*.puml
-	$(MAKE) diagrams
-	git diff --exit-code -- docs/diagrams
+	uv run python scripts/check_diagrams.py --plantuml "$(PLANTUML)"
 
 mutate:  ## Mutation-test the transform (advisory, slow)
 	uv run mutmut run --no-progress || true
