@@ -25,6 +25,7 @@ from reckon.core.rescale import ToleranceAction
 from reckon.pipeline import (
     DEFAULT_SPORT_TYPE,
     SPORT_TYPES,
+    UPLOAD_DESCRIPTION,
     NotAuthorised,
     Outcome,
     Pipeline,
@@ -187,10 +188,23 @@ def test_a_passed_through_upload_carries_no_correction_note() -> None:
     assert b"corrected by Reckon" not in strava.requests[0].body
 
 
-def test_a_corrected_upload_says_so() -> None:
+def test_a_corrected_upload_carries_the_note() -> None:
     strava = FakeTransport(upload_response(activity_id=555))
     pipeline(FakeTransport(response(body=CORRECTABLE)), strava).process(exercise())
-    assert b"corrected by Reckon" in strava.requests[0].body
+    assert UPLOAD_DESCRIPTION.encode() in strava.requests[0].body
+
+
+def test_the_note_names_the_project_so_the_activity_explains_itself() -> None:
+    """It appears on every corrected activity, so it is one line and it links out."""
+    assert UPLOAD_DESCRIPTION == ("Distance corrected by https://github.com/c10gdn-dev/reckon-tcx")
+
+
+def test_the_note_can_be_replaced() -> None:
+    strava = FakeTransport(upload_response(activity_id=555))
+    pipeline(
+        FakeTransport(response(body=CORRECTABLE)), strava, description="something else"
+    ).process(exercise())
+    assert b"something else" in strava.requests[0].body
 
 
 # --- withheld: deliberately not uploaded ------------------------------------

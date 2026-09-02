@@ -76,6 +76,15 @@ SPORT_TYPES: Mapping[str, str] = {
 # what gets the mapping extended.
 DEFAULT_SPORT_TYPE = "Workout"
 
+# Written into the Strava activity's description, on activities that were
+# actually corrected. A pass-through gets no note, because there is nothing to
+# explain — the numbers are the device's own.
+#
+# It is a field on `Pipeline` rather than a literal so it can be changed without
+# editing the upload path, and it appears on every activity the tool touches, so
+# it is deliberately one line.
+UPLOAD_DESCRIPTION = "Distance corrected by https://github.com/c10gdn-dev/reckon-tcx"
+
 # Strava's upload is asynchronous. Locally a bounded loop is fine; in Lambda this
 # must become a delayed SQS re-enqueue, because a sleeping handler is billed
 # wall-clock time (`PLAN.md` §9). Five attempts matches the cap set there.
@@ -180,6 +189,7 @@ class Pipeline:
     poll_delay: float = POLL_DELAY
     dry_run: bool = False
     sport_types: Mapping[str, str] = field(default_factory=lambda: SPORT_TYPES)
+    description: str = UPLOAD_DESCRIPTION
 
     def sync(self, *, start_time: str, end_time: str) -> list[Outcome]:
         """Process every activity starting in the window, oldest first."""
@@ -298,7 +308,7 @@ class Pipeline:
             name=exercise.display_name or "Activity",
             external_id=exercise.id,
             sport_type=sport_type,
-            description="Distance corrected by Reckon." if base.factor else "",
+            description=self.description if base.factor else "",
         )
         return self._settle(base, self._await(upload))
 
