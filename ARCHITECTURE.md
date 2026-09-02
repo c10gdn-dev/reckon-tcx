@@ -184,6 +184,22 @@ failure mode with SQS: the poller scales independently of the throttle, throttle
 deliveries expire their visibility timeout, receive counts climb, and healthy
 messages poison into the DLQ.
 
+## Diagrams
+
+`docs/diagrams/*.puml` are the source; the committed `.svg` files are generated.
+`make diagrams` renders them and `make check-diagrams` fails if a source is
+invalid or a committed SVG is out of date. CI runs the latter against a **pinned**
+plantuml, because layout shifts between releases and the check compares rendered
+bytes — an unpinned renderer would fail on diagrams nobody had touched. The
+renderer stamps its own version into the output, and `make diagrams` strips it
+for the same reason.
+
+**Be clear about what this catches.** A `.puml` that no longer renders, and an
+SVG that no longer matches its source. It does **not** catch a diagram that
+renders perfectly and describes something the code no longer does — that has
+happened here once, when `upload-lifecycle.puml` still showed a filtered API call
+the live API rejects. Only reading the diagram against the code finds that.
+
 ## Where the bodies are buried
 
 Things that will look wrong until you know why.

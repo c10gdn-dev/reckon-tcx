@@ -49,6 +49,30 @@ jobs:
           terraform -chdir=deploy/terraform init -backend=false -input=false
           terraform -chdir=deploy/terraform validate
 
+  diagrams:
+    # Two failures, both silent otherwise: a .puml that no longer renders, and a
+    # committed .svg that no longer matches the source it was generated from.
+    #
+    # What this does NOT catch is a diagram that renders perfectly and describes
+    # something the code no longer does. That has happened once here, and no tool
+    # finds it — only reading the diagram against the code does.
+    name: diagrams
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install a pinned plantuml
+        # Pinned to the version the committed SVGs were rendered with. Layout
+        # shifts between releases and the check compares rendered bytes, so the
+        # distro package would fail on diagrams nobody had touched.
+        run: |
+          sudo apt-get update && sudo apt-get install -y graphviz
+          curl -fsSL -o "$RUNNER_TEMP/plantuml.jar" \
+            "https://github.com/plantuml/plantuml/releases/download/v${PLANTUML_VERSION}/plantuml-${PLANTUML_VERSION}.jar"
+        env:
+          PLANTUML_VERSION: "1.2026.7"
+      - name: Validate sources and check the committed SVGs are current
+        run: make check-diagrams PLANTUML="java -jar $RUNNER_TEMP/plantuml.jar"
+
   mutation:
     # Non-blocking. Mutation testing is a signal about the tests, not a gate on
     # the code, and a slow flaky gate gets ignored or disabled. It runs on the
