@@ -350,13 +350,37 @@ a nearly-empty DynamoDB table and an SQS queue that is idle almost all the time.
 <details>
 <summary><strong>Deploying</strong></summary>
 
-```
-Google Health ──POST──► Lambda receiver ──► SQS ──► Lambda worker ──► Strava
-                        (Function URL)      +DLQ      │
-                                                      └──► DynamoDB
+```mermaid
+flowchart LR
+    GH["Google Health"] -->|"POST, shared secret"| RX["receiver<br/><small>Function URL</small>"]
+    RX -->|"204"| GH
+    RX --> Q["work queue<br/><small>SQS</small>"]
+    Q --> W["worker"]
+    W -->|"re-fetch activity"| GH
+    W -->|"upload corrected TCX"| ST["Strava"]
+    W <-->|"tokens, dedupe"| DB[("DynamoDB")]
+    W -.->|"delayed upload check"| Q
+    Q -.->|"3 failures"| DLQ["dead letter"]
+    DLQ --> AL{{"alarm → email"}}
+
+    classDef ext fill:#f3f1ec,stroke:#8a8378,color:#2b2b28
+    classDef mine fill:#e8eef3,stroke:#5b7f9c,color:#22303a
+    classDef warn fill:#f6ebe6,stroke:#b07a5e,color:#3a2a22
+    class GH,ST ext
+    class RX,W,Q,DB mine
+    class DLQ,AL warn
 ```
 
-The same pipeline the CLI runs. Only storage and trigger differ.
+The same pipeline the CLI runs — `pipeline.py` is identical code in both. Only
+storage and trigger differ: a webhook instead of you typing a command, and
+DynamoDB instead of a JSON file.
+
+The dotted lines are the two paths that are easy to miss. A Strava upload is
+asynchronous, so the worker re-enqueues a delayed check on itself rather than
+sleeping — a sleeping Lambda is billed wall-clock time. And a message only
+reaches the dead-letter queue after three genuinely transient failures;
+deterministic outcomes are recorded and the message deleted, so they never
+get there.
 
 **Order matters.** The table starts empty, so registering the webhook before
 migrating your tokens means the first notification reaches a worker with no
@@ -415,6 +439,78 @@ it.
 If you want a click-and-forget bridge rather than a correction tool: FitToStrava,
 SyncMyTracks, Health Sync, RunGap. Note that tapiriik has no Fitbit connector.
 None of these correct the inflation — that is the whole reason this exists.
+
+## FAQ
+
+**My corrected distance still doesn't match what I measured on a map. Why?**
+
+Because Reckon corrects towards your watch's total, not towards the truth. Your
+watch estimates distance from step count and an estimate of your step length,
+and that estimate is only so good. Two watches carried along the same route at
+the same moment have reported totals 28%, 7.3% and 6.6% apart across three
+tests, with nothing in any of the files to say which was closer. Reckon removes a
+large systematic error and leaves a smaller unknown one.
+
+**Will my times change?**
+
+Your *elapsed* time, start time and date are untouched — Reckon never modifies a
+timestamp, and there is a test that compares every one in the file before and
+after. Your *moving* time may shift by a few seconds, because Strava calculates
+it from speed, and speed is distance over time. On one paired walk two watches
+reported 13:29 and 10:37 of moving time for the same outing, purely because one
+recorded more distance than the other.
+
+**Why TCX and not FIT?**
+
+Because it is what comes out. Google Health exports TCX, and Strava accepts it.
+FIT is a binary format that would need a parser, and there is nothing in it
+Reckon needs that TCX does not carry.
+
+**Could this get my Strava account banned?**
+
+No. Reckon uploads through Strava's documented public API with a token you grant
+it, exactly as any other third-party app does. You can revoke that access at any
+time under *Settings → My Apps*.
+
+What it does do is upload a **modified** file, so treat the result as your own
+record rather than as a competitive claim. If a segment or a leaderboard matters
+to you, upload the original.
+
+**What happens to indoor runs, yoga, or a gym session?**
+
+They are uploaded unchanged. Reckon corrects GPS inflation, and an activity with
+no GPS has none to correct — so it passes the file through byte-for-byte rather
+than skipping it. Your watch's own distance still reaches Strava, because Strava
+reads the file's distance figures directly when there is no GPS track.
+
+**Why does a 13-minute walk get corrected by 38% and a 76-minute run by 4%?**
+
+Because the error comes from joining up GPS fixes, not from covering ground. A
+watch records a position roughly once a second and adds the straight line between
+each pair. Every wobble in a noisy signal adds a little length and none
+subtracts, so error accumulates per *fix* — which means per second — while the
+distance it is measured against accumulates per metre. Go slowly and you collect
+the same error over far fewer metres.
+
+That is a tendency and not a formula. In testing, error accrued at anywhere
+between 1 and 37 metres a minute depending on conditions, and a 115-minute run
+came out worse than a 76-minute one. Two watches on the same route at the same
+moment disagreed by 26%. This is exactly why Reckon measures the correction from
+each file rather than applying a rate: nothing predicts it reliably enough to
+calculate.
+
+**Can I run it on the activities I have already uploaded?**
+
+Not usefully. Reckon corrects a file before it reaches Strava. An activity that
+is already there would have to be deleted and re-uploaded, and Strava will refuse
+the second copy as a duplicate unless the first is gone.
+
+**Do I have to turn off the built-in Fitbit-to-Strava sync?**
+
+Yes, if you want Reckon to be the one uploading. Otherwise every activity arrives
+twice: once uncorrected from the built-in connection and once corrected from
+Reckon. Reckon deduplicates against its *own* uploads but has no way to
+deduplicate against theirs.
 
 ## Contributing
 
