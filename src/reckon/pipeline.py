@@ -27,6 +27,7 @@ from dataclasses import dataclass, field, replace
 from reckon.clients.health import Exercise, GoogleHealth
 from reckon.clients.oauth import TokenHolder, Tokens
 from reckon.clients.strava import Strava, Upload
+from reckon.core import heartrate
 from reckon.core.errors import ReckonError
 from reckon.core.rescale import (
     DEFAULT_TOLERANCE,
@@ -190,6 +191,8 @@ class Pipeline:
     dry_run: bool = False
     sport_types: Mapping[str, str] = field(default_factory=lambda: SPORT_TYPES)
     description: str = UPLOAD_DESCRIPTION
+    merge_heart_rate: bool = True
+    heart_rate_tolerance_s: float = heartrate.DEFAULT_TOLERANCE_S
 
     def sync(self, *, start_time: str, end_time: str) -> list[Outcome]:
         """Process every activity starting in the window, oldest first."""
@@ -263,6 +266,7 @@ class Pipeline:
 
     def _decide(self, exercise: Exercise) -> Outcome:
         data = self.health.tcx(exercise.name)
+        data, hr_warnings = self._with_heart_rate(data, exercise)
         try:
             result = self._rescale(data)
         except ReckonError as exc:
@@ -274,6 +278,7 @@ class Pipeline:
             )
 
         sport_type, warnings = self._sport_type(exercise)
+        warnings = (*hr_warnings, *warnings)
         base = Outcome(
             activity_id=exercise.id,
             status=Status.UPLOADED if result.modified else Status.PASSED_THROUGH,
@@ -285,6 +290,33 @@ class Pipeline:
         if self.dry_run:
             return replace(base, reason=_prefixed("dry run", base.reason))
         return self._upload(base, result.data, exercise, sport_type)
+
+    def _with_heart_rate(self, data: bytes, exercise: Exercise) -> tuple[bytes, tuple[str, ...]]:
+        """Put back the heart rate the API's export leaves out.
+
+        Enrichment, so it never fails an upload. A missing scope, an unreadable
+        payload or a network fault costs the trace and not the activity — the
+        corrected distance is the point, and arriving without heart rate beats
+        not arriving. Anything that goes wrong is reported as a warning.
+        """
+        if not self.merge_heart_rate:
+            return data, ()
+        try:
+            samples = self.health.heart_rate(
+                start_time=exercise.start_time, end_time=exercise.end_time
+            )
+        except ReckonError as exc:
+            return data, (f"heart rate not merged: {exc}",)
+        if not samples:
+            return data, ()
+
+        merged = heartrate.merge(data, samples, tolerance_s=self.heart_rate_tolerance_s)
+        if merged.matched == 0:
+            return data, (
+                f"heart rate not merged: {len(samples)} samples, none within "
+                f"{self.heart_rate_tolerance_s:g}s of a trackpoint",
+            )
+        return merged.data, ()
 
     def _rescale(self, data: bytes) -> RescaleResult:
         return rescale_tcx(

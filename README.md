@@ -126,12 +126,14 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   unaffected. Its *moving* time shifts by a few seconds — 24 s on a real upload
   where the distance changed by 10.8% — because Strava derives it from speed, and
   speed is distance over time.
-- **Heart rate is lost.** Google Health's API exports a route, not a full
-  recording: the same walk exported by hand from the app carries heart rate on
-  193 of its trackpoints, and fetched through the API carries none at all. So an
-  activity Reckon uploads has no heart-rate trace, where the built-in
-  Google-to-Strava connection preserved one. That is a real trade for a corrected
-  distance, and worth knowing before you switch the built-in connection off.
+- **Heart rate is put back, not carried through.** Google Health's API exports a
+  route, not a full recording: the same walk exported by hand from the app has
+  heart rate on 193 of its trackpoints and fetched through the API has none.
+  Reckon fetches the series separately and merges it in by timestamp, matching
+  each trackpoint to the nearest reading within ten seconds. Where the series has
+  a gap, the trackpoint is left without heart rate rather than given a stale
+  value. This needs the `health_metrics_and_measurements` scope; without it the
+  upload still happens and the trace is simply missing.
 - **Elevation is not corrected.** See below; this is deliberate.
 - **The factor is not a constant.** Across twenty activities it ranged 0.72–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that

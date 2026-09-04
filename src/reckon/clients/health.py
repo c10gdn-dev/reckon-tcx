@@ -37,12 +37,23 @@ BASE_URL = "https://health.googleapis.com/v4"
 AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 
-# Both are required for `exportExerciseTcx`. Dropping the location scope does not
-# fail the call — it silently returns a route-less file.
+# The first two are required for `exportExerciseTcx`. Dropping the location scope
+# does not fail the call — it silently returns a route-less file.
+#
+# The third is for heart rate, which lives under a different scope entirely and
+# is *not* included in the TCX the API exports: the same walk exported from the
+# app carries heart rate on 193 trackpoints and fetched here carries none. Reckon
+# fetches it separately and merges it back, so without this scope every upload
+# loses a heart-rate trace the device recorded.
 SCOPES = (
     "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly",
     "https://www.googleapis.com/auth/googlehealth.location.readonly",
+    "https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly",
 )
+
+# Sampled far more often than a trackpoint, and on its own clock. Merging is
+# nearest-sample-within-tolerance rather than exact matching for that reason.
+HEART_RATE_TYPE = "heart-rate"
 
 # Google issues a refresh token only when `access_type=offline` is asked for, and
 # `prompt=consent` is needed on every re-authorisation, not just the first:
@@ -61,6 +72,10 @@ AUTHORIZE_EXTRA = {"access_type": "offline", "prompt": "select_account consent"}
 # The API's own maximum for exercise, which is far lower than for other data
 # types. Asking for more is not an error; it just does not give you more.
 MAX_PAGE_SIZE = 25
+
+# Heart rate is sampled far more often than exercises are recorded, and its data
+# type is not subject to exercise's much lower cap.
+MAX_SAMPLE_PAGE_SIZE = 1000
 
 # Guards the pagination loop against a server that keeps handing back a token.
 # One page is 25 exercises, so this is thousands of activities — far past any
@@ -221,6 +236,51 @@ class GoogleHealth:
                 return
         raise UnexpectedPayload(f"still paginating after {MAX_PAGES} pages; refusing to continue")
 
+    def heart_rate(self, *, start_time: str, end_time: str) -> list[tuple[dt.datetime, int]]:
+        """Heart-rate samples covering `[start_time, end_time)`, oldest first.
+
+        Fetched separately because `:exportExerciseTcx` does not include heart
+        rate — the same walk exported from the app carries it on 193 trackpoints
+        and fetched from here carries none. `core.heartrate` merges these back in.
+
+        Filtered client-side for the same reason `exercises` is: the API rejects
+        the documented `filter` spellings. This data type is sampled far more
+        often than exercises are recorded, so the page size is the general
+        maximum rather than exercise's 25.
+
+        Requires `health_metrics_and_measurements.readonly`, which is a different
+        scope from the activity and location ones. Without it every call is a 403
+        and no heart rate is merged — which is why it is in `SCOPES`.
+        """
+        window_start = _required_moment(start_time, "start_time")
+        window_end = _required_moment(end_time, "end_time")
+        samples: list[tuple[dt.datetime, int]] = []
+        page_token: str | None = None
+
+        for _ in range(MAX_PAGES):
+            payload = self._get_json(
+                f"users/{self._user}/dataTypes/{HEART_RATE_TYPE}/dataPoints",
+                {
+                    "pageSize": str(MAX_SAMPLE_PAGE_SIZE),
+                    **({"pageToken": page_token} if page_token else {}),
+                },
+            )
+            oldest: dt.datetime | None = None
+            for raw in _sequence(payload, "dataPoints"):
+                sample = _heart_rate_sample(raw)
+                if sample is None:
+                    continue
+                moment, bpm = sample
+                if window_start <= moment < window_end:
+                    samples.append((moment, bpm))
+                oldest = moment
+
+            page_token = payload.get("nextPageToken") or None
+            if page_token is None or (oldest is not None and oldest < window_start):
+                break
+        samples.sort()
+        return samples
+
     def tcx(self, name: str, *, partial: bool = True) -> bytes:
         """The exercise's route as a TCX document.
 
@@ -345,6 +405,36 @@ def _distance_m(summary: Any) -> float | None:
                 return float(raw) / 1000.0
             except (TypeError, ValueError) as exc:
                 raise UnexpectedPayload(f"{key} is not a number: {raw!r}") from exc
+    return None
+
+
+def _heart_rate_sample(raw: Any) -> tuple[dt.datetime, int] | None:
+    """One reading, or None when the shape is not one this can read.
+
+    Tolerant rather than strict, and deliberately: heart rate is an enrichment,
+    so a reading that cannot be parsed should cost that reading and not the
+    upload. `_exercise` is strict for the opposite reason — a data point that
+    cannot be read there means an activity is silently skipped.
+
+    The wrapper key and the value spelling are documentation-derived and have not
+    met the live API, because the scope was not granted when this was written.
+    """
+    if not isinstance(raw, dict):
+        return None
+    # Either branch yields a dict, `raw` having been checked above — so there is
+    # no third case to defend against, and writing one would be unreachable.
+    body = raw.get("heartRate") if isinstance(raw.get("heartRate"), dict) else raw
+    moment = _moment(str(body.get("sampleTime") or body.get("time") or ""))
+    if moment is None:
+        return None
+    for key in ("beatsPerMinute", "bpm", "value"):
+        value = body.get(key)
+        if value is None:
+            continue
+        try:
+            return moment, int(float(value))
+        except (TypeError, ValueError):
+            return None
     return None
 
 

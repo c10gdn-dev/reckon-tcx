@@ -523,3 +523,121 @@ def test_the_user_segment_is_configurable() -> None:
     transport = FakeTransport(response(body=TCX))
     GoogleHealth(transport, live_tokens(FakeTransport()), base_url=BASE, user="12345").tcx("42")
     assert "/users/12345/" in transport.requests[0].url
+
+
+# --- heart rate -------------------------------------------------------------
+#
+# Fetched separately because `:exportExerciseTcx` omits it entirely. The response
+# shape here is documentation-derived — the scope was not granted when this was
+# written — so the parsing is deliberately tolerant and the spellings it accepts
+# are listed rather than assumed.
+
+HR_WINDOW = {"start_time": "2026-02-15T10:00:00Z", "end_time": "2026-02-15T11:00:00Z"}
+
+
+def samples(*points: dict[str, Any], token: str | None = None) -> Any:
+    body: dict[str, Any] = {"dataPoints": list(points)}
+    if token:
+        body["nextPageToken"] = token
+    return json_response(body)
+
+
+def test_the_heart_rate_scope_is_requested() -> None:
+    """Without it every call is a 403 and no heart rate is ever merged."""
+    assert any("health_metrics_and_measurements" in scope for scope in SCOPES)
+
+
+def test_samples_inside_the_window_are_returned_oldest_first() -> None:
+    page = samples(
+        {"sampleTime": "2026-02-15T10:30:00Z", "beatsPerMinute": 120},
+        {"sampleTime": "2026-02-15T10:10:00Z", "beatsPerMinute": 100},
+    )
+    found = client(FakeTransport(page)).heart_rate(**HR_WINDOW)
+    assert [bpm for _, bpm in found] == [100, 120]
+
+
+def test_the_request_targets_the_heart_rate_collection() -> None:
+    transport = FakeTransport(samples())
+    client(transport).heart_rate(**HR_WINDOW)
+    assert "/dataTypes/heart-rate/dataPoints" in transport.requests[0].url
+    assert query_of(transport.requests[0].url)["pageSize"] == "1000"
+
+
+def test_no_filter_is_sent_here_either() -> None:
+    transport = FakeTransport(samples())
+    client(transport).heart_rate(**HR_WINDOW)
+    assert "filter" not in query_of(transport.requests[0].url)
+
+
+def test_samples_outside_the_window_are_dropped() -> None:
+    page = samples(
+        {"sampleTime": "2026-02-15T09:00:00Z", "beatsPerMinute": 60},
+        {"sampleTime": "2026-02-15T10:30:00Z", "beatsPerMinute": 120},
+        {"sampleTime": "2026-02-15T12:00:00Z", "beatsPerMinute": 90},
+    )
+    assert [b for _, b in client(FakeTransport(page)).heart_rate(**HR_WINDOW)] == [120]
+
+
+def test_heart_rate_pagination_stops_once_a_page_is_before_the_window() -> None:
+    first = samples({"sampleTime": "2026-02-15T09:00:00Z", "beatsPerMinute": 60}, token="more")
+    transport = FakeTransport(first, samples())
+    client(transport).heart_rate(**HR_WINDOW)
+    assert transport.calls == 1
+
+
+def test_heart_rate_pagination_continues_while_inside_the_window() -> None:
+    first = samples({"sampleTime": "2026-02-15T10:40:00Z", "beatsPerMinute": 130}, token="more")
+    second = samples({"sampleTime": "2026-02-15T10:20:00Z", "beatsPerMinute": 110})
+    found = client(FakeTransport(first, second)).heart_rate(**HR_WINDOW)
+    assert [b for _, b in found] == [110, 130]
+
+
+@pytest.mark.parametrize(
+    "point",
+    [
+        {"sampleTime": "2026-02-15T10:30:00Z", "beatsPerMinute": 120},
+        {"sampleTime": "2026-02-15T10:30:00Z", "bpm": 120},
+        {"sampleTime": "2026-02-15T10:30:00Z", "value": 120},
+        {"time": "2026-02-15T10:30:00Z", "beatsPerMinute": 120},
+        {"heartRate": {"sampleTime": "2026-02-15T10:30:00Z", "beatsPerMinute": 120}},
+    ],
+)
+def test_every_plausible_spelling_is_accepted(point: dict[str, Any]) -> None:
+    """The live shape is unverified, so the documented variants are all tried."""
+    assert [b for _, b in client(FakeTransport(samples(point))).heart_rate(**HR_WINDOW)] == [120]
+
+
+@pytest.mark.parametrize(
+    "point",
+    [
+        {"beatsPerMinute": 120},
+        {"sampleTime": "not a time", "beatsPerMinute": 120},
+        {"sampleTime": "2026-02-15T10:30:00Z"},
+        {"sampleTime": "2026-02-15T10:30:00Z", "beatsPerMinute": "fast"},
+        {"heartRate": "nope"},
+        "not an object",
+    ],
+)
+def test_an_unreadable_sample_costs_that_sample_and_nothing_else(point: Any) -> None:
+    """Tolerant on purpose: heart rate is enrichment, and one bad reading must
+    not cost an upload. `_exercise` is strict for the opposite reason."""
+    page = samples(point, {"sampleTime": "2026-02-15T10:31:00Z", "beatsPerMinute": 99})
+    assert [b for _, b in client(FakeTransport(page)).heart_rate(**HR_WINDOW)] == [99]
+
+
+def test_a_float_reading_is_rounded_to_an_integer() -> None:
+    page = samples({"sampleTime": "2026-02-15T10:30:00Z", "beatsPerMinute": 120.7})
+    assert [b for _, b in client(FakeTransport(page)).heart_rate(**HR_WINDOW)] == [120]
+
+
+@pytest.mark.parametrize("bound", ["start_time", "end_time"])
+def test_an_unreadable_window_bound_is_refused_here_too(bound: str) -> None:
+    with pytest.raises(ReckonError, match=f"{bound} is not an RFC 3339 timestamp"):
+        client(FakeTransport()).heart_rate(**{**HR_WINDOW, bound: "whenever"})
+
+
+def test_endless_pagination_is_refused() -> None:
+    page = samples({"sampleTime": "2026-02-15T10:30:00Z", "beatsPerMinute": 120}, token="again")
+    transport = FakeTransport(*[page] * (MAX_PAGES + 1))
+    client(transport).heart_rate(**HR_WINDOW)
+    assert transport.calls == MAX_PAGES

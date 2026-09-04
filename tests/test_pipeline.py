@@ -20,6 +20,7 @@ from fakes import Clock, FakeLogStore, FakeTokenStore, FakeTransport, RecordingS
 from reckon.clients.health import Exercise, GoogleHealth
 from reckon.clients.oauth import TokenHolder, Tokens
 from reckon.clients.strava import Strava
+from reckon.core import tcx
 from reckon.core.errors import AuthError, NetworkError, ReckonError
 from reckon.core.rescale import ToleranceAction
 from reckon.pipeline import (
@@ -95,11 +96,15 @@ def pipeline(
     **settings: Any,
 ) -> Pipeline:
     settings.setdefault("sleep", RecordingSleep())
+    # Off unless a test is about it, so every other test's FakeTransport does not
+    # have to be scripted for the extra heart-rate call.
+    settings.setdefault("merge_heart_rate", False)
+    tokens = settings.pop("token_transport", None)
     return Pipeline(
-        health=GoogleHealth(health_transport, holder(), base_url="https://health.test/v4"),
+        health=GoogleHealth(health_transport, holder(tokens), base_url="https://health.test/v4"),
         strava=Strava(
             strava_transport or FakeTransport(),
-            holder(settings.pop("token_transport", None)),
+            holder(tokens),
             base_url="https://strava.test/v3",
         ),
         logs=logs or FakeLogStore(),
@@ -667,3 +672,106 @@ def test_a_marked_activity_is_then_skipped_by_sync() -> None:
     )
     assert [o.fresh for o in outcomes] == [False]
     assert strava.calls == 0
+
+
+# --- putting back the heart rate the API's export leaves out ----------------
+
+
+def hr_page(*samples: tuple[str, int]) -> Any:
+    return json_response(
+        {"dataPoints": [{"sampleTime": t, "beatsPerMinute": bpm} for t, bpm in samples]}
+    )
+
+
+def timed_exercise() -> Exercise:
+    """An activity whose window actually contains the builder's trackpoints."""
+    return Exercise(
+        name="users/me/dataTypes/exercise/dataPoints/889672",
+        exercise_type="WALKING",
+        display_name="Morning Walk",
+        start_time="2024-01-01T08:59:00Z",
+        end_time="2024-01-01T09:01:00Z",
+        distance_m=930.0,
+    )
+
+
+def timed_tcx() -> bytes:
+    """A track with no heart rate, as the API delivers one."""
+    return builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=930.0, with_heart_rate=False)
+
+
+def heart_rates(data: bytes) -> list[int | None]:
+    from reckon.core import heartrate as hr
+
+    root = tcx.parse(data)
+    out: list[int | None] = []
+    for a in tcx.activities(root):
+        for p in tcx.trackpoints(a):
+            e = p.find(hr.HEART_RATE_BPM)
+            out.append(None if e is None else int(e.find(hr.VALUE).text))
+    return out
+
+
+def test_heart_rate_is_fetched_and_merged_before_upload() -> None:
+    health = FakeTransport(
+        response(body=timed_tcx()),
+        hr_page(
+            ("2024-01-01T09:00:00Z", 100),
+            ("2024-01-01T09:00:10Z", 110),
+            ("2024-01-01T09:00:20Z", 120),
+        ),
+    )
+    strava = FakeTransport(upload_response(activity_id=1))
+    outcome = pipeline(health, strava, merge_heart_rate=True).process(timed_exercise())
+    assert outcome.warnings == ()
+    assert b"HeartRateBpm" in strava.requests[0].body
+
+
+def test_the_merged_values_reach_strava() -> None:
+    health = FakeTransport(response(body=timed_tcx()), hr_page(("2024-01-01T09:00:10Z", 137)))
+    strava = FakeTransport(upload_response(activity_id=1))
+    pipeline(health, strava, merge_heart_rate=True).process(timed_exercise())
+    body = strava.requests[0].body
+    start = body.index(b"<?xml")
+    assert heart_rates(body[start : body.index(b"\r\n--", start)]) == [137, 137, 137]
+
+
+def test_no_samples_means_no_change_and_no_warning() -> None:
+    """A weights session may genuinely have none in the window."""
+    health = FakeTransport(response(body=timed_tcx()), hr_page())
+    strava = FakeTransport(upload_response(activity_id=1))
+    outcome = pipeline(health, strava, merge_heart_rate=True).process(timed_exercise())
+    assert outcome.warnings == ()
+    assert b"HeartRateBpm" not in strava.requests[0].body
+
+
+def test_a_failed_heart_rate_fetch_warns_and_still_uploads() -> None:
+    """Enrichment must never cost the activity. Arriving without it beats not arriving."""
+    # A missing scope is a 403, so the client refreshes once and tries again —
+    # two heart-rate calls, both refused, before it gives up.
+    denied = AuthError(403, "GET", "u", b"scope missing")
+    health = FakeTransport(response(body=timed_tcx()), denied, denied)
+    strava = FakeTransport(upload_response(activity_id=1))
+    tokens = FakeTransport(
+        json_response({"access_token": "t", "refresh_token": "r", "expires_in": 3600})
+    )
+    outcome = pipeline(health, strava, merge_heart_rate=True, token_transport=tokens).process(
+        timed_exercise()
+    )
+    assert outcome.status is Status.UPLOADED
+    assert any("heart rate not merged" in w for w in outcome.warnings)
+
+
+def test_samples_that_match_nothing_are_reported() -> None:
+    health = FakeTransport(response(body=timed_tcx()), hr_page(("2024-01-01T09:00:55Z", 150)))
+    strava = FakeTransport(upload_response(activity_id=1))
+    outcome = pipeline(health, strava, merge_heart_rate=True).process(timed_exercise())
+    assert any("none within" in w for w in outcome.warnings)
+    assert b"HeartRateBpm" not in strava.requests[0].body
+
+
+def test_merging_can_be_turned_off() -> None:
+    health = FakeTransport(response(body=timed_tcx()))
+    strava = FakeTransport(upload_response(activity_id=1))
+    pipeline(health, strava, merge_heart_rate=False).process(timed_exercise())
+    assert health.calls == 1, "no heart-rate call at all"

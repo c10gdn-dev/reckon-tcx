@@ -77,10 +77,14 @@ Add these two, exactly:
 ```
 https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly
 https://www.googleapis.com/auth/googlehealth.location.readonly
+https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly
 ```
 
 The first lets Reckon see the list of your activities. The second lets it see the
-route you actually walked or ran.
+route you actually walked or ran. The third is for heart rate, which Google does
+**not** include in the exported route file — Reckon fetches it separately and
+puts it back, so without this scope your activities arrive on Strava with no
+heart-rate trace.
 
 [scopes]: https://console.cloud.google.com/auth/scopes
 

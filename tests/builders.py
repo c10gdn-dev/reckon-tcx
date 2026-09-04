@@ -33,6 +33,7 @@ def trackpoint(
     distance_m: float | None,
     with_position: bool = True,
     speed: float | None = None,
+    with_heart_rate: bool = True,
 ) -> str:
     parts = [f"<Time>{timestamp(offset_seconds)}</Time>"]
     if with_position:
@@ -45,7 +46,11 @@ def trackpoint(
     parts.append("<AltitudeMeters>12.0</AltitudeMeters>")
     if distance_m is not None:
         parts.append(f"<DistanceMeters>{distance_m}</DistanceMeters>")
-    parts.append("<HeartRateBpm><Value>148</Value></HeartRateBpm>")
+    if with_heart_rate:
+        # Present by default because a device records it, absent by request
+        # because Google Health's API export drops it — which is the case the
+        # heart-rate merge exists to repair.
+        parts.append("<HeartRateBpm><Value>148</Value></HeartRateBpm>")
     if speed is not None:
         parts.append(
             f'<Extensions><ns2:TPX xmlns:ns2="{AX_NS}">'
@@ -92,6 +97,7 @@ def activity(
     speeds: Sequence[float | None] | None = None,
     positions: Sequence[bool] | None = None,
     sport: str = "Running",
+    with_heart_rate: bool = True,
     activity_id: str | None = None,
     start_offset: int = 0,
     laps: int = 1,
@@ -115,6 +121,7 @@ def activity(
             distance_m=distance,
             with_position=present,
             speed=speed,
+            with_heart_rate=with_heart_rate,
         )
         for index, (distance, speed, present) in enumerate(
             zip(distances, speeds, positions, strict=True)
