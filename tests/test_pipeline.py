@@ -759,7 +759,10 @@ def test_a_failed_heart_rate_fetch_warns_and_still_uploads() -> None:
         timed_exercise()
     )
     assert outcome.status is Status.UPLOADED
-    assert any("heart rate not merged" in w for w in outcome.warnings)
+    assert any(
+        "health_metrics_and_measurements scope is not granted" in w for w in outcome.warnings
+    )
+    assert all(len(w) < 200 for w in outcome.warnings), "said once per activity, so keep it short"
 
 
 def test_samples_that_match_nothing_are_reported() -> None:
@@ -775,3 +778,72 @@ def test_merging_can_be_turned_off() -> None:
     strava = FakeTransport(upload_response(activity_id=1))
     pipeline(health, strava, merge_heart_rate=False).process(timed_exercise())
     assert health.calls == 1, "no heart-rate call at all"
+
+
+def with_average(bpm: int | None) -> Exercise:
+    from dataclasses import replace as _replace
+
+    return _replace(timed_exercise(), average_heart_rate=bpm)
+
+
+def test_the_summary_average_is_written_when_the_file_lacks_one() -> None:
+    """The only heart rate an account without the restricted scope will get."""
+    from reckon.core import heartrate as hr
+
+    health = FakeTransport(response(body=timed_tcx()), hr_page())
+    strava = FakeTransport(upload_response(activity_id=1))
+    outcome = pipeline(health, strava, merge_heart_rate=True).process(with_average(146))
+    assert outcome.warnings == ()
+    body = strava.requests[0].body
+    start = body.index(b"<?xml")
+    uploaded = body[start : body.index(b"\r\n--", start)]
+    lap = next(tcx.activities(tcx.parse(uploaded))).find(tcx.LAP)
+    assert int(lap.find(hr.AVERAGE_HEART_RATE_BPM).find(hr.VALUE).text) == 146
+
+
+def test_the_average_is_written_even_when_the_series_is_refused() -> None:
+    """The fallback exists precisely for the account that cannot read the series."""
+    denied = AuthError(403, "GET", "u", b"scope missing")
+    health = FakeTransport(response(body=timed_tcx()), denied, denied)
+    strava = FakeTransport(upload_response(activity_id=1))
+    tokens = FakeTransport(
+        json_response({"access_token": "t", "refresh_token": "r", "expires_in": 3600})
+    )
+    outcome = pipeline(health, strava, merge_heart_rate=True, token_transport=tokens).process(
+        with_average(146)
+    )
+    assert outcome.status is Status.UPLOADED
+    assert b"AverageHeartRateBpm" in strava.requests[0].body
+    assert any("scope is not granted" in w for w in outcome.warnings)
+
+
+def test_an_activity_with_no_summary_average_is_left_alone() -> None:
+    health = FakeTransport(response(body=timed_tcx()), hr_page())
+    strava = FakeTransport(upload_response(activity_id=1))
+    pipeline(health, strava, merge_heart_rate=True).process(with_average(None))
+    assert b"AverageHeartRateBpm" not in strava.requests[0].body
+
+
+def test_a_non_scope_auth_failure_is_reported_as_itself() -> None:
+    """Only the expected, recurring one gets the friendly wording."""
+    revoked = AuthError(401, "GET", "u", b"invalid credentials")
+    health = FakeTransport(response(body=timed_tcx()), revoked, revoked)
+    tokens = FakeTransport(
+        json_response({"access_token": "t", "refresh_token": "r", "expires_in": 3600})
+    )
+    outcome = pipeline(
+        health,
+        FakeTransport(upload_response(activity_id=1)),
+        merge_heart_rate=True,
+        token_transport=tokens,
+    ).process(with_average(146))
+    assert any("invalid credentials" in w for w in outcome.warnings)
+    assert not any("scope is not granted" in w for w in outcome.warnings)
+
+
+def test_a_non_auth_failure_is_reported_plainly() -> None:
+    health = FakeTransport(response(body=timed_tcx()), NetworkError("connection reset"))
+    outcome = pipeline(
+        health, FakeTransport(upload_response(activity_id=1)), merge_heart_rate=True
+    ).process(with_average(146))
+    assert any("series not merged" in w and "reset" in w for w in outcome.warnings)

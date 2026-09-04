@@ -147,6 +147,11 @@ class Exercise:
     start_time: str
     end_time: str
     distance_m: float | None
+    # `metricsSummary.averageHeartRateBeatsPerMinute`, which the *summary* carries
+    # even though the exported route does not. Readable with the activity scope
+    # alone, unlike the per-second series, which needs a restricted scope and the
+    # verification process that goes with it.
+    average_heart_rate: int | None = None
     # `exerciseMetadata.hasGps`, absent on activities recorded without a route.
     # Advisory: the file is still fetched and still uploaded either way, since an
     # activity Reckon cannot correct must reach Strava regardless. It is worth
@@ -372,8 +377,27 @@ def _exercise(raw: Mapping[str, Any]) -> Exercise:
         start_time=str(interval.get("startTime", "")),
         end_time=str(interval.get("endTime", "")),
         distance_m=_distance_m(exercise.get("metricsSummary")),
+        average_heart_rate=_average_heart_rate(exercise.get("metricsSummary")),
         has_gps=_has_gps(exercise.get("exerciseMetadata")),
     )
+
+
+def _average_heart_rate(summary: Any) -> int | None:
+    """Beats per minute over the whole activity, or None.
+
+    Arrives as a JSON string — Google serialises its int64 fields that way — so
+    it is parsed rather than cast. Advisory like `distance_m`: a reading that
+    cannot be read costs the reading, not the upload.
+    """
+    if not isinstance(summary, dict):
+        return None
+    raw = summary.get("averageHeartRateBeatsPerMinute")
+    if raw is None:
+        return None
+    try:
+        return int(float(raw))
+    except (TypeError, ValueError):
+        return None
 
 
 def _has_gps(metadata: Any) -> bool | None:

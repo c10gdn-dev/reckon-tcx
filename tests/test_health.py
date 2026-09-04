@@ -641,3 +641,23 @@ def test_endless_pagination_is_refused() -> None:
     transport = FakeTransport(*[page] * (MAX_PAGES + 1))
     client(transport).heart_rate(**HR_WINDOW)
     assert transport.calls == MAX_PAGES
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [("146", 146), (146, 146), (146.9, 146), (None, None), ("fast", None), ({}, None)],
+)
+def test_the_summary_average_heart_rate_is_parsed_permissively(raw: Any, expected: Any) -> None:
+    """Google serialises int64 as a string. Advisory, so a bad value costs the value."""
+    summary = (
+        {"distanceMillimeters": 1000} if raw is None else {"averageHeartRateBeatsPerMinute": raw}
+    )
+    page = json_response({"dataPoints": [exercise_payload(metricsSummary=summary)]})
+    found = next(iter(client(FakeTransport(page)).exercises(**WINDOW)))
+    assert found.average_heart_rate == expected
+
+
+def test_a_summary_that_is_not_an_object_gives_no_average() -> None:
+    page = json_response({"dataPoints": [exercise_payload(metricsSummary="none")]})
+    found = next(iter(client(FakeTransport(page)).exercises(**WINDOW)))
+    assert found.average_heart_rate is None

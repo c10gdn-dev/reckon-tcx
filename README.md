@@ -132,8 +132,14 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   Reckon fetches the series separately and merges it in by timestamp, matching
   each trackpoint to the nearest reading within ten seconds. Where the series has
   a gap, the trackpoint is left without heart rate rather than given a stale
-  value. This needs the `health_metrics_and_measurements` scope; without it the
-  upload still happens and the trace is simply missing.
+  value.
+
+  **The per-second trace needs a scope Google gates behind app verification**, so
+  most people will not have it. Without it Reckon falls back to the *average*
+  heart rate, which the ordinary activity scope can read, and writes that onto
+  the activity — a number rather than a graph. It will not invent a trace from
+  the average; a flat line across your run would look like data and be nothing
+  of the kind.
 - **Elevation is not corrected.** See below; this is deliberate.
 - **The factor is not a constant.** Across twenty activities it ranged 0.72–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that

@@ -25,7 +25,22 @@ from dataclasses import dataclass
 from reckon.core import tcx
 
 HEART_RATE_BPM = tcx.qn(tcx.TCX_NS, "HeartRateBpm")
+AVERAGE_HEART_RATE_BPM = tcx.qn(tcx.TCX_NS, "AverageHeartRateBpm")
 VALUE = tcx.qn(tcx.TCX_NS, "Value")
+
+# A Lap's children, in the order the schema requires.
+_LAP_ORDER = [
+    tcx.qn(tcx.TCX_NS, "TotalTimeSeconds"),
+    tcx.qn(tcx.TCX_NS, "DistanceMeters"),
+    tcx.qn(tcx.TCX_NS, "MaximumSpeed"),
+    tcx.qn(tcx.TCX_NS, "Calories"),
+    AVERAGE_HEART_RATE_BPM,
+    tcx.qn(tcx.TCX_NS, "MaximumHeartRateBpm"),
+    tcx.qn(tcx.TCX_NS, "Intensity"),
+    tcx.qn(tcx.TCX_NS, "Cadence"),
+    tcx.qn(tcx.TCX_NS, "TriggerMethod"),
+    tcx.qn(tcx.TCX_NS, "Track"),
+]
 
 # How far a sample may sit from a trackpoint and still be used for it.
 #
@@ -132,9 +147,51 @@ def _insert(point: ET.Element, bpm: int) -> None:
     value = ET.SubElement(element, VALUE)
     value.text = str(bpm)
 
-    position = _TRACKPOINT_ORDER.index(HEART_RATE_BPM)
-    for index, existing in enumerate(point):
-        if existing.tag in _TRACKPOINT_ORDER and _TRACKPOINT_ORDER.index(existing.tag) > position:
-            point.insert(index, element)
+    _insert_ordered(point, element, _TRACKPOINT_ORDER)
+
+
+def set_average(tcx_bytes: bytes, bpm: int) -> tuple[bytes, str | None]:
+    """Write an activity's average heart rate onto its lap.
+
+    The fallback for when the per-trackpoint series is out of reach: the exercise
+    summary carries an average that the activity scope alone can read, where the
+    per-second series needs a restricted scope and Google's verification process
+    behind it. It gives a number rather than a graph.
+
+    **Only when the activity has exactly one lap.** An activity average is a
+    property of the activity, and writing it onto each of several laps would
+    assert something about each lap that was never measured. All observed exports
+    are single-lap, so this is a guard rather than a limitation, and it returns
+    the reason when it declines.
+
+    An existing value is never replaced.
+    """
+    root = tcx.parse(tcx_bytes)
+    written = 0
+    for activity in tcx.activities(root):
+        laps = list(activity.iter(tcx.LAP))
+        if len(laps) != 1:
+            return tcx_bytes, (
+                f"average heart rate not written: {tcx.label(activity)} has "
+                f"{len(laps)} laps, and an activity average is not a lap average"
+            )
+        lap = laps[0]
+        if lap.find(AVERAGE_HEART_RATE_BPM) is not None:
+            continue
+        element = ET.Element(AVERAGE_HEART_RATE_BPM)
+        ET.SubElement(element, VALUE).text = str(bpm)
+        _insert_ordered(lap, element, _LAP_ORDER)
+        written += 1
+    if written == 0:
+        return tcx_bytes, None
+    return tcx.serialise(root), None
+
+
+def _insert_ordered(parent: ET.Element, element: ET.Element, order: list[str]) -> None:
+    """Place `element` among `parent`'s children according to `order`."""
+    position = order.index(element.tag)
+    for index, existing in enumerate(parent):
+        if existing.tag in order and order.index(existing.tag) > position:
+            parent.insert(index, element)
             return
-    point.append(element)
+    parent.append(element)

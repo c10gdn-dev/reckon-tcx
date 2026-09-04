@@ -28,7 +28,7 @@ from reckon.clients.health import Exercise, GoogleHealth
 from reckon.clients.oauth import TokenHolder, Tokens
 from reckon.clients.strava import Strava, Upload
 from reckon.core import heartrate
-from reckon.core.errors import ReckonError
+from reckon.core.errors import AuthError, ReckonError
 from reckon.core.rescale import (
     DEFAULT_TOLERANCE,
     MIN_GPS_COVERAGE,
@@ -91,6 +91,18 @@ UPLOAD_DESCRIPTION = "Distance corrected by https://github.com/c10gdn-dev/reckon
 # wall-clock time (`PLAN.md` §9). Five attempts matches the cap set there.
 POLL_ATTEMPTS = 5
 POLL_DELAY = 2.0
+
+
+# Said once per activity, so it is one line and it names the fix rather than
+# quoting a 403 body that is the same every time.
+_SCOPE_ADVICE = (
+    "heart-rate series unavailable (the health_metrics_and_measurements scope is "
+    "not granted); the lap average was written instead"
+)
+
+
+def _is_scope_error(exc: AuthError) -> bool:
+    return b"scope" in exc.body.lower()
 
 
 class NotAuthorised(ReckonError):
@@ -301,22 +313,43 @@ class Pipeline:
         """
         if not self.merge_heart_rate:
             return data, ()
+
+        data, warnings = self._average_heart_rate(data, exercise)
         try:
             samples = self.health.heart_rate(
                 start_time=exercise.start_time, end_time=exercise.end_time
             )
+        except AuthError as exc:
+            # Expected rather than exceptional, and permanent for an account that
+            # has not been through Google's verification: the per-second series
+            # sits behind a restricted scope. This appears on every activity, so
+            # it says the one useful thing rather than quoting the API at length.
+            return data, (*warnings, _SCOPE_ADVICE if _is_scope_error(exc) else str(exc))
         except ReckonError as exc:
-            return data, (f"heart rate not merged: {exc}",)
+            return data, (*warnings, f"heart-rate series not merged: {exc}")
         if not samples:
-            return data, ()
+            return data, warnings
 
         merged = heartrate.merge(data, samples, tolerance_s=self.heart_rate_tolerance_s)
         if merged.matched == 0:
             return data, (
-                f"heart rate not merged: {len(samples)} samples, none within "
+                *warnings,
+                f"heart-rate series not merged: {len(samples)} samples, none within "
                 f"{self.heart_rate_tolerance_s:g}s of a trackpoint",
             )
-        return merged.data, ()
+        return merged.data, warnings
+
+    def _average_heart_rate(self, data: bytes, exercise: Exercise) -> tuple[bytes, tuple[str, ...]]:
+        """Write the summary's average onto the lap, where the file has none.
+
+        Cheap and always available: the activity scope reads it, unlike the
+        per-second series. It gives Strava a number rather than a graph, and it
+        is the only heart rate an account without the restricted scope will get.
+        """
+        if exercise.average_heart_rate is None:
+            return data, ()
+        updated, refused = heartrate.set_average(data, exercise.average_heart_rate)
+        return updated, () if refused is None else (refused,)
 
     def _rescale(self, data: bytes) -> RescaleResult:
         return rescale_tcx(

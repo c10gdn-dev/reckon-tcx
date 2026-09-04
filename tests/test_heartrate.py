@@ -180,3 +180,63 @@ def test_a_trackpoint_without_a_time_is_skipped_not_fatal() -> None:
     original = document().replace(b"<Time>", b"<Moment>", 1).replace(b"</Time>", b"</Moment>", 1)
     result = heartrate.merge(original, [(at(0), 100), (at(10), 110), (at(20), 120)])
     assert rates(result.data) == [None, 110, 120]
+
+
+# --- the lap average --------------------------------------------------------
+#
+# The fallback when the per-second series is out of reach: the exercise summary
+# carries an average the activity scope can read, where the series needs a
+# restricted scope and Google's verification behind it.
+
+
+def lap_average(data: bytes) -> list[int | None]:
+    root = tcx.parse(data)
+    found: list[int | None] = []
+    for activity in tcx.activities(root):
+        for lap in activity.iter(tcx.LAP):
+            e = lap.find(heartrate.AVERAGE_HEART_RATE_BPM)
+            found.append(None if e is None else int(e.find(heartrate.VALUE).text))
+    return found
+
+
+def test_the_average_is_written_onto_the_lap() -> None:
+    data, refused = heartrate.set_average(document(), 146)
+    assert refused is None
+    assert lap_average(data) == [146]
+
+
+def test_it_goes_in_schema_order() -> None:
+    """After Calories, before Intensity. A misplaced element is invalid XML."""
+    data, _ = heartrate.set_average(document(), 146)
+    lap = next(tcx.activities(tcx.parse(data))).find(tcx.LAP)
+    order = [c.tag.rpartition("}")[2] for c in lap]
+    assert order.index("AverageHeartRateBpm") > order.index("Calories")
+    assert order.index("AverageHeartRateBpm") < order.index("Intensity")
+
+
+def test_an_existing_average_is_not_replaced() -> None:
+    once, _ = heartrate.set_average(document(), 146)
+    twice, _ = heartrate.set_average(once, 99)
+    assert lap_average(twice) == [146]
+    assert twice == once, "and the document is untouched"
+
+
+def test_a_multi_lap_activity_is_refused_with_a_reason() -> None:
+    """An activity average is not a lap average, and pretending otherwise invents data."""
+    data, refused = heartrate.set_average(document(laps=3), 146)
+    assert refused is not None
+    assert "not a lap average" in refused
+    assert lap_average(data) == [None, None, None]
+
+
+def test_timestamps_survive_the_lap_average() -> None:
+    original = document()
+    before = tcx.timestamps(tcx.parse(original))
+    data, _ = heartrate.set_average(original, 146)
+    assert tcx.timestamps(tcx.parse(data)) == before
+
+
+def test_the_result_is_still_valid() -> None:
+    data, _ = heartrate.set_average(document(), 146)
+    ET.fromstring(data)
+    assert tcx.lap_distance_total(next(tcx.activities(tcx.parse(data)))) == 930.0
