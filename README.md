@@ -126,29 +126,35 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   unaffected. Its *moving* time shifts by a few seconds — 24 s on a real upload
   where the distance changed by 10.8% — because Strava derives it from speed, and
   speed is distance over time.
-- **Heart rate is put back, not carried through.** Google Health's API exports a
+- **Heart rate depends on which route you use.** Google Health's API exports a
   route, not a full recording: the same walk exported by hand from the app has
-  heart rate on 193 of its trackpoints and fetched through the API has none.
-  Reckon fetches the series separately and merges it in by timestamp, matching
-  each trackpoint to the nearest reading within ten seconds. Where the series has
-  a gap, the trackpoint is left without heart rate rather than given a stale
-  value.
+  heart rate on 193 of its trackpoints, and fetched through the API has none. So
+  `reckon sync` cannot give you a heart-rate trace and `reckon local` can — the
+  file you export yourself already contains one, and Reckon leaves it alone.
 
-  **If you use Strava's Fitness score, read this twice.** Fitness is computed
-  from Relative Effort, which needs heart-rate data or a Perceived Exertion you
-  enter by hand. An activity with neither contributes nothing to it.
+  **If you use Strava's Fitness score, this is the difference that matters.**
+  Fitness is computed from Relative Effort, which needs heart-rate data or a
+  Perceived Exertion you enter by hand. An activity with neither contributes
+  nothing to it.
 
-  The per-second trace needs a scope Google classes as *Restricted*, which a
-  published app cannot hold without an annual paid security audit. An
-  **unpublished** app can hold it freely, at the cost of a login that expires
-  weekly — so heart rate lives in a second app, and the setup guide explains it.
-  Without one, Reckon falls back to the *average* heart rate, which the ordinary
-  scopes can read, and writes that onto the activity. **Tested: that is not
-  enough for Relative Effort** — Strava builds it from time spent in heart-rate
-  zones, and a single number cannot supply that. Everything else survives, pace
-  splits and elevation included; it is the Fitness chart specifically that needs
-  the trace. Reckon will not invent one from the average, because a flat line
-  across your run would look like data and be nothing of the kind.
+  Both halves of that are now measured rather than assumed. A 14 km run uploaded
+  through `sync` carrying `Lap/AverageHeartRateBpm` of 140 produced **no**
+  Relative Effort — Strava builds it from time spent in heart-rate zones, and a
+  single average cannot supply that. The same activities uploaded through `local`
+  from hand exports produced Relative Effort on **all** of them, including a yoga
+  session and a weights session that have no GPS at all and previously counted for
+  nothing.
+
+  Reckon still writes the summary average onto the lap when it has one, because
+  it costs nothing. It will not invent a per-trackpoint trace from an average: a
+  flat line across your run would look like data and be nothing of the kind.
+
+  There is a third route — fetching the per-second series from the API and
+  merging it by timestamp — and the code for it exists. It needs a scope Google
+  classes as *Restricted*, which a published app cannot hold without an annual
+  paid security audit, and an unpublished one can hold only at the cost of a login
+  that expires weekly. It is off by default and stays that way. It matters only
+  for a fully automated pipeline, where nobody is there to export a file.
 - **Elevation is not corrected.** See below; this is deliberate.
 - **The factor is not a constant.** Across twenty-one activities it ranged 0.72–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that

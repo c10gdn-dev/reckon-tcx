@@ -144,6 +144,12 @@ requires Google's verification and an annual paid security assessment. That was
 declined, so the only route to a heart-rate trace is a file exported by hand — and
 `reckon local` is the mode that takes one.
 
+**Confirmed on the first real run, 2026-09-05.** Five activities uploaded this
+way showed Relative Effort on all five, where the previous day's `sync` upload
+carrying only a lap average showed none. Two of the five — a yoga session and a
+weights session — have no GPS and were passed through with no correction at all,
+and still gained it. Reckon is not only a distance tool.
+
 It is not a second pipeline. `local` supplies bytes where `sync` fetches them,
 and the two converge on the same line of `_decide`. The one thing it still needs
 the API for is the sport, because `Sport="Other"` in a real export covers a 5 km
