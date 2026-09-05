@@ -661,3 +661,23 @@ def test_a_summary_that_is_not_an_object_gives_no_average() -> None:
     page = json_response({"dataPoints": [exercise_payload(metricsSummary="none")]})
     found = next(iter(client(FakeTransport(page)).exercises(**WINDOW)))
     assert found.average_heart_rate is None
+
+
+def test_the_shape_googles_own_cli_documents_is_parsed() -> None:
+    """`{time, beatsPerMinute, source}` — the closest thing to a verified shape
+    available without the scope, since no live response has ever been seen."""
+    page = json_response(
+        {
+            "dataPoints": [
+                {
+                    "time": "2026-02-15T10:30:00+01:00",
+                    "beatsPerMinute": 142,
+                    "source": "Charge 5",
+                }
+            ]
+        }
+    )
+    found = client(FakeTransport(page)).heart_rate(
+        start_time="2026-02-15T09:00:00Z", end_time="2026-02-15T11:00:00Z"
+    )
+    assert [bpm for _, bpm in found] == [142]

@@ -440,8 +440,11 @@ def _heart_rate_sample(raw: Any) -> tuple[dt.datetime, int] | None:
     upload. `_exercise` is strict for the opposite reason — a data point that
     cannot be read there means an activity is silently skipped.
 
-    The wrapper key and the value spelling are documentation-derived and have not
-    met the live API, because the scope was not granted when this was written.
+    The spellings accepted are documentation-derived: the scope has never been
+    granted here, so no live response has been seen. `{"time": ...,
+    "beatsPerMinute": ...}` is the shape Google's own `google-health-cli`
+    documents for this data type, and is verified as parsing correctly, which is
+    the closest thing to evidence available without the scope.
     """
     if not isinstance(raw, dict):
         return None
