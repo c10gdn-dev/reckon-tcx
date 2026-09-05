@@ -19,6 +19,7 @@ One line each, saying what the module owns.
 | `core/tcx.py` | Parsing and serialising TCX. Namespaces, element lookup, GPS coverage. Knows nothing about rescaling. |
 | `core/rescale.py` | The transform. Pure: bytes and a target in, bytes and numbers out. |
 | `core/analyse.py` | Corpus measurement. Pure. Feeds `reckon analyse`. |
+| `core/heartrate.py` | Putting heart rate back into a TCX: a fetched series, or the summary's average onto the lap. |
 | `core/errors.py` | The exception hierarchy, and the `Transient` marker. |
 | `clients/http.py` | **The only module that touches the network.** `send` performs one request; `retrying` decides what is worth repeating. |
 | `clients/oauth.py` | OAuth 2.0: authorisation URLs, code exchange, refresh, and `TokenHolder`. |

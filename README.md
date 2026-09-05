@@ -136,13 +136,16 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
 
   **If you use Strava's Fitness score, read this twice.** Fitness is computed
   from Relative Effort, which needs heart-rate data or a Perceived Exertion you
-  enter by hand. An activity with neither contributes nothing to it. **The
-  per-second trace needs a scope Google gates behind app verification**, so most
-  people will not have it. Without it Reckon falls back to the *average*
-  heart rate, which the ordinary activity scope can read, and writes that onto
-  the activity — a number rather than a graph. It will not invent a trace from
-  the average; a flat line across your run would look like data and be nothing
-  of the kind.
+  enter by hand. An activity with neither contributes nothing to it.
+
+  The per-second trace needs a scope Google classes as *Restricted*, which a
+  published app cannot hold without an annual paid security audit. An
+  **unpublished** app can hold it freely, at the cost of a login that expires
+  weekly — so heart rate lives in a second app, and the setup guide explains it.
+  Without one, Reckon falls back to the *average* heart rate, which the ordinary
+  scopes can read, and writes that onto the activity: a number rather than a
+  graph. It will not invent a trace from the average; a flat line across your run
+  would look like data and be nothing of the kind.
 - **Elevation is not corrected.** See below; this is deliberate.
 - **The factor is not a constant.** Across twenty activities it ranged 0.72–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that

@@ -37,19 +37,34 @@ BASE_URL = "https://health.googleapis.com/v4"
 AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 
-# The first two are required for `exportExerciseTcx`. Dropping the location scope
-# does not fail the call — it silently returns a route-less file.
-#
-# The third is for heart rate, which lives under a different scope entirely and
-# is *not* included in the TCX the API exports: the same walk exported from the
-# app carries heart rate on 193 trackpoints and fetched here carries none. Reckon
-# fetches it separately and merges it back, so without this scope every upload
-# loses a heart-rate trace the device recorded.
+# Both are required for `exportExerciseTcx`. Dropping the location scope does not
+# fail the call — it silently returns a route-less file.
 SCOPES = (
     "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly",
     "https://www.googleapis.com/auth/googlehealth.location.readonly",
+)
+
+# Heart rate is deliberately *not* in `SCOPES`, and the separation is the whole
+# design (`PLAN.md` §"Heart rate: what is reachable").
+#
+# It is a Restricted scope, and adding one to a *published* OAuth client forces
+# Google's verification — which for Restricted scopes ends in an annual paid
+# third-party security assessment. An *unpublished* client may use it freely, at
+# the cost of refresh tokens that expire after seven days.
+#
+# Those are irreconcilable in one client: the main one is published so its token
+# lasts, and a published client cannot have this scope. So heart rate belongs to
+# a second, unpublished client, authorised separately and stored under its own
+# service name. Merging the two scope lists would break authorisation for the
+# published client, which is exactly what happened when they were briefly
+# combined.
+HEART_RATE_SCOPES = (
     "https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly",
 )
+
+# The service name the second client's tokens are stored under, so the two never
+# collide in a store keyed by service.
+HEART_RATE_SERVICE = "google-hr"
 
 # Sampled far more often than a trackpoint, and on its own clock. Merging is
 # nearest-sample-within-tolerance rather than exact matching for that reason.

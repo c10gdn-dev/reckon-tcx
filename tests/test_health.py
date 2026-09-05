@@ -14,6 +14,8 @@ import pytest
 from fakes import Clock, FakeTransport, response
 from reckon.clients.health import (
     AUTHORIZE_EXTRA,
+    HEART_RATE_SCOPES,
+    HEART_RATE_SERVICE,
     MAX_PAGES,
     SCOPES,
     AccountNotLinked,
@@ -542,9 +544,19 @@ def samples(*points: dict[str, Any], token: str | None = None) -> Any:
     return json_response(body)
 
 
-def test_the_heart_rate_scope_is_requested() -> None:
-    """Without it every call is a 403 and no heart rate is ever merged."""
-    assert any("health_metrics_and_measurements" in scope for scope in SCOPES)
+def test_heart_rate_is_not_in_the_main_client_scopes() -> None:
+    """It is Restricted, and adding one to a published client forces verification.
+
+    Combining the two lists broke authorisation for the published client once
+    already; this is that mistake, pinned.
+    """
+    assert not any("health_metrics" in scope for scope in SCOPES)
+    assert any("health_metrics" in scope for scope in HEART_RATE_SCOPES)
+
+
+def test_the_two_clients_store_their_tokens_separately() -> None:
+    """Different publishing status, different token lifetimes, different rows."""
+    assert HEART_RATE_SERVICE != "google"
 
 
 def test_samples_inside_the_window_are_returned_oldest_first() -> None:
