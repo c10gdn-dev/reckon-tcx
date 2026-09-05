@@ -548,16 +548,26 @@ def _read(path: Path) -> tuple[dt.datetime | None, str]:
 
 
 def _instant(text: str) -> dt.datetime | None:
-    """An RFC 3339 timestamp as an absolute instant, whatever offset it carries.
+    """An RFC 3339 timestamp as an absolute instant in UTC, whatever it carries.
 
     A file exported from the app writes local time with an offset
     (`2026-09-05T14:13:36.000+01:00`); the API reports the same moment as UTC
     (`2026-09-05T13:13:36Z`). Comparing the strings would never match.
+
+    Converting to UTC here rather than leaving the offset on is not cosmetic. An
+    aware datetime compares as an instant but *formats* as its local fields, so a
+    `+01:00` timestamp rendered with `%H:%M:%SZ` claims to be an hour later than
+    it is. That silently narrowed the listing window past the earliest file and
+    lost it — found on the first real run, against a file an hour off UTC.
+
+    A timestamp with no offset at all is read as local time, which is the only
+    sensible reading of a wall clock and is what `read_time` already assumes.
     """
     try:
-        return dt.datetime.fromisoformat(text)
+        moment = dt.datetime.fromisoformat(text)
     except ValueError:
         return None
+    return moment.astimezone(dt.UTC)
 
 
 def _nearest(known: Mapping[dt.datetime, Exercise], started: dt.datetime) -> Exercise | None:

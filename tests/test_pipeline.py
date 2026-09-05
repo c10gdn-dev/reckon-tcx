@@ -1079,6 +1079,44 @@ def test_local_narrows_the_window_to_the_files_it_found(tmp_path: pathlib.Path) 
     assert outcome.activity_id == "889672"
 
 
+def test_local_windows_on_the_instant_not_the_local_clock(tmp_path: pathlib.Path) -> None:
+    """A file an hour ahead of UTC must not narrow the window past itself.
+
+    The regression from the first real run. The window bound is formatted with a
+    `Z` suffix, and an offset-aware datetime formats as its *local* fields — so a
+    `+01:00` file claimed a start an hour later than its own instant and excluded
+    itself. Only the earliest file can be lost this way, which is what made it
+    survive every synthetic test until a live directory had one.
+    """
+    # 09:45+01:00 is 08:45Z. Formatted naively the window would begin at 09:44Z,
+    # comfortably after the activity it is supposed to find.
+    ahead = builders.tcx(
+        distances=[0.0, 500.0, 1000.0],
+        lap_distance_m=930.0,
+        activity_id="2026-02-23T09:45:08.000+01:00",
+    )
+    listing = json_response(
+        {
+            "dataPoints": [
+                {
+                    "name": "users/me/dataTypes/exercise/dataPoints/889700",
+                    "exercise": {
+                        "interval": {"startTime": "2026-02-23T08:45:08Z"},
+                        "exerciseType": "RUNNING",
+                        "displayName": "Run",
+                    },
+                }
+            ]
+        }
+    )
+    strava = FakeTransport(upload_response(activity_id=77))
+
+    (outcome,) = pipeline(FakeTransport(listing), strava).local(exports(tmp_path, run=ahead))
+
+    assert outcome.activity_id == "889700"
+    assert outcome.status is Status.UPLOADED
+
+
 def test_local_over_an_empty_directory_asks_the_api_nothing(tmp_path: pathlib.Path) -> None:
     health = FakeTransport()
     assert pipeline(health).local(tmp_path) == []
