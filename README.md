@@ -143,9 +143,12 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   **unpublished** app can hold it freely, at the cost of a login that expires
   weekly — so heart rate lives in a second app, and the setup guide explains it.
   Without one, Reckon falls back to the *average* heart rate, which the ordinary
-  scopes can read, and writes that onto the activity: a number rather than a
-  graph. It will not invent a trace from the average; a flat line across your run
-  would look like data and be nothing of the kind.
+  scopes can read, and writes that onto the activity. **Tested: that is not
+  enough for Relative Effort** — Strava builds it from time spent in heart-rate
+  zones, and a single number cannot supply that. Everything else survives, pace
+  splits and elevation included; it is the Fitness chart specifically that needs
+  the trace. Reckon will not invent one from the average, because a flat line
+  across your run would look like data and be nothing of the kind.
 - **Elevation is not corrected.** See below; this is deliberate.
 - **The factor is not a constant.** Across twenty activities it ranged 0.72–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that

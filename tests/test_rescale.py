@@ -291,14 +291,18 @@ def test_an_explicit_target_is_bounded_above_as_well():
         rescale_tcx(builders.tcx(distances=(0.0, 500.0, 1000.0)), 3000.0)
 
 
-def test_a_target_from_the_file_above_one_is_partial_gps_not_a_tolerance_breach():
-    """Jitter cannot make a track short, so this is a different failure entirely."""
+def test_an_absurd_target_on_a_complete_track_is_a_tolerance_breach():
+    """Three times the recorded distance, with every fix present.
+
+    Once a factor above 1 needs corroboration, a complete track measuring
+    *wildly* short is no longer partial GPS — nothing about the track suggests a
+    missing route. It is a target that cannot be right, which is exactly what the
+    tolerance guard is for, and its message says to check the distance.
+    """
     data = builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=3000.0)
 
-    result = rescale_tcx(data)
-
-    assert result.modified is False
-    assert [s.reason for s in result.skips] == [SkipReason.PARTIAL_GPS]
+    with pytest.raises(ToleranceExceeded, match="check the target distance"):
+        rescale_tcx(data)
 
 
 # --- taking the target from the file ---------------------------------------
@@ -476,9 +480,12 @@ def test_a_complete_track_is_not_mistaken_for_a_partial_one():
 
 
 def test_a_short_dropout_is_caught_by_the_factor_even_at_high_coverage():
-    """GPS noise only ever adds length, so a track cannot measure short."""
-    # Nine of ten fixes present — coverage passes — but the file's own total is
-    # well above what the stream recorded.
+    """A dropout too brief for the coverage threshold, caught by the factor.
+
+    Coverage passes at 90%, so the factor is what notices — but only because a
+    fix is missing, which is where the route could have gone. A complete track
+    measuring short is a different thing entirely, and is corrected.
+    """
     data = builders.tcx(
         distances=(0.0, None, *(float(i * 10) for i in range(1, 9))),
         positions=[True, False] + [True] * 8,
@@ -489,7 +496,7 @@ def test_a_short_dropout_is_caught_by_the_factor_even_at_high_coverage():
 
     assert result.modified is False
     assert {s.reason for s in result.skips} == {SkipReason.PARTIAL_GPS}
-    assert "GPS noise cannot explain" in result.skips[0].detail
+    assert "not fully recorded" in result.skips[0].detail
 
 
 def test_an_explicit_target_above_the_stream_is_a_tolerance_matter_not_a_dropout():
@@ -592,3 +599,72 @@ def test_the_warning_names_the_share_and_the_worst_gap() -> None:
     assert "%" in warning
     assert "1 gaps" in warning
     assert "longest 60s" in warning
+
+
+# --- a factor above 1 needs corroboration -----------------------------------
+#
+# The original rule refused any file whose own total exceeded the GPS sum, on the
+# reasoning that jitter is additive so a complete track can only measure long.
+# That is half the mechanism: the stream sums straight lines between fixes, so it
+# under-measures every curve too. A real 14 km run measured 0.57% short with a
+# perfect track, and was refused for it.
+
+
+def short_measuring(positions=None) -> bytes:
+    """Ten fixes whose stream totals 1% less than the lap says it should.
+
+    1% is past MAX_CREDIBLE_FACTOR and well inside the tolerance band, which is
+    the range the corroboration rule governs.
+    """
+    return builders.tcx(
+        distances=tuple(float(i * 100) for i in range(10)),
+        lap_distance_m=909.0,
+        positions=positions,
+        with_heart_rate=False,
+    )
+
+
+def test_a_complete_track_measuring_short_is_corrected() -> None:
+    """Chords are shorter than arcs. That is not a missing route."""
+    result = rescale_tcx(short_measuring())
+    assert result.modified is True
+    assert result.skips == ()
+    assert result.result_total_m == pytest.approx(909.0)
+
+
+def test_a_track_with_an_unlocked_stretch_measuring_short_is_still_refused() -> None:
+    """Where the route *could* have gone missing, a short measurement says it did."""
+    result = rescale_tcx(short_measuring(positions=[True] * 4 + [False] + [True] * 5))
+    assert result.modified is False
+    assert [str(s.reason) for s in result.skips] == ["partial_gps"]
+    assert "not fully recorded" in result.skips[0].detail
+
+
+def test_the_refusal_explains_both_halves() -> None:
+    result = rescale_tcx(short_measuring(positions=[True] * 4 + [False] + [True] * 5))
+    detail = result.skips[0].detail
+    assert "exceeds the GPS distance" in detail
+    assert "not fully recorded" in detail
+
+
+def test_a_track_with_a_large_recording_gap_measuring_short_is_refused() -> None:
+    """Coverage cannot see a gap where no trackpoint was written; this can."""
+    points = [
+        builders.trackpoint(offset_seconds=o, distance_m=d, with_heart_rate=False)
+        for o, d in ((0, 0.0), (1, 300.0), (2, 600.0), (600, 1000.0))
+    ]
+    document = builders.document(
+        '<Activity Sport="Running"><Id>gappy</Id>'
+        + builders.lap(trackpoints=points, distance_m=1100.0)
+        + "</Activity>"
+    )
+    result = rescale_tcx(document)
+    assert result.modified is False
+    assert [str(s.reason) for s in result.skips] == ["partial_gps"]
+
+
+def test_a_factor_below_one_is_unaffected_by_any_of_this() -> None:
+    """The ordinary case: the stream over-measured, which is what jitter does."""
+    result = rescale_tcx(builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=800.0))
+    assert result.modified is True
+    assert result.factor == pytest.approx(0.8)

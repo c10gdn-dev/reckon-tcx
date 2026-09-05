@@ -227,29 +227,51 @@ def rescale_tcx(
         target_distance_m = _target_from_file(scalable, lap_totals)
 
     factor = target_distance_m / gps_total
-    if from_file and factor > MAX_CREDIBLE_FACTOR:
-        # Jitter cannot make a track measure short, so the file's own total
-        # exceeding the GPS sum means part of the route went unrecorded — a
-        # dropout too brief for the coverage check to have caught.
+    incomplete = [a for a in scalable if not _fully_recorded(a)]
+    if from_file and factor > MAX_CREDIBLE_FACTOR and incomplete:
+        # The file's own total exceeding the GPS sum *can* mean part of the route
+        # went unrecorded — a dropout too brief for the coverage check to catch.
+        # It can also mean nothing of the kind, which is why `incomplete` is
+        # required as well.
+        #
+        # The original reasoning was that jitter is strictly additive and so a
+        # complete track can only ever measure long. That is half the mechanism.
+        # The stream is the sum of straight lines between fixes, so it also
+        # *under*-measures every curve, and on a fast run with a fix every few
+        # metres that can exceed the jitter running the other way. A real 14 km
+        # run measured 0.57% short with every trackpoint carrying a fix, no
+        # acquisition delay and a single five-second gap during which the runner
+        # moved 1.2 m. Nothing was missing; chords are simply shorter than arcs.
+        #
+        # So the factor alone is not evidence. It is evidence when the track also
+        # shows somewhere the route could have gone missing.
         detail = (
             f"the file's own total exceeds the GPS distance by {(factor - 1) * 100:.1f}%, "
-            f"which GPS noise cannot explain; part of the route was not recorded"
+            f"and the track is not fully recorded; part of the route is missing"
         )
-        for activity in scalable:
+        for activity in incomplete:
             _skip(skips, warnings, tcx.label(activity), SkipReason.PARTIAL_GPS, detail)
         warnings.append("no activity carries a usable GPS distance stream; returned unchanged")
         return _unchanged(tcx_bytes, target_distance_m, trackpoint_count, warnings, skips)
 
     # The guard is asymmetric because the two directions are different failures.
     # Below 1 the stream over-measured: ordinary GPS jitter, observed as far down
-    # as 0.723 on a real walk, so the bound is loose. Above 1 the stream
-    # under-measured, which jitter cannot cause — a target read from the file is
-    # handled as partial GPS above, and an explicit target that high is a caller
-    # error, so it is still bounded.
+    # as 0.723 on a real walk, so the bound is loose.
+    #
+    # Above 1 the stream under-measured. A little of that is ordinary — chords
+    # are shorter than the arcs they cut — and a lot of it, on a track showing
+    # somewhere the route could have gone missing, is partial GPS and was handled
+    # above. What is left is a target that cannot be right, and it is bounded the
+    # same way whatever its source.
+    #
+    # This applied only to explicit targets until 2026-09-05, because every
+    # file-derived factor above 1.005 became partial GPS. Once that needed
+    # corroboration, a complete track with an absurd lap total had nothing left
+    # to catch it, and would have been "corrected" by whatever factor it implied.
     lower = 1.0 - tolerance
     upper = 1.0 + tolerance
     too_low = factor < lower
-    too_high = not from_file and factor > upper
+    too_high = factor > upper
     if too_low or too_high:
         if on_tolerance is ToleranceAction.ABORT:
             raise ToleranceExceeded(factor, gps_total, target_distance_m, tolerance)
@@ -345,6 +367,20 @@ def _scale(activity: ET.Element, factor: float, lap_factor: float) -> None:
 def _format(value: float) -> str:
     """Write a float without trailing noise: 10201.0 -> '10201', not '10201.000000001'."""
     return f"{value:.{_PRECISION}f}".rstrip("0").rstrip(".")
+
+
+def _fully_recorded(activity: ET.Element) -> bool:
+    """True when nothing about the track suggests a stretch of route is missing.
+
+    Two independent ways a route can go unrecorded, and both are checked because
+    neither sees the other: a trackpoint written without a fix, which
+    `gps_coverage` measures, and no trackpoint written at all, which only
+    `recording_gaps` measures. A file can be 100% covered and half unrecorded.
+    """
+    return (
+        tcx.gps_coverage(activity) >= 1.0
+        and tcx.recording_gaps(activity).fraction <= MAX_GAP_FRACTION
+    )
 
 
 def _skip(
