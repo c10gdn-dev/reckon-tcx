@@ -11,6 +11,7 @@ import datetime as dt
 import os
 import re
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import IO, Any
 
@@ -30,6 +31,11 @@ DEFAULT_CORPUS = Path("training-data")
 # How far back `sync` looks when not told. Long enough that a first run picks up
 # a normal week, short enough not to burn the exercise quota 25 at a time.
 DEFAULT_SINCE_DAYS = 7
+
+# Where `reckon local` looks when told nothing. A plain directory in the home
+# folder rather than anywhere under ~/.config, because a human puts files here by
+# hand from a phone and has to be able to find it.
+DEFAULT_EXPORTS = Path.home() / "reckon-exports"
 
 # Client credentials come from the environment rather than a config file: they
 # are the same values the AWS side reads from SSM, and a file would be a second
@@ -158,6 +164,35 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_store_argument(sync)
     sync.set_defaults(handler=_sync_command)
+
+    local = subcommands.add_parser(
+        "local",
+        help="correct and upload TCX files you exported by hand",
+        description=(
+            "Read every .tcx file in a directory, match each to the activity "
+            "Google Health knows about, correct what can be corrected, and "
+            "upload all of it to Strava. Use this rather than `sync` when you "
+            "want heart rate: the app's export carries it and the API's does "
+            "not. Unlike `sync`, a file already in the history is processed "
+            "again and its record replaced — so delete the Strava copy first, "
+            "or you will have two."
+        ),
+    )
+    local.add_argument(
+        "directory",
+        nargs="?",
+        type=Path,
+        default=None,
+        metavar="DIRECTORY",
+        help=f"where the exports are (default {DEFAULT_EXPORTS}, or $RECKON_EXPORTS)",
+    )
+    local.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="do everything except upload and record; print what would happen",
+    )
+    _add_store_argument(local)
+    local.set_defaults(handler=_local_command)
     return parser
 
 
@@ -350,12 +385,41 @@ def _sync_command(args: argparse.Namespace, out: Any, err: Any) -> int:
 
     if args.dry_run:
         print("reckon: dry run — nothing uploaded, nothing recorded", file=err)
-    for outcome in outcomes:
-        print(_outcome_line(outcome), file=out)
     if not outcomes:
         print(f"nothing recorded between {since} and {until}", file=out)
         return 0
 
+    return _report_outcomes(outcomes, out)
+
+
+def _local_command(args: argparse.Namespace, out: Any, err: Any) -> int:
+    # `Path("")` is `Path(".")` and is truthy, so an unset variable would
+    # silently mean the working directory. Check the string, not the Path.
+    configured = os.environ.get("RECKON_EXPORTS", "").strip()
+    directory = args.directory or (Path(configured) if configured else DEFAULT_EXPORTS)
+    if not directory.is_dir():
+        print(f"reckon: {directory} is not a directory", file=err)
+        return 1
+
+    try:
+        pipeline = _build_pipeline(args, dry_run=args.dry_run)
+        outcomes = pipeline.local(directory)
+    except ReckonError as exc:
+        print(f"reckon: {exc}", file=err)
+        return 1
+
+    if args.dry_run:
+        print("reckon: dry run — nothing uploaded, nothing recorded", file=err)
+    if not outcomes:
+        print(f"no .tcx files in {directory}", file=out)
+        return 0
+    return _report_outcomes(outcomes, out)
+
+
+def _report_outcomes(outcomes: Sequence[Outcome], out: Any) -> int:
+    """One line per activity, then the counts, then the exit code they imply."""
+    for outcome in outcomes:
+        print(_outcome_line(outcome), file=out)
     print("", file=out)
     print(
         "  ".join(
@@ -374,7 +438,7 @@ def _outcome_line(outcome: Outcome) -> str:
     detail = f"  {outcome.reason}" if outcome.reason else ""
     marker = "=" if not outcome.fresh else " "
     return (
-        f"{marker} {outcome.activity_id:<22}{outcome.name[:18]:<19}"
+        f"{marker} {(outcome.source or outcome.activity_id)[:21]:<22}{outcome.name[:18]:<19}"
         f"{outcome.status:<15}{factor}{detail}"
     )
 

@@ -886,3 +886,256 @@ def test_a_non_auth_failure_is_reported_plainly() -> None:
         health, FakeTransport(upload_response(activity_id=1)), merge_heart_rate=True
     ).process(with_average(146))
     assert any("series not merged" in w and "reset" in w for w in outcome.warnings)
+
+
+# --- local mode -------------------------------------------------------------
+#
+# The mode that exists because the API's TCX export has no heart rate and the
+# phone app's does. The file is the track; the API is consulted only for the
+# sport, which `Sport="Other"` cannot supply.
+
+# The same instant in the two notations the two sources actually write. Matching
+# on the strings would never succeed, which is the whole point of these tests.
+LOCAL_ID = "2026-02-23T13:10:00.000+00:00"
+LOCAL_TCX = builders.tcx(distances=[0.0, 500.0, 1000.0], lap_distance_m=930.0, activity_id=LOCAL_ID)
+
+LOCAL_LISTING = {
+    "dataPoints": [
+        {
+            "name": "users/me/dataTypes/exercise/dataPoints/889672",
+            "exercise": {
+                "interval": {"startTime": "2026-02-23T13:10:00Z"},
+                "exerciseType": "WALKING",
+                "displayName": "Morning Walk",
+            },
+        }
+    ]
+}
+
+
+def exports(directory: pathlib.Path, **files: bytes) -> pathlib.Path:
+    for name, data in files.items():
+        (directory / f"{name}.tcx").write_bytes(data)
+    return directory
+
+
+def test_local_matches_a_file_to_its_activity_across_timestamp_formats(
+    tmp_path: pathlib.Path,
+) -> None:
+    health = FakeTransport(json_response(LOCAL_LISTING))
+    strava = FakeTransport(upload_response(activity_id=55))
+    logs = FakeLogStore()
+
+    (outcome,) = pipeline(health, strava, logs).local(exports(tmp_path, walk=LOCAL_TCX))
+
+    assert outcome.status is Status.UPLOADED
+    assert outcome.activity_id == "889672"
+    assert outcome.source == "walk.tcx"
+    assert outcome.strava_activity_id == 55
+    # One listing call and no `:exportExerciseTcx` — the bytes came from disk.
+    assert health.calls == 1
+
+
+def test_local_uploads_the_files_own_bytes_not_the_apis(tmp_path: pathlib.Path) -> None:
+    """The reason the mode exists: the file's heart rate has to survive."""
+    with_hr = builders.tcx(
+        distances=[0.0, 500.0, 1000.0],
+        lap_distance_m=930.0,
+        activity_id=LOCAL_ID,
+        with_heart_rate=True,
+    )
+    strava = FakeTransport(upload_response(activity_id=55))
+    pipeline(FakeTransport(json_response(LOCAL_LISTING)), strava).local(
+        exports(tmp_path, walk=with_hr)
+    )
+
+    body = strava.requests[-1].body or b""
+    assert b"HeartRateBpm" in body
+
+
+def test_local_takes_the_sport_from_the_api_not_the_file(tmp_path: pathlib.Path) -> None:
+    """`Sport="Other"` covers a 5 km walk and a stationary yoga session alike."""
+    strava = FakeTransport(upload_response(activity_id=55))
+    pipeline(FakeTransport(json_response(LOCAL_LISTING)), strava).local(
+        exports(tmp_path, walk=LOCAL_TCX)
+    )
+
+    assert b"Walk" in (strava.requests[-1].body or b"")
+
+
+def test_local_overrides_an_existing_history_entry(tmp_path: pathlib.Path) -> None:
+    """Unlike `sync`, which would replay the stored decision and upload nothing.
+
+    An activity already on Strava from an API sync is exactly what this mode is
+    for replacing, so a prior entry is a reason to redo the work, not skip it.
+    """
+    logs = FakeLogStore(
+        LogEntry("889672", Status.UPLOADED, reason="from sync", strava_activity_id=11)
+    )
+    strava = FakeTransport(upload_response(activity_id=55))
+
+    (outcome,) = pipeline(FakeTransport(json_response(LOCAL_LISTING)), strava, logs).local(
+        exports(tmp_path, walk=LOCAL_TCX)
+    )
+
+    assert outcome.fresh is True
+    assert outcome.strava_activity_id == 55
+    assert logs.get("889672").strava_activity_id == 55
+
+
+def test_local_withholds_a_file_no_activity_matches(tmp_path: pathlib.Path) -> None:
+    """No id means no external_id and no history key, so uploading risks a duplicate."""
+    health = FakeTransport(json_response({"dataPoints": []}))
+    strava = FakeTransport()
+
+    (outcome,) = pipeline(health, strava).local(exports(tmp_path, walk=LOCAL_TCX))
+
+    assert outcome.status is Status.WITHHELD
+    assert "no activity in Google Health starts at 2026-02-23 13:10:00" in outcome.reason
+    assert strava.calls == 0
+
+
+def test_local_withholds_a_file_that_is_not_tcx(tmp_path: pathlib.Path) -> None:
+    (outcome,) = pipeline(FakeTransport(), FakeTransport()).local(
+        exports(tmp_path, junk=b"<html></html>")
+    )
+
+    assert outcome.status is Status.WITHHELD
+    assert "expected a TCX TrainingCenterDatabase" in outcome.reason
+    assert outcome.name == "junk.tcx"
+
+
+def test_local_withholds_a_file_with_no_activity_id(tmp_path: pathlib.Path) -> None:
+    empty = b'<?xml version="1.0"?><TrainingCenterDatabase xmlns="%s"/>' % tcx.TCX_NS.encode()
+
+    (outcome,) = pipeline(FakeTransport(), FakeTransport()).local(exports(tmp_path, bare=empty))
+
+    assert outcome.reason.endswith("the file carries no activity Id to match on")
+
+
+def test_local_withholds_a_file_whose_id_is_not_a_timestamp(tmp_path: pathlib.Path) -> None:
+    odd = builders.tcx(distances=[0.0, 500.0], lap_distance_m=490.0, activity_id="not-a-time")
+
+    (outcome,) = pipeline(FakeTransport(), FakeTransport()).local(exports(tmp_path, odd=odd))
+
+    assert "the activity Id is not a timestamp: 'not-a-time'" in outcome.reason
+
+
+def test_local_asks_the_api_once_for_a_window_covering_every_file(
+    tmp_path: pathlib.Path,
+) -> None:
+    """One listing call for the directory, not one per file."""
+    later = "2026-02-23T15:40:00.000+00:00"
+    listing = json_response(
+        {
+            "dataPoints": [
+                *LOCAL_LISTING["dataPoints"],
+                {
+                    "name": "users/me/dataTypes/exercise/dataPoints/889673",
+                    "exercise": {
+                        "interval": {"startTime": "2026-02-23T15:40:00Z"},
+                        "exerciseType": "RUNNING",
+                        "displayName": "Run",
+                    },
+                },
+            ]
+        }
+    )
+    health = FakeTransport(listing)
+    strava = FakeTransport(upload_response(activity_id=55), upload_response(activity_id=66))
+    second = builders.tcx(distances=[0.0, 500.0, 1000.0], lap_distance_m=930.0, activity_id=later)
+
+    outcomes = pipeline(health, strava).local(exports(tmp_path, a_walk=LOCAL_TCX, b_run=second))
+
+    assert health.calls == 1
+    assert [o.activity_id for o in outcomes] == ["889672", "889673"]
+
+
+def test_local_narrows_the_window_to_the_files_it_found(tmp_path: pathlib.Path) -> None:
+    """The listing covers the files' own span, so a nearby outing is not a candidate.
+
+    The API rejects every documented spelling of its `filter` parameter, so the
+    window is applied client-side; it still has to be derived from the files.
+    """
+    listing = json_response(
+        {
+            "dataPoints": [
+                *LOCAL_LISTING["dataPoints"],
+                {
+                    "name": "users/me/dataTypes/exercise/dataPoints/889680",
+                    "exercise": {
+                        "interval": {"startTime": "2026-02-24T13:10:00Z"},
+                        "exerciseType": "RUNNING",
+                        "displayName": "Next day",
+                    },
+                },
+            ]
+        }
+    )
+    strava = FakeTransport(upload_response(activity_id=55))
+
+    (outcome,) = pipeline(FakeTransport(listing), strava).local(exports(tmp_path, walk=LOCAL_TCX))
+
+    assert outcome.activity_id == "889672"
+
+
+def test_local_over_an_empty_directory_asks_the_api_nothing(tmp_path: pathlib.Path) -> None:
+    health = FakeTransport()
+    assert pipeline(health).local(tmp_path) == []
+    assert health.calls == 0
+
+
+def test_local_makes_no_call_when_no_file_can_be_identified(tmp_path: pathlib.Path) -> None:
+    health = FakeTransport()
+    (outcome,) = pipeline(health).local(exports(tmp_path, junk=b"nonsense"))
+    assert health.calls == 0
+    assert outcome.status is Status.WITHHELD
+
+
+def test_local_ignores_an_activity_whose_start_time_is_unreadable(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The client yields such an activity rather than dropping it; matching cannot use it."""
+    listing = json_response(
+        {
+            "dataPoints": [
+                {
+                    "name": "users/me/dataTypes/exercise/dataPoints/889690",
+                    "exercise": {
+                        "interval": {"startTime": "whenever"},
+                        "exerciseType": "WALKING",
+                        "displayName": "Unreadable",
+                    },
+                },
+                *LOCAL_LISTING["dataPoints"],
+            ]
+        }
+    )
+    strava = FakeTransport(upload_response(activity_id=55))
+
+    (outcome,) = pipeline(FakeTransport(listing), strava).local(exports(tmp_path, walk=LOCAL_TCX))
+
+    assert outcome.activity_id == "889672"
+
+
+def test_local_withholds_a_file_it_cannot_read(tmp_path: pathlib.Path) -> None:
+    """A directory named like an export, say — `glob` matches it and reading it fails."""
+    (tmp_path / "walk.tcx").mkdir()
+
+    (outcome,) = pipeline(FakeTransport()).local(tmp_path)
+
+    assert outcome.status is Status.WITHHELD
+    assert "cannot read the file" in outcome.reason
+
+
+def test_local_dry_run_uploads_nothing_and_records_nothing(tmp_path: pathlib.Path) -> None:
+    logs = FakeLogStore()
+    strava = FakeTransport()
+
+    (outcome,) = pipeline(
+        FakeTransport(json_response(LOCAL_LISTING)), strava, logs, dry_run=True
+    ).local(exports(tmp_path, walk=LOCAL_TCX))
+
+    assert outcome.reason.startswith("dry run")
+    assert strava.calls == 0
+    assert logs.get("889672") is None

@@ -640,3 +640,112 @@ def test_a_transient_fault_fails_loudly_rather_than_silently(authorised):
     code, _, err = sync("--store", str(authorised), transport=FakeTransport(NetworkError("reset")))
     assert code == 1
     assert "reset" in err
+
+
+# --- reckon local -----------------------------------------------------------
+
+
+def local(*argv: str, transport=None):
+    out, err = io.StringIO(), io.StringIO()
+    code = main(["local", *argv], stdout=out, stderr=err, transport=transport)
+    return code, out.getvalue(), err.getvalue()
+
+
+def export_dir(tmp_path, **files):
+    directory = tmp_path / "exports"
+    directory.mkdir()
+    for name, data in files.items():
+        (directory / f"{name}.tcx").write_bytes(data)
+    return directory
+
+
+def dated_tcx(days_ago=1):
+    """A correctable file whose Id matches what `listing` reports for that day."""
+    import builders
+
+    return builders.tcx(
+        distances=[0.0, 500.0, 1000.0], lap_distance_m=930.0, activity_id=ago(days_ago)
+    )
+
+
+def test_local_reports_a_line_per_file_and_the_counts(tmp_path, authorised):
+    directory = export_dir(tmp_path, walk=dated_tcx())
+    transport = transport_of(listing("1"), upload_body(activity_id=9))
+
+    code, report, _ = local(str(directory), "--store", str(authorised), transport=transport)
+
+    assert code == 0
+    # The file, not the activity id, leads the line: it is what you can go and look at.
+    assert "walk.tcx" in report
+    assert "1 uploaded" in report
+
+
+def test_local_names_the_file_it_could_not_identify(tmp_path, authorised):
+    directory = export_dir(tmp_path, junk=b"not xml at all")
+
+    code, report, _ = local(str(directory), "--store", str(authorised), transport=transport_of())
+
+    assert code == 1
+    assert "junk.tcx" in report
+    assert "1 withheld" in report
+
+
+def test_local_dry_run_says_so(tmp_path, authorised):
+    directory = export_dir(tmp_path, walk=dated_tcx())
+
+    _, _, err = local(
+        str(directory),
+        "--dry-run",
+        "--store",
+        str(authorised),
+        transport=transport_of(listing("1")),
+    )
+
+    assert "dry run" in err
+
+
+def test_local_on_an_empty_directory_says_so(tmp_path, authorised):
+    directory = export_dir(tmp_path)
+
+    code, report, _ = local(str(directory), "--store", str(authorised), transport=transport_of())
+
+    assert code == 0
+    assert "no .tcx files" in report
+
+
+def test_local_refuses_a_directory_that_is_not_one(tmp_path, authorised):
+    code, _, err = local(str(tmp_path / "nowhere"), "--store", str(authorised))
+
+    assert code == 1
+    assert "is not a directory" in err
+
+
+def test_local_defaults_to_the_configured_export_directory(tmp_path, authorised, monkeypatch):
+    directory = export_dir(tmp_path)
+    monkeypatch.setenv("RECKON_EXPORTS", str(directory))
+
+    code, report, _ = local("--store", str(authorised), transport=transport_of())
+
+    assert code == 0
+    assert str(directory) in report
+
+
+def test_local_falls_back_to_the_home_directory_default(tmp_path, authorised, monkeypatch):
+    monkeypatch.delenv("RECKON_EXPORTS", raising=False)
+    monkeypatch.setattr("reckon.cli.DEFAULT_EXPORTS", tmp_path / "unmade")
+
+    code, _, err = local("--store", str(authorised))
+
+    assert code == 1
+    assert "unmade is not a directory" in err
+
+
+def test_local_surfaces_a_missing_authorisation(tmp_path, monkeypatch):
+    monkeypatch.setenv("RECKON_GOOGLE_CLIENT_ID", "gid")
+    monkeypatch.setenv("RECKON_GOOGLE_CLIENT_SECRET", "gsecret")
+    directory = export_dir(tmp_path)
+
+    code, _, err = local(str(directory), "--store", str(tmp_path / "empty.json"))
+
+    assert code == 1
+    assert "no google tokens stored" in err

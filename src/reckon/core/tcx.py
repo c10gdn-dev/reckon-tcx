@@ -101,6 +101,21 @@ def creator_name(activity: ET.Element) -> str | None:
     return name.strip() if name and name.strip() else None
 
 
+def started_at(root: ET.Element) -> str | None:
+    """The first activity's `Id`, which Garmin defines as its start timestamp.
+
+    How a file exported by hand is matched to the activity the API knows about,
+    and therefore to its history entry: the two share nothing else. The value is
+    returned verbatim rather than parsed, because matching is the caller's
+    problem and the formats differ between sources.
+    """
+    for activity in activities(root):
+        text = activity.findtext(ACTIVITY_ID)
+        if text and text.strip():
+            return text.strip()
+    return None
+
+
 def gps_coverage(activity: ET.Element) -> float:
     """Fraction of the activity's elapsed time that carries a position fix.
 

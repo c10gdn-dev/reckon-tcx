@@ -244,3 +244,17 @@ def test_fraction_is_zero_for_a_zero_length_span() -> None:
 
 def test_fraction_is_the_share_of_elapsed_time() -> None:
     assert tcx.Gaps(count=1, total_s=25.0, largest_s=25.0, span_s=100.0).fraction == 0.25
+
+
+def test_started_at_skips_an_activity_with_a_blank_id() -> None:
+    """The first Id wins, but only if it says something."""
+    root = ET.Element(tcx.ROOT)
+    for text in ("   ", "2026-02-23T13:10:00Z"):
+        activity = ET.SubElement(root, tcx.ACTIVITY)
+        ET.SubElement(activity, tcx.ACTIVITY_ID).text = text
+
+    assert tcx.started_at(root) == "2026-02-23T13:10:00Z"
+
+
+def test_started_at_is_none_when_no_activity_has_an_id() -> None:
+    assert tcx.started_at(ET.Element(tcx.ROOT)) is None

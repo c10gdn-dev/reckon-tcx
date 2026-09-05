@@ -86,7 +86,7 @@ of behaviours against both.*
 
 | | Local | AWS |
 |---|---|---|
-| Trigger | `reckon sync` | webhook → SQS |
+| Trigger | `reckon sync`, `reckon local` | webhook → SQS |
 | Stores | one JSON file | DynamoDB |
 | Retry | none, fail loudly | SQS + DLQ |
 
@@ -122,6 +122,32 @@ would silently drop them, which is the one thing the design forbids. Hence four
 outcomes — `uploaded`, `passed_through`, `withheld`, `failed` — plus a raised
 exception for transient faults, which is never recorded so that a redelivery is
 never mistaken for a decision.
+
+**"Cannot correct" is separate from "cannot identify."** The fifth instance of
+the same shape, and it decides what `reckon local` does with a file. Cannot
+correct means upload it anyway — that is the rule above. Cannot identify means
+*withhold*, and for a reason that has nothing to do with correction: the activity
+id is what Strava deduplicates on, so an unidentified file uploaded twice becomes
+two activities that nothing can ever reconcile. The file stays on disk and the
+next run tries again.
+
+## Why local mode exists
+
+Google's API export and the Google Health app's export are not the same file. The
+API's `:exportExerciseTcx` omits heart rate; the app's has it. That was first
+diagnosed as the export lagging the activity and it is not — a 21-day-old
+activity re-fetched through the API still came back without it. It is provenance.
+
+Strava computes Relative Effort, and therefore Fitness, from heart rate. The
+per-second series is available through the API, behind a Restricted scope that
+requires Google's verification and an annual paid security assessment. That was
+declined, so the only route to a heart-rate trace is a file exported by hand — and
+`reckon local` is the mode that takes one.
+
+It is not a second pipeline. `local` supplies bytes where `sync` fetches them,
+and the two converge on the same line of `_decide`. The one thing it still needs
+the API for is the sport, because `Sport="Other"` in a real export covers a 5 km
+walk and a stationary yoga session alike.
 
 ## Design decisions, and when to revisit them
 

@@ -20,9 +20,11 @@ Only the first three are ever written to the log store, and every one of them is
 final. If it is in the store, it is never done again.
 """
 
+import datetime as dt
 import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 
 from reckon.clients.health import Exercise, GoogleHealth
 from reckon.clients.oauth import TokenHolder, Tokens
@@ -157,6 +159,8 @@ class Outcome:
     factor: float | None = None
     warnings: tuple[str, ...] = ()
     description: str = ""
+    # The file this came from, in local mode. Empty when the API supplied it.
+    source: str = ""
     # False when this is a stored decision being replayed rather than made. A
     # separate field, not a status: "what was decided" and "was it decided just
     # now" are independent, and merging them is how `passed_through` got lost the
@@ -302,6 +306,77 @@ class Pipeline:
             outcomes.append(outcome)
         return outcomes
 
+    def local(self, directory: Path) -> list[Outcome]:
+        """Correct and upload TCX files exported by hand, from a directory.
+
+        The mode that exists because Google's API export omits heart rate. A file
+        exported from the phone app has it; one fetched from
+        `:exportExerciseTcx` does not, and Strava's Fitness score is calculated
+        from it. So the files are the source of the *track*, and the API is
+        consulted only for what the file cannot say.
+
+        What it cannot say is the sport. Real exports carry `Sport="Other"` for
+        anything that is not a run or a ride, which the corpus showed is
+        information-free — it covers a 5 km walk and a stationary yoga session
+        alike. The API's `exerciseType` is what makes a walk upload as a Walk.
+
+        **An existing history entry is overridden**, unlike `sync`, which skips
+        one. That is the point: an activity already uploaded from the API, and so
+        already on Strava without heart rate, is exactly what this mode is for
+        replacing. Delete the Strava copy first — Reckon cannot, and will not,
+        delete anything from your account.
+        """
+        files = sorted(directory.glob("*.tcx"))
+        if not files:
+            return []
+
+        readings = [(path, *_read(path)) for path in files]
+        known = self._activities_covering(started for _, started, _ in readings if started)
+
+        return [self._local_file(path, started, why, known) for path, started, why in readings]
+
+    def _local_file(
+        self,
+        path: Path,
+        started: dt.datetime | None,
+        why: str,
+        known: Mapping[dt.datetime, Exercise],
+    ) -> Outcome:
+        """One file: identify it, correct it, upload it, record it."""
+        if started is None:
+            return _unidentified(path, why)
+        exercise = _nearest(known, started)
+        if exercise is None:
+            # Not "cannot correct", which would still upload — "cannot identify".
+            # Without the activity's id there is no external_id for Strava to
+            # deduplicate on and no key to record it under, so uploading risks a
+            # duplicate that nothing will catch. Reporting it leaves the file in
+            # place to be retried once the lookup works.
+            return _unidentified(
+                path, f"no activity in Google Health starts at {started:%Y-%m-%d %H:%M:%S}"
+            )
+
+        outcome = self._decide(exercise, data=path.read_bytes())
+        if outcome.fresh and not self.dry_run:
+            self.logs.record(outcome.entry(self.now()))
+        return replace(outcome, source=path.name)
+
+    def _activities_covering(
+        self, moments: Iterable[dt.datetime]
+    ) -> Mapping[dt.datetime, Exercise]:
+        """Every activity spanning the files' timestamps, keyed by start instant."""
+        instants = sorted(moments)
+        if not instants:
+            return {}
+        start = (instants[0] - dt.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        end = (instants[-1] + dt.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        found: dict[dt.datetime, Exercise] = {}
+        for exercise in self.exercises(start, end):
+            moment = _instant(exercise.start_time)
+            if moment is not None:
+                found[moment] = exercise
+        return found
+
     def fetch(self, activity_id: str, *, raw: bool = False) -> bytes:
         """One activity's TCX, corrected unless `raw`. No store, no upload.
 
@@ -313,8 +388,11 @@ class Pipeline:
 
     # --- the decision -------------------------------------------------------
 
-    def _decide(self, exercise: Exercise) -> Outcome:
-        data = self.health.tcx(exercise.name)
+    def _decide(self, exercise: Exercise, *, data: bytes | None = None) -> Outcome:
+        # Local mode supplies the bytes; `sync` fetches them. Everything after
+        # this point is identical, which is the whole reason the modes share a
+        # pipeline rather than a family resemblance.
+        data = self.health.tcx(exercise.name) if data is None else data
         data, hr_warnings = self._with_heart_rate(data, exercise)
         try:
             result = self._rescale(data)
@@ -439,6 +517,64 @@ class Pipeline:
                 reason=f"still processing after {self.poll_attempts} checks: {upload.status}",
             )
         return replace(base, strava_activity_id=upload.activity_id)
+
+
+# How far a file's start timestamp may sit from an activity's and still be the
+# same outing. They should agree exactly — both come from the device — but the
+# two are written by different exporters and a second of rounding is cheaper to
+# tolerate than to debug.
+MATCH_TOLERANCE = dt.timedelta(seconds=5)
+
+
+def _read(path: Path) -> tuple[dt.datetime | None, str]:
+    """The instant a file says it started, or None and the reason it could not say.
+
+    The reason is carried rather than reduced to a bare None because the three
+    ways this fails — unreadable, not TCX, no `Id` — want three different
+    responses from whoever is looking at the directory.
+    """
+    try:
+        started = tcx.started_at(tcx.parse(path.read_bytes()))
+    except ReckonError as exc:
+        return None, str(exc)
+    except OSError as exc:
+        return None, f"cannot read the file: {exc.strerror or exc}"
+    if started is None:
+        return None, "the file carries no activity Id to match on"
+    moment = _instant(started)
+    if moment is None:
+        return None, f"the activity Id is not a timestamp: {started!r}"
+    return moment, ""
+
+
+def _instant(text: str) -> dt.datetime | None:
+    """An RFC 3339 timestamp as an absolute instant, whatever offset it carries.
+
+    A file exported from the app writes local time with an offset
+    (`2026-09-05T14:13:36.000+01:00`); the API reports the same moment as UTC
+    (`2026-09-05T13:13:36Z`). Comparing the strings would never match.
+    """
+    try:
+        return dt.datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def _nearest(known: Mapping[dt.datetime, Exercise], started: dt.datetime) -> Exercise | None:
+    for moment, exercise in known.items():
+        if abs(moment - started) <= MATCH_TOLERANCE:
+            return exercise
+    return None
+
+
+def _unidentified(path: Path, why: str) -> Outcome:
+    return Outcome(
+        activity_id="",
+        status=Status.WITHHELD,
+        name=path.name,
+        reason=f"not uploaded: {why}",
+        source=path.name,
+    )
 
 
 def _device(data: bytes) -> str | None:

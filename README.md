@@ -314,15 +314,63 @@ The store at `~/.config/reckon/store.json` holds both the OAuth tokens and the
 record of what has been uploaded. It is created `0600` and re-chmodded on every
 open, because it contains refresh tokens.
 
+### Local mode: files you exported yourself
+
+`sync` gets its TCX from the Google Health API, and **that export has no heart
+rate in it.** The one you export by hand from the Google Health app does. If you
+care about Strava's Fitness score, you need the second kind, because Relative
+Effort is computed from heart rate and nothing else supplies it.
+
+So `reckon local` reads files from a directory instead of the API:
+
+```
+reckon local [DIRECTORY] [--dry-run] [--store PATH]
+```
+
+Export the activities from the phone app, put the `.tcx` files in
+`~/reckon-exports` (or anywhere, and pass the path, or set `RECKON_EXPORTS`), and
+run it. Everything after that is the same code `sync` uses — the same correction,
+the same tolerance rules, the same descriptions.
+
+It still talks to the API, for one thing only: **the sport.** A real export says
+`Sport="Other"` for anything that is not a run or a ride, which is worth nothing
+— in the calibration corpus that value covers both a 5 km walk and a stationary
+yoga session. Google's `exerciseType` is what makes a walk upload as a Walk. Each
+file is matched to its activity by start time, which the two sources happen to
+write differently (`2026-09-05T14:13:36.000+01:00` against
+`2026-09-05T13:13:36Z`) and which Reckon therefore compares as instants.
+
+```console
+$ reckon local
+  walk.tcx    Morning Walk       uploaded         factor 0.9312
+  yoga.tcx    Yoga               passed_through   no_gps
+
+  1 passed_through  1 uploaded
+```
+
+Two differences from `sync` are worth knowing before you run it:
+
+- **An activity already in the history is processed again, and its record
+  replaced.** That is the point — the thing you are most likely to want to
+  re-upload is an activity `sync` already put on Strava without heart rate. But
+  Reckon will not delete the old copy, and cannot: **delete it in Strava first,
+  or you will have two.**
+- **A file no activity matches is withheld, not uploaded.** Without the activity
+  id there is no `external_id` for Strava to deduplicate on, so uploading it
+  would risk a duplicate that nothing would ever catch. Fix the match — usually a
+  stale token or a window the export falls outside — and run it again. Files are
+  never moved or deleted; the history is what stops repeat work.
+
 ## Status
 
 Alpha, and honest about it. The offline commands — `rescale` and `analyse` —
 work and are validated against twenty-one real exports, including a hand upload to
 Strava confirming it honours the corrected stream.
 
-`reckon fetch` and `reckon sync` are built: authorise both services once, and
-`sync` will correct each new activity and upload it to Strava, keeping a local
-record so nothing is done twice. Activities come in from the **Google Health
+`reckon fetch`, `reckon sync` and `reckon local` are built: authorise both
+services once, and `sync` will correct each new activity and upload it to Strava,
+keeping a local record so nothing is done twice. `local` does the same for files
+you export by hand, which is the route that keeps heart rate. Activities come in from the **Google Health
 API**, not the Fitbit Web API — Google retired the standalone Fitbit app, stopped
 issuing Fitbit developer accounts, and the legacy Web API is deprecated as of
 September 2026. See `PLAN.md` §8.
