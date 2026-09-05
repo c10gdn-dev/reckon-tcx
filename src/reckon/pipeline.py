@@ -27,12 +27,13 @@ from dataclasses import dataclass, field, replace
 from reckon.clients.health import Exercise, GoogleHealth
 from reckon.clients.oauth import TokenHolder, Tokens
 from reckon.clients.strava import Strava, Upload
-from reckon.core import heartrate
+from reckon.core import heartrate, tcx
 from reckon.core.errors import AuthError, ReckonError
 from reckon.core.rescale import (
     DEFAULT_TOLERANCE,
     MIN_GPS_COVERAGE,
     RescaleResult,
+    SkipReason,
     ToleranceAction,
     rescale_tcx,
 )
@@ -77,14 +78,45 @@ SPORT_TYPES: Mapping[str, str] = {
 # what gets the mapping extended.
 DEFAULT_SPORT_TYPE = "Workout"
 
-# Written into the Strava activity's description, on activities that were
-# actually corrected. A pass-through gets no note, because there is nothing to
-# explain — the numbers are the device's own.
+# The link every Reckon upload carries, on its own line under the summary.
+PROJECT_URL = "https://github.com/c10gdn-dev/reckon-tcx"
+
+# What a corrected upload's description says, and what an uncorrected one says
+# instead. Every activity Reckon touches is identifiable as such, names the
+# device that recorded it, and states plainly whether the distance was changed —
+# because "Reckon processed this" without saying what it did invites exactly the
+# question it was meant to answer.
 #
-# It is a field on `Pipeline` rather than a literal so it can be changed without
-# editing the upload path, and it appears on every activity the tool touches, so
-# it is deliberately one line.
-UPLOAD_DESCRIPTION = "Distance corrected by https://github.com/c10gdn-dev/reckon-tcx"
+# The wording avoids this project's vocabulary. "Passed through" is precise here
+# and meaningless in a Strava feed; "not corrected" is the other way round.
+_CORRECTED = "corrected {before} → {after} km"
+_NOT_CORRECTED = {
+    SkipReason.NO_GPS: "not corrected — no GPS recorded",
+    SkipReason.PARTIAL_GPS: "not corrected — GPS incomplete",
+    SkipReason.NO_DISTANCE_STREAM: "not corrected — no distance recorded",
+}
+_NOT_CORRECTED_UNKNOWN = "not corrected — nothing to rescale"
+
+
+def describe(result: RescaleResult, device: str | None) -> str:
+    """The Strava description for an activity Reckon is about to upload."""
+    if result.modified:
+        summary = _CORRECTED.format(
+            before=_km(result.gps_total_m), after=_km(result.result_total_m)
+        )
+    else:
+        reasons = {skip.reason for skip in result.skips}
+        summary = (
+            _NOT_CORRECTED[next(iter(reasons))] if len(reasons) == 1 else _NOT_CORRECTED_UNKNOWN
+        )
+    parts = ["Reckon", device, summary] if device else ["Reckon", summary]
+    return " · ".join(parts) + "\n" + PROJECT_URL
+
+
+def _km(metres: float) -> str:
+    """Kilometres to two places, as Strava shows them. The unit is added once."""
+    return f"{metres / 1000:.2f}"
+
 
 # Strava's upload is asynchronous. Locally a bounded loop is fine; in Lambda this
 # must become a delayed SQS re-enqueue, because a sleeping handler is billed
@@ -124,6 +156,7 @@ class Outcome:
     strava_activity_id: int | None = None
     factor: float | None = None
     warnings: tuple[str, ...] = ()
+    description: str = ""
     # False when this is a stored decision being replayed rather than made. A
     # separate field, not a status: "what was decided" and "was it decided just
     # now" are independent, and merging them is how `passed_through` got lost the
@@ -202,8 +235,12 @@ class Pipeline:
     poll_delay: float = POLL_DELAY
     dry_run: bool = False
     sport_types: Mapping[str, str] = field(default_factory=lambda: SPORT_TYPES)
-    description: str = UPLOAD_DESCRIPTION
-    merge_heart_rate: bool = True
+    # The per-second series needs a Restricted scope, which requires an
+    # unpublished OAuth client (`health.HEART_RATE_SCOPES`), which costs a
+    # weekly re-authorisation. That was declined, so the fetch is off by default
+    # and would 403 on every activity if it were not. The lap average, which
+    # needs no extra scope, is written regardless.
+    merge_heart_rate: bool = False
     heart_rate_tolerance_s: float = heartrate.DEFAULT_TOLERANCE_S
 
     def sync(self, *, start_time: str, end_time: str) -> list[Outcome]:
@@ -291,6 +328,7 @@ class Pipeline:
 
         sport_type, warnings = self._sport_type(exercise)
         warnings = (*hr_warnings, *warnings)
+        device = _device(data)
         base = Outcome(
             activity_id=exercise.id,
             status=Status.UPLOADED if result.modified else Status.PASSED_THROUGH,
@@ -298,6 +336,7 @@ class Pipeline:
             reason="" if result.modified else _skip_reason(result),
             factor=result.factor if result.modified else None,
             warnings=(*warnings, *result.warnings),
+            description=describe(result, device),
         )
         if self.dry_run:
             return replace(base, reason=_prefixed("dry run", base.reason))
@@ -311,10 +350,9 @@ class Pipeline:
         corrected distance is the point, and arriving without heart rate beats
         not arriving. Anything that goes wrong is reported as a warning.
         """
-        if not self.merge_heart_rate:
-            return data, ()
-
         data, warnings = self._average_heart_rate(data, exercise)
+        if not self.merge_heart_rate:
+            return data, warnings
         try:
             samples = self.health.heart_rate(
                 start_time=exercise.start_time, end_time=exercise.end_time
@@ -373,7 +411,7 @@ class Pipeline:
             name=exercise.display_name or "Activity",
             external_id=exercise.id,
             sport_type=sport_type,
-            description=self.description if base.factor else "",
+            description=base.description,
         )
         return self._settle(base, self._await(upload))
 
@@ -401,6 +439,15 @@ class Pipeline:
                 reason=f"still processing after {self.poll_attempts} checks: {upload.status}",
             )
         return replace(base, strava_activity_id=upload.activity_id)
+
+
+def _device(data: bytes) -> str | None:
+    """The model that recorded the file, for the upload description."""
+    for activity in tcx.activities(tcx.parse(data)):
+        name = tcx.creator_name(activity)
+        if name:
+            return name
+    return None
 
 
 def _skip_reason(result: RescaleResult) -> str:

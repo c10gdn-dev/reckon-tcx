@@ -11,6 +11,7 @@ deliberately does not reach it at all.
 """
 
 import json
+import pathlib
 from typing import Any
 
 import pytest
@@ -25,11 +26,13 @@ from reckon.core.errors import AuthError, NetworkError, ReckonError
 from reckon.core.rescale import ToleranceAction
 from reckon.pipeline import (
     DEFAULT_SPORT_TYPE,
+    PROJECT_URL,
     SPORT_TYPES,
-    UPLOAD_DESCRIPTION,
     NotAuthorised,
     Outcome,
     Pipeline,
+    _device,
+    describe,
     summarise,
     token_holder,
 )
@@ -193,23 +196,59 @@ def test_a_passed_through_upload_carries_no_correction_note() -> None:
     assert b"corrected by Reckon" not in strava.requests[0].body
 
 
-def test_a_corrected_upload_carries_the_note() -> None:
+def test_a_corrected_upload_says_what_changed() -> None:
     strava = FakeTransport(upload_response(activity_id=555))
     pipeline(FakeTransport(response(body=CORRECTABLE)), strava).process(exercise())
-    assert UPLOAD_DESCRIPTION.encode() in strava.requests[0].body
+    body = strava.requests[0].body
+    assert b"Reckon" in body
+    assert "corrected 1.00 \u2192 0.93 km".encode() in body
+    assert PROJECT_URL.encode() in body
 
 
-def test_the_note_names_the_project_so_the_activity_explains_itself() -> None:
-    """It appears on every corrected activity, so it is one line and it links out."""
-    assert UPLOAD_DESCRIPTION == ("Distance corrected by https://github.com/c10gdn-dev/reckon-tcx")
+def test_the_description_names_the_device_that_recorded_it() -> None:
+    """A file self-identifies, so the activity can say which watch it came from."""
+    from reckon.core.rescale import rescale_tcx
+
+    data = pathlib.Path("training-data/6772877356585089904.tcx").read_bytes()
+    assert describe(rescale_tcx(data), _device(data)).startswith("Reckon \u00b7 Charge 5 \u00b7")
 
 
-def test_the_note_can_be_replaced() -> None:
-    strava = FakeTransport(upload_response(activity_id=555))
-    pipeline(
-        FakeTransport(response(body=CORRECTABLE)), strava, description="something else"
-    ).process(exercise())
-    assert b"something else" in strava.requests[0].body
+def test_a_file_without_a_creator_omits_the_device() -> None:
+    """Synthetic fixtures have no Creator; the separator must not be left dangling."""
+    from reckon.core.rescale import rescale_tcx
+
+    line = describe(rescale_tcx(CORRECTABLE), None).splitlines()[0]
+    assert line == "Reckon \u00b7 corrected 1.00 \u2192 0.93 km"
+
+
+@pytest.mark.parametrize(
+    ("document", "expected"),
+    [
+        (NO_GPS, "not corrected \u2014 no GPS recorded"),
+        (
+            builders.tcx(
+                distances=tuple(float(i * 100) for i in range(10)),
+                lap_distance_m=909.0,
+                positions=[True] * 4 + [False] + [True] * 5,
+            ),
+            "not corrected \u2014 GPS incomplete",
+        ),
+    ],
+)
+def test_each_uncorrected_reason_has_its_own_wording(document: bytes, expected: str) -> None:
+    """The reason is stated, because "not corrected" alone invites the question."""
+    from reckon.core.rescale import rescale_tcx
+
+    assert expected in describe(rescale_tcx(document), None)
+
+
+def test_the_wording_avoids_this_projects_vocabulary() -> None:
+    """ "Passed through" is precise here and meaningless in a Strava feed."""
+    from reckon.core.rescale import rescale_tcx
+
+    text = describe(rescale_tcx(NO_GPS), None)
+    assert "passed through" not in text.lower()
+    assert "skip" not in text.lower()
 
 
 # --- withheld: deliberately not uploaded ------------------------------------

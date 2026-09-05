@@ -83,6 +83,24 @@ def label(activity: ET.Element) -> str:
     return element.text.strip()
 
 
+CREATOR = qn(TCX_NS, "Creator")
+NAME = qn(TCX_NS, "Name")
+
+
+def creator_name(activity: ET.Element) -> str | None:
+    """The device model that recorded the activity, e.g. "Charge 5".
+
+    Real exports carry it and it is worth surfacing: a file self-identifies, so
+    an uploaded activity can say which watch it came from without any external
+    metadata. Synthetic fixtures have no `Creator`, hence the None.
+    """
+    creator = activity.find(CREATOR)
+    if creator is None:
+        return None
+    name = creator.findtext(NAME)
+    return name.strip() if name and name.strip() else None
+
+
 def gps_coverage(activity: ET.Element) -> float:
     """Fraction of the activity's elapsed time that carries a position fix.
 
