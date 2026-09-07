@@ -28,7 +28,7 @@ Real activities from a Fitbit Charge 5:
 Reckon rescales the distance stream so the total matches the device's own
 figure, leaving the GPS geometry and every timestamp untouched.
 
-The size of the correction is not fixed. Across twenty-one activities it ranged
+The size of the correction is not fixed. Across twenty-three activities it ranged
 from 0.6% to 38%, depending almost entirely on how noisy the track was:
 
 ## Quickstart
@@ -55,7 +55,7 @@ Fitbit and Strava disagree because they compute distance differently, and one of
 them is summing noise.
 
 **Strava sums the distance stream in the file, unchanged.** Verified across
-twenty-one exports, and then tested directly: a rescaled file uploaded by hand came
+twenty-three exports, and then tested directly: a rescaled file uploaded by hand came
 back reporting the rescaled total, 21.4 km, where the original stream said
 24.06 km and a raw haversine sum of the same coordinates said 24.08 km. Strava
 takes the stream at face value and does not recompute from position.
@@ -156,7 +156,7 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   that expires weekly. It is off by default and stays that way. It matters only
   for a fully automated pipeline, where nobody is there to export a file.
 - **Elevation is not corrected.** See below; this is deliberate.
-- **The factor is not a constant.** Across twenty-one activities it ranged 0.72–0.99
+- **The factor is not a constant.** Across twenty-three activities it ranged 0.72–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that
   particular track was. Reckon computes it per file and refuses to guess.
 - **A partial GPS track cannot be corrected, and Reckon detects that and
@@ -370,7 +370,7 @@ Two differences from `sync` are worth knowing before you run it:
 ## Status
 
 Alpha, and honest about it. The offline commands — `rescale` and `analyse` —
-work and are validated against twenty-one real exports, including a hand upload to
+work and are validated against twenty-three real exports, including a hand upload to
 Strava confirming it honours the corrected stream.
 
 `reckon fetch`, `reckon sync` and `reckon local` are built: authorise both
