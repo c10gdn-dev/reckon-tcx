@@ -16,7 +16,7 @@ One line each, saying what the module owns.
 
 | Module | Owns |
 |---|---|
-| `core/tcx.py` | Parsing and serialising TCX. Namespaces, element lookup, GPS coverage. Knows nothing about rescaling. |
+| `core/tcx.py` | Parsing and serialising TCX. Namespaces, element lookup, GPS coverage, recording gaps, the device name and the start timestamp. Knows nothing about rescaling. |
 | `core/rescale.py` | The transform. Pure: bytes and a target in, bytes and numbers out. |
 | `core/analyse.py` | Corpus measurement. Pure. Feeds `reckon analyse`. |
 | `core/heartrate.py` | Putting heart rate back into a TCX: a fetched series, or the summary's average onto the lap. |
@@ -27,7 +27,7 @@ One line each, saying what the module owns.
 | `clients/strava.py` | Strava: multipart upload, polling, duplicate detection. |
 | `stores/base.py` | The two persistence ports, as protocols, plus the vocabulary they are defined in. |
 | `stores/file.py` | Local adapter. Both ports in one 0600 JSON file, under `flock`. |
-| `pipeline.py` | Activity id → fetch → rescale → upload → record. Shared by both run modes. |
+| `pipeline.py` | Activity in → rescale → upload → record. Shared by `sync`, `local` and the Lambda worker; `sync` fetches the bytes, `local` reads them from a file. |
 | `stores/dynamo.py` | AWS adapter. Same two ports over one DynamoDB table; the only place besides `aws/` that may import boto3. |
 | `aws/receiver.py` | Webhook endpoint. Authenticates, enqueues, acknowledges. Nothing else. |
 | `aws/worker.py` | SQS handler. Routes the two message shapes; re-enqueues delayed rather than sleeping. |

@@ -29,7 +29,10 @@ Reckon rescales the distance stream so the total matches the device's own
 figure, leaving the GPS geometry and every timestamp untouched.
 
 The size of the correction is not fixed. Across twenty-three activities it ranged
-from 0.6% to 38%, depending almost entirely on how noisy the track was:
+from 0.6% to 38%. How noisy the track was is the best single predictor, though
+only of the *order* — it ranks the corpus well and predicts the size of any
+individual correction poorly, which is why Reckon measures every file rather than
+estimating from one.
 
 ## Quickstart
 
@@ -72,14 +75,15 @@ across the corpus it runs 0.6–12% below the stream.
 How large the gap gets depends on what happened during the activity rather than
 on how far you went. Standing still is the clearest case, because a stationary
 receiver keeps inventing movement: two minutes of standing still added **119 m**
-to a track that had not moved, and on a short walk an 81-second wait at a
-crossing added **40 m**, which was 38% of that walk's whole over-measurement
-while occupying 29% of its time.
+to a track that had not moved.
 
-Those two work out at 78 and 29 m per minute, and the gap between them is the
-point: **the rate is not a property of the device**, it depends on the sky, the
-buildings and the day. That is one of several reasons Reckon measures the
-correction from the file in front of it rather than applying a rate.
+**It is a burst, not a rate**, and that took an experiment to establish. A single
+11.5-minute stop, measured minute by minute, produced 16.8 m in the first minute
+and decayed to nothing by the sixth — 62.9 m in total, almost all of it early.
+That reconciles every earlier figure: a short stop and a long one accumulate
+similar phantom distance, so dividing by elapsed minutes gives wildly different
+"rates" for the same underlying behaviour. Do not read any per-minute figure here
+as something you can extrapolate.
 
 The gap looks like high-frequency GPS noise. Sample a track at full resolution
 and again at one fix per five seconds: real movement is smooth at that scale, so
@@ -163,10 +167,14 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   declines.** If the watch lost its lock for part of the activity, the stream
   covers less ground than you actually travelled, and scaling it up would
   attribute the missing distance to the part of the route that *was* recorded.
-  Reckon checks two things: how much of the elapsed time carried a fix, and
-  whether the activity's own total exceeds what GPS measured — which cannot
-  happen from noise alone, since jitter only ever adds length. Either one refuses
-  the correction. The file is still written out, unchanged.
+  Reckon checks how much of the elapsed time carried a fix, and refuses below
+  80%. It also refuses when the activity's own total exceeds what GPS measured
+  **and** the track shows somewhere the route could have gone missing. Both
+  halves are required: a complete track can measure slightly short all by itself,
+  because the stream joins fixes with straight lines and a chord is shorter than
+  the curve it cuts. A real 14 km run measured 0.6% short with every trackpoint
+  carrying a fix and nothing missing at all. The file is still written out,
+  unchanged.
 - **Indoor activities are passed through**, not corrected and not dropped. With
   no GPS there is no inflation to remove, so the file is written out unchanged.
 - **Reckon does not touch activity type.** It edits distances and speeds only;
@@ -238,8 +246,8 @@ stream is rescaled.
 $ reckon analyse --corpus training-data/
 file        sport      factor    infl  cover  gaps  wiggle   lead   lag  dMove
 ...
-17 of 21 corrected
-factor  0.7229-0.9943  mean 0.8908  stdev 0.0982
+19 of 23 corrected
+factor  0.7229-0.9943  mean 0.8963  stdev 0.0948
 worst moving-time change  113s
 skipped  no_gps  x3
 skipped  partial_gps  x1
@@ -257,12 +265,21 @@ rather than fabricating data:
 | A non-monotonic stream | Warns and proceeds; multiplication preserves ordering. |
 | Part of the activity has no trackpoints at all | Warns and proceeds. The distance survives — the file joins the two ends with a straight line — but the shape of that stretch is gone, so splits across it are approximate. |
 | A factor further below 1 than `--tolerance` | Aborts by default. The stream over-measured by more than jitter can explain, so the target is probably wrong. |
-| A factor above 1 | The stream measured *short*, which jitter cannot cause. Treated as partial GPS when the target came from the file, or as a bad `--distance` when you supplied one. |
+| A factor above 1 by more than 0.5%, on a track that is *not* fully recorded | Passed through as partial GPS. Both conditions are needed — see below. |
+| A factor above 1 on a fully recorded track | Corrected normally. Chords are shorter than curves, so a complete track can measure slightly short. |
+| A factor outside `--tolerance` either way | Aborts by default, whatever the target's source. |
 
 The bound is deliberately **asymmetric**. GPS noise only ever adds length, so a
 factor below 1 is the normal case and can legitimately be large — one real walk
 in testing measured 0.723, a 38% over-read. A factor above 1 means something
 quite different and gets handled separately.
+
+That asymmetry was once stated too strongly. "A complete track can only measure
+long" is half the mechanism: jitter adds length, and chording a curve subtracts
+it, and on a fast run with a fix every few metres the second can win. So a factor
+above 1 is treated as a missing stretch of route only when the track *also* shows
+a gap or a dropout to corroborate it. Without that, it is just a short chord and
+gets corrected like anything else.
 
 ### Syncing to Strava
 
@@ -381,10 +398,15 @@ API**, not the Fitbit Web API — Google retired the standalone Fitbit app, stop
 issuing Fitbit developer accounts, and the legacy Web API is deprecated as of
 September 2026. See `PLAN.md` §8.
 
-Two caveats worth stating plainly. **The online path has not yet been run against
-the live APIs** — it is tested end to end against a fake transport, so the first
-real run is where any wrong field name will show up. And there is no AWS
-deployment yet, so `sync` is something you run yourself.
+One caveat worth stating plainly: there is no AWS deployment yet, so `sync` and
+`local` are things you run yourself.
+
+The online path **has** been run against the live APIs, repeatedly. One `sync`
+covering seventeen activities corrected eleven, passed five through as `no_gps`
+and one as `partial_gps`, withheld none and failed none; `local` has since
+uploaded eight more. Treat that as the path working rather than as independent
+corroboration of the corpus — both come from the same account, and some
+activities appear in both.
 
 Activities Reckon cannot correct — yoga, an indoor walk, a track whose GPS
 dropped out — are uploaded **unchanged** rather than skipped. Correcting is not a
@@ -423,6 +445,15 @@ Roughly half an hour, once:
 Optional, and only worth it if you want activities corrected without running a
 command. Steady-state cost is pennies a month — a handful of Lambda invocations,
 a nearly-empty DynamoDB table and an SQS queue that is idle almost all the time.
+
+> **It costs you heart rate, and that is not a detail.** A deployed Reckon fetches
+> from the Google Health API, whose export carries no heart rate, and nobody is
+> there to export a file by hand. So activities arrive without a trace, and
+> Strava's Relative Effort — and therefore Fitness — does not accrue. `reckon
+> local` is the mode that keeps it. This is a genuine trade between automation
+> and completeness, not a gap waiting to be closed: the API route to the
+> per-second series needs a scope Google will only grant after an annual paid
+> security assessment.
 
 <details>
 <summary><strong>Deploying</strong></summary>
@@ -578,9 +609,14 @@ calculate.
 
 **Can I run it on the activities I have already uploaded?**
 
-Not usefully. Reckon corrects a file before it reaches Strava. An activity that
-is already there would have to be deleted and re-uploaded, and Strava will refuse
-the second copy as a duplicate unless the first is gone.
+Yes, and `reckon local` is built for it — but you must delete the Strava copy
+first. Export the activity from the Google Health app, drop the file in your
+export directory, and run `reckon local`; it reprocesses a file even if its
+history says it was handled before, precisely so an activity can be replaced.
+
+Reckon will not delete anything from your Strava account, and cannot deduplicate
+against a copy that arrived by another route. So if the old one is still there
+when you run it, you will have two.
 
 **Do I have to turn off the built-in Fitbit-to-Strava sync?**
 

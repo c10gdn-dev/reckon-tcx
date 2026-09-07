@@ -89,9 +89,10 @@ route you actually walked or ran.
 > to an app you intend to publish (step 6) forces a verification process that
 > ends in a **paid annual security audit**.
 >
-> Heart rate is worth having — Strava's Fitness score is calculated from it — but
-> it needs a *second, unpublished* app, because an unpublished app may use
-> Restricted scopes freely. See "Heart rate" at the end of this guide.
+> Heart rate is worth having — Strava's Fitness score is calculated from it — and
+> you do **not** need that scope to get it. Export the activity from the phone
+> app and run `reckon local`: the file already contains the full trace. See
+> "Heart rate" at the end of this guide.
 
 [scopes]: https://console.cloud.google.com/auth/scopes
 
@@ -316,7 +317,7 @@ $ reckon sync
 
 ---
 
-## Heart rate, and why it needs a second app
+## Heart rate, and the easy way to get it
 
 Google's route export contains no heart rate. The same walk exported by hand from
 the phone app has it on 193 trackpoints; fetched through the API it has none. The
@@ -327,29 +328,50 @@ This matters more than it sounds if you use Strava's **Fitness** score, which is
 calculated from Relative Effort, which needs heart-rate data or an effort rating
 you type in yourself. Activities with neither contribute nothing to it.
 
-Reckon does two things about this:
+**The simple answer is `reckon local`, and it needs nothing from this guide.**
+Export the activity from the Google Health app on your phone, drop the file into
+a directory, and run `reckon local`. The file already contains the full
+per-trackpoint heart-rate series, and Reckon leaves it alone. No second app, no
+extra scope, no weekly re-authorisation.
 
-- **Without any extra setup**, it writes your *average* heart rate for the
-  activity, which the scopes above can read, onto the uploaded file. A number
-  rather than a graph, and it may not be enough for Relative Effort.
-- **With a second app**, it fetches the full second-by-second series and merges it
-  into the file properly.
+This was confirmed rather than assumed: five activities uploaded this way —
+two runs, a walk, a yoga session and a weights session — showed Relative Effort
+on **all five**. A `sync` upload the day before, carrying only the summary
+average, showed none. The per-trackpoint series works; an average does not.
 
-The second app has to be a **separate** one, left *unpublished*, because:
+Two things are still worth knowing:
 
-| | This app | The heart-rate app |
+- **`reckon sync` cannot do this.** It fetches from the API, so its uploads have
+  no heart-rate trace. It still writes the summary average onto the file, which
+  costs nothing and is better than nothing, but it will not produce Relative
+  Effort. If Fitness matters to you, use `reckon local`.
+- **The same limitation applies to the AWS deployment**, and there it cannot be
+  worked around, because nobody is there to export a file.
+
+<details>
+<summary><strong>The second-app route, and why you almost certainly do not want it</strong></summary>
+
+The per-second series *can* be fetched from the API and merged in. It needs the
+`health_metrics_and_measurements` scope, which Google classes as **Restricted**.
+A published app may only hold a Restricted scope after verification, and
+verification for these scopes requires an annual security assessment by a
+Google-empanelled assessor — a recurring paid audit.
+
+An **unpublished** app may use Restricted scopes freely, which is Google's
+exemption for personal use, but its logins expire every seven days:
+
+| | This app | A heart-rate app |
 |---|---|---|
 | Published? | yes, so your login lasts | **no**, so it may use the scope |
 | Login expires | when you revoke it | **every 7 days** |
 
-An unpublished app can use Restricted scopes with no verification at all — that
-is Google's own exemption for personal use — but its logins expire weekly. A
-published one is the reverse. You cannot have both in one app, so Reckon supports
-two.
+You cannot have both properties in one app. The code for this path exists
+(`heartrate.merge`, `HEART_RATE_SCOPES`) and is **off by default** — enabling it
+without the scope makes every activity return 403. Since `reckon local` gets the
+same data from a file you already have, this is only worth building for a fully
+automated setup where no human is present to export one.
 
-The cost is re-running `authorize.py` for the heart-rate app about once a week.
-If you forget, nothing breaks: the activity still uploads with its distance
-corrected, and only the heart-rate trace is missing.
+</details>
 
 ## If something goes wrong
 
