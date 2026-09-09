@@ -44,7 +44,8 @@ def test_inflation_is_absent_when_nothing_was_corrected():
 
 
 def test_elapsed_and_lap_time_are_reported_separately():
-    s = stats(distances=(0.0, 500.0, 1000.0), lap_distance_m=900.0)
+    """The lap's own duration is not the span of its trackpoints, and can exceed it."""
+    s = stats(distances=(0.0, 500.0, 1000.0), lap_distance_m=900.0, lap_total_time_s=600.0)
 
     assert s.elapsed_s == pytest.approx(20.0)  # three points, ten seconds apart
     assert s.lap_total_time_s == pytest.approx(600.0)
@@ -154,9 +155,9 @@ def test_a_position_missing_a_coordinate_is_rejected():
 
 
 def test_a_lap_without_a_recorded_time_contributes_nothing():
-    data = builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=900.0).replace(
-        b"<TotalTimeSeconds>600.0</TotalTimeSeconds>", b"", 1
-    )
+    data = builders.tcx(
+        distances=(0.0, 500.0, 1000.0), lap_distance_m=900.0, lap_total_time_s=600.0
+    ).replace(b"<TotalTimeSeconds>600.0</TotalTimeSeconds>", b"", 1)
 
     assert analyse_tcx(data).lap_total_time_s == 0.0
 

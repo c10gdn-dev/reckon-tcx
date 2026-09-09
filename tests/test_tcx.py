@@ -258,3 +258,18 @@ def test_started_at_skips_an_activity_with_a_blank_id() -> None:
 
 def test_started_at_is_none_when_no_activity_has_an_id() -> None:
     assert tcx.started_at(ET.Element(tcx.ROOT)) is None
+
+
+def test_unrecorded_time_refuses_a_trackpoint_without_a_time() -> None:
+    """Same guard as the other two measures; a track with no clock is unmeasurable."""
+    activity = ET.Element(tcx.ACTIVITY)
+    lap = ET.SubElement(activity, tcx.LAP)
+    ET.SubElement(ET.SubElement(lap, tcx.qn(tcx.TCX_NS, "Track")), tcx.TRACKPOINT)
+
+    with pytest.raises(MalformedTCX, match="cannot measure unrecorded time"):
+        tcx.unrecorded_time(activity)
+
+
+def test_unrecorded_time_is_zero_for_a_track_too_short_to_span_anything() -> None:
+    root = tcx.parse(builders.tcx(distances=(0.0,)))
+    assert tcx.unrecorded_time(next(tcx.activities(root))).fraction == 0.0

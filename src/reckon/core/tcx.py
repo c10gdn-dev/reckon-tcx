@@ -83,6 +83,7 @@ def label(activity: ET.Element) -> str:
     return element.text.strip()
 
 
+TOTAL_TIME_SECONDS = qn(TCX_NS, "TotalTimeSeconds")
 CREATOR = qn(TCX_NS, "Creator")
 NAME = qn(TCX_NS, "Name")
 
@@ -212,6 +213,76 @@ def recording_gaps(activity: ET.Element, minimum: float | None = None) -> Gaps:
         largest_s=max(spans),
         span_s=(times[-1] - times[0]).total_seconds(),
     )
+
+
+@dataclass(frozen=True)
+class Unrecorded:
+    """Activity time lying entirely outside the recorded track.
+
+    The third way a track can be incomplete, and the only one the other two
+    cannot see. `gps_coverage` asks whether trackpoints carried a position;
+    `recording_gaps` asks whether there were trackpoints between the first and
+    the last. Both are bounded by the track itself, so neither can notice that
+    the track starts six minutes after the activity did.
+
+    It is a *different* failure, not a bigger one, and that is why it is a
+    separate measurement. A gap in the middle costs shape but not distance — the
+    stream chords straight across it. Time before the first trackpoint costs
+    distance outright: the stream never ran, so those metres are absent from it
+    rather than approximated within it. Scaling such a stream up to the device's
+    total spreads the missing route across the part that *was* recorded.
+    """
+
+    total_s: float
+    lead_s: float
+    activity_s: float
+
+    @property
+    def fraction(self) -> float:
+        """Share of the activity's own duration that the track does not cover."""
+        return 0.0 if self.activity_s <= 0 else self.total_s / self.activity_s
+
+
+def unrecorded_time(activity: ET.Element) -> Unrecorded:
+    """Activity duration the trackpoints do not span, and how much leads them.
+
+    The device's own duration is the sum of `Lap/TotalTimeSeconds`. Where that is
+    missing or shorter than the track — some producers write moving time — there
+    is nothing to report and the answer is zero, which fails safe: this measure
+    can refuse a correction, so it must never invent a reason to.
+    """
+    times: list[dt.datetime] = []
+    for point in trackpoints(activity):
+        element = point.find(TIME)
+        if element is None:
+            raise MalformedTCX("trackpoint has no Time; cannot measure unrecorded time")
+        times.append(read_time(element))
+    if len(times) < 2:
+        return Unrecorded(0.0, 0.0, 0.0)
+
+    duration = 0.0
+    for lap in activity.iter(LAP):
+        element = lap.find(TOTAL_TIME_SECONDS)
+        if element is not None:
+            duration += read_float(element)
+
+    span = (times[-1] - times[0]).total_seconds()
+    total = max(0.0, duration - span)
+    return Unrecorded(
+        total_s=total, lead_s=min(total, _lead(activity, times[0])), activity_s=duration
+    )
+
+
+def _lead(activity: ET.Element, first: dt.datetime) -> float:
+    """How far the first trackpoint post-dates the activity's own start."""
+    element = activity.find(ACTIVITY_ID)
+    if element is None:
+        return 0.0
+    try:
+        return max(0.0, (first - read_time(element)).total_seconds())
+    except MalformedTCX:
+        # Some producers put a non-timestamp identifier in Id. Not an error here.
+        return 0.0
 
 
 def read_time(element: ET.Element) -> dt.datetime:

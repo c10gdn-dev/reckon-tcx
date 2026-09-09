@@ -102,6 +102,7 @@ def activity(
     start_offset: int = 0,
     laps: int = 1,
     lap_distance_m: float | None = None,
+    lap_total_time_s: float | None = None,
     max_speed: float | None = None,
     avg_speed: float | None = None,
     include_id: bool = True,
@@ -132,11 +133,18 @@ def activity(
     chunks = [points[i : i + per_lap] for i in range(0, len(points), per_lap)] if per_lap else [[]]
     chunks += [[]] * (laps - len(chunks))
 
+    # A lap's TotalTimeSeconds matches the span of its own trackpoints unless a
+    # test says otherwise. Real files agree to within a second or two, and the
+    # difference between the two is now load-bearing: `tcx.unrecorded_time` reads
+    # it as activity time the track does not cover. Leaving the old fixed 600 s
+    # against a 20 s span would have made every synthetic file look 97% missing.
+    span = float(max(0, len(chunks[0]) - 1) * 10) if chunks and chunks[0] else 0.0
     body = "".join(
         lap(
             start_offset=start_offset + index * 600,
             trackpoints=chunk,
             distance_m=lap_distance_m,
+            total_time_seconds=(span if lap_total_time_s is None else lap_total_time_s),
             max_speed=max_speed,
             avg_speed=avg_speed,
         )

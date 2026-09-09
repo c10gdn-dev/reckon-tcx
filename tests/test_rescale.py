@@ -668,3 +668,79 @@ def test_a_factor_below_one_is_unaffected_by_any_of_this() -> None:
     result = rescale_tcx(builders.tcx(distances=(0.0, 500.0, 1000.0), lap_distance_m=800.0))
     assert result.modified is True
     assert result.factor == pytest.approx(0.8)
+
+
+# --- a track that starts after the activity does -----------------------------
+#
+# The third way a track can be incomplete, and the one neither `gps_coverage` nor
+# `recording_gaps` can see: both are bounded by the track, so neither notices the
+# track beginning six minutes late. Found on a real 9.5 km run whose first
+# kilometre was never recorded — every trackpoint carried a fix, no gap exceeded
+# five seconds, and the file asked to have its remaining 8.6 km scaled up by 10%.
+
+
+def late_starting(lead_s: float, *, lap_distance_m: float = 1100.0) -> bytes:
+    """Ten fixes spanning 90 s inside an activity `lead_s` longer than that."""
+    return builders.tcx(
+        distances=tuple(float(i * 100) for i in range(10)),
+        lap_distance_m=lap_distance_m,
+        lap_total_time_s=90.0 + lead_s,
+        with_heart_rate=False,
+    )
+
+
+def test_a_track_starting_long_after_the_activity_is_refused() -> None:
+    """The missing route would otherwise be spread over the part that was recorded."""
+    result = rescale_tcx(late_starting(600.0))
+
+    assert result.modified is False
+    assert [str(s.reason) for s in result.skips] == ["partial_gps"]
+
+
+def test_the_refusal_names_the_late_start_rather_than_the_coverage() -> None:
+    """Three different failures reach this message; it has to say which one."""
+    detail = rescale_tcx(late_starting(600.0)).skips[0].detail
+
+    assert "87% of the activity has no track at all" in detail
+    assert "before the first trackpoint" in detail
+
+
+def test_an_ordinary_acquisition_delay_still_scales() -> None:
+    """A watch taking a few seconds to find the sky is not a missing route.
+
+    The README's honest-limits section describes exactly this and says the total
+    survives it. 5 s against a 95 s activity is 5.3%... just over the bound, so
+    this uses 4 s to sit under it — the point being that the bound is set above
+    ordinary acquisition and below a missing kilometre.
+    """
+    result = rescale_tcx(late_starting(4.0))
+
+    assert result.modified is True
+    assert result.skips == ()
+
+
+def test_a_late_start_is_only_evidence_alongside_a_short_measurement() -> None:
+    """The corroboration cuts both ways: a normal factor is corrected regardless.
+
+    Almost every corpus file leaves *some* time unrecorded, and the overwhelming
+    majority of them over-measure. Refusing those would be the dropping the whole
+    design forbids.
+    """
+    result = rescale_tcx(late_starting(600.0, lap_distance_m=800.0))
+
+    assert result.modified is True
+    assert result.factor == pytest.approx(800.0 / 900.0)
+
+
+def test_a_lap_time_shorter_than_its_track_reports_nothing_unrecorded() -> None:
+    """Some producers write moving time, which is less than elapsed. Fail safe."""
+    data = builders.tcx(
+        distances=tuple(float(i * 100) for i in range(10)),
+        lap_distance_m=1100.0,
+        lap_total_time_s=10.0,
+        with_heart_rate=False,
+    )
+
+    result = rescale_tcx(data)
+
+    assert result.modified is True

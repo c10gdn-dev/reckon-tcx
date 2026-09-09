@@ -57,6 +57,22 @@ MAX_CREDIBLE_FACTOR = 1.005
 # real one, which is the most that can honestly be claimed for it.
 MAX_GAP_FRACTION = 0.05
 
+# How much of an activity's own duration may fall outside the recorded track
+# before the track counts as incomplete.
+#
+# A separate constant from MAX_GAP_FRACTION despite the equal value, because the
+# two measure different failures and only one of them costs distance: a gap in
+# the middle is chorded across, while time before the first trackpoint is simply
+# absent from the stream. They are free to diverge.
+#
+# Measured, like the gap threshold. Twenty-one of the twenty-three corpus files
+# leave 3.0% or less unrecorded, most of them under 1%; the two exceptions are
+# 12.1% and 25.0%, and both are files whose track really does start late. A watch
+# that takes a minute to find the sky on an hour-long run lands at 1.7%, so the
+# bound has to sit above the ordinary acquisition delay the README describes and
+# below a genuinely missing kilometre.
+MAX_UNRECORDED_FRACTION = 0.05
+
 # Number of decimal places kept when writing a scaled value back. Distances are
 # metres and speeds are m/s; seven places is far beyond the precision of either
 # measurement, so this only exists to stop float repr from writing 17 digits.
@@ -247,7 +263,7 @@ def rescale_tcx(
         # shows somewhere the route could have gone missing.
         detail = (
             f"the file's own total exceeds the GPS distance by {(factor - 1) * 100:.1f}%, "
-            f"and the track is not fully recorded; part of the route is missing"
+            f"and {_why_incomplete(incomplete[0])}; part of the route is missing"
         )
         for activity in incomplete:
             _skip(skips, warnings, tcx.label(activity), SkipReason.PARTIAL_GPS, detail)
@@ -369,17 +385,44 @@ def _format(value: float) -> str:
     return f"{value:.{_PRECISION}f}".rstrip("0").rstrip(".")
 
 
+def _why_incomplete(activity: ET.Element) -> str:
+    """Which of the three checks found the hole, for the refusal message.
+
+    Named rather than summarised as "not fully recorded", because the three mean
+    different things to whoever reads the warning: a dropout is the watch losing
+    the sky mid-route, a gap is it not writing at all, and a late start is the
+    route beginning before the recording did.
+    """
+    unrecorded = tcx.unrecorded_time(activity)
+    if unrecorded.fraction > MAX_UNRECORDED_FRACTION:
+        return (
+            f"{unrecorded.fraction:.0%} of the activity has no track at all "
+            f"({unrecorded.lead_s:.0f}s of it before the first trackpoint)"
+        )
+    if tcx.gps_coverage(activity) < 1.0:
+        return "the track is not fully recorded"
+    return f"{tcx.recording_gaps(activity).fraction:.0%} of the elapsed time has no trackpoint"
+
+
 def _fully_recorded(activity: ET.Element) -> bool:
     """True when nothing about the track suggests a stretch of route is missing.
 
-    Two independent ways a route can go unrecorded, and both are checked because
-    neither sees the other: a trackpoint written without a fix, which
-    `gps_coverage` measures, and no trackpoint written at all, which only
-    `recording_gaps` measures. A file can be 100% covered and half unrecorded.
+    Three independent ways a route can go unrecorded, and all three are checked
+    because none of them sees the others:
+
+    - a trackpoint written without a fix, which `gps_coverage` measures;
+    - no trackpoint written at all between two others, which `recording_gaps`
+      measures;
+    - the track not spanning the activity, which only `unrecorded_time` measures,
+      because the other two are bounded by the track itself.
+
+    A file can be 100% covered, gap-free, and still be missing its first
+    kilometre. One real 9.5 km run was exactly that.
     """
     return (
         tcx.gps_coverage(activity) >= 1.0
         and tcx.recording_gaps(activity).fraction <= MAX_GAP_FRACTION
+        and tcx.unrecorded_time(activity).fraction <= MAX_UNRECORDED_FRACTION
     )
 
 
