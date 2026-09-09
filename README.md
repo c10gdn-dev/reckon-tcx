@@ -74,16 +74,25 @@ across the corpus it runs 0.6–12% below the stream.
 
 How large the gap gets depends on what happened during the activity rather than
 on how far you went. Standing still is the clearest case, because a stationary
-receiver keeps inventing movement: two minutes of standing still added **119 m**
-to a track that had not moved.
+receiver keeps inventing movement. Five real stops were measured:
 
-**It is a burst, not a rate**, and that took an experiment to establish. A single
-11.5-minute stop, measured minute by minute, produced 16.8 m in the first minute
-and decayed to nothing by the sixth — 62.9 m in total, almost all of it early.
-That reconciles every earlier figure: a short stop and a long one accumulate
-similar phantom distance, so dividing by elapsed minutes gives wildly different
-"rates" for the same underlying behaviour. Do not read any per-minute figure here
-as something you can extrapolate.
+| Stopped for | Phantom distance |
+|---|---:|
+| 51 s | 18.0 m |
+| 57 s | 18.3 m |
+| 81 s | 39.6 m |
+| 120 s | 119 m |
+| 691 s | 62.9 m |
+
+**The longest stop produced barely half what the two-minute one did**, so this is
+not a rate and cannot be extrapolated. Measuring the 11.5-minute stop minute by
+minute shows why: 16.8 m in the first minute, decaying to nothing by the sixth.
+It is a front-loaded burst of roughly bounded size, and dividing it by an
+ever-longer denominator is what makes short stops look like fast "rates".
+
+How much a given stop costs still varies sixfold between them, which is one of
+several reasons Reckon measures the correction from the file in front of it
+rather than applying any rule.
 
 The gap looks like high-frequency GPS noise. Sample a track at full resolution
 and again at one fix per five seconds: real movement is smooth at that scale, so
@@ -112,20 +121,29 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   trusting. Treat the result as much better than raw GPS, not as correct.
 - **The correction is device-specific, and so is the problem.** On one route
   walked side by side, one watch over-measured by 38% and the other by 16%. Their
-  raw GPS totals were 249 m apart on a 900 m walk — five times the gap between
-  their step-counted totals. Reckon reads the factor from each file, so this is
+  raw GPS totals were 249 m apart on a walk their own step counts put at 809 and
+  862 m — nearly five times the gap between those two figures. Reckon reads the factor from each file, so this is
   handled automatically, but it does mean two people on one walk will still not
   match afterwards: each is corrected to its own watch.
 - **Splits all shift proportionally.** Every kilometre gets the same factor, so
   the *shape* of your pace curve is preserved exactly, but Reckon cannot tell
   which specific kilometre carried the error.
-- **The first few seconds are missing from the file, and nothing can recover
-  them.** A watch takes 15–80 seconds to get a fix, and if you set off
-  immediately, that ground is never recorded. Across testing this cost 34–152 m,
-  or 0.3–6.1% of the activity. The corrected *total* is still right, because the
-  device's own figure counts those metres — but they get spread across the part
-  of the route that was recorded, so splits stretch very slightly. This is
-  already true of the raw file; Reckon neither causes it nor repairs it.
+- **The start of the activity can be missing from the file, and nothing can
+  recover it.** A watch takes time to find the sky, and if you set off
+  immediately that ground is never recorded. Across the corpus this ran from 1 to
+  85 seconds, costing roughly 2 to 339 metres.
+
+  While the loss is small, the corrected *total* is still right — the device's
+  own figure counts those metres — and they simply get spread over the part of
+  the route that was recorded, stretching splits very slightly. Reckon neither
+  causes that nor repairs it; it is already true of the raw file.
+
+  **Past a point, spreading them is worse than not correcting**, so Reckon stops.
+  If more than 5% of the activity's own duration has no track in it *and* the
+  file's total exceeds what GPS measured, the activity is passed through
+  uncorrected with the reason named. One real 9.5 km run recorded nothing for its
+  first 365 seconds — about a kilometre — and would otherwise have had its
+  remaining 8.6 km inflated by 10% to make up the difference.
 - **Route, timestamps and dates are unchanged.** Strava's *elapsed* time is
   unaffected. Its *moving* time shifts by a few seconds — 24 s on a real upload
   where the distance changed by 10.8% — because Strava derives it from speed, and
@@ -169,8 +187,10 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   attribute the missing distance to the part of the route that *was* recorded.
   Reckon checks how much of the elapsed time carried a fix, and refuses below
   80%. It also refuses when the activity's own total exceeds what GPS measured
-  **and** the track shows somewhere the route could have gone missing. Both
-  halves are required: a complete track can measure slightly short all by itself,
+  **and** the track shows somewhere the route could have gone missing — a
+  trackpoint without a fix, a stretch with no trackpoints at all, or a track that
+  does not span the activity. Both halves are required: a complete track can
+  measure slightly short all by itself,
   because the stream joins fixes with straight lines and a chord is shorter than
   the curve it cuts. A real 14 km run measured 0.6% short with every trackpoint
   carrying a fix and nothing missing at all. The file is still written out,
@@ -265,7 +285,7 @@ rather than fabricating data:
 | A non-monotonic stream | Warns and proceeds; multiplication preserves ordering. |
 | Part of the activity has no trackpoints at all | Warns and proceeds. The distance survives — the file joins the two ends with a straight line — but the shape of that stretch is gone, so splits across it are approximate. |
 | A factor further below 1 than `--tolerance` | Aborts by default. The stream over-measured by more than jitter can explain, so the target is probably wrong. |
-| A factor above 1 by more than 0.5%, on a track that is *not* fully recorded | Passed through as partial GPS. Both conditions are needed — see below. |
+| A factor above 1 by more than 0.5%, on a track that is *not* fully recorded | Passed through as partial GPS. Both conditions are needed — see below. "Not fully recorded" means any of three things: a trackpoint without a fix, more than 5% of the elapsed time with no trackpoint, or more than 5% of the activity's duration outside the track altogether. |
 | A factor above 1 on a fully recorded track | Corrected normally. Chords are shorter than curves, so a complete track can measure slightly short. |
 | A factor outside `--tolerance` either way | Aborts by default, whatever the target's source. |
 
@@ -608,12 +628,17 @@ subtracts, so error accumulates per *fix* — which means per second — while t
 distance it is measured against accumulates per metre. Go slowly and you collect
 the same error over far fewer metres.
 
-That is a tendency and not a formula. In testing, error accrued at anywhere
-between 1 and 37 metres a minute depending on conditions, and a 115-minute run
-came out worse than a 76-minute one. Two watches on the same route at the same
-moment disagreed by 26%. This is exactly why Reckon measures the correction from
-each file rather than applying a rate: nothing predicts it reliably enough to
-calculate.
+That is a tendency and not a formula, and the per-fix error is not constant
+either. An 8 km run and a six-sprint interval session, recorded back to back on
+one evening by one person on one watch, accumulated 0.066 m and **0.269 m** of
+excess per fix — a fourfold gap with the device, the wearer and the sky all held
+still. A 115-minute run came out worse than a 76-minute one. Two watches on the
+same route at the same moment disagreed by 26%.
+
+So the number of fixes sets how many chances there are to accumulate error, and
+what you are doing during them sets how much each one contributes. Nothing
+predicts the result closely enough to calculate, which is exactly why Reckon
+measures each file instead.
 
 **Can I run it on the activities I have already uploaded?**
 

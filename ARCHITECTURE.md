@@ -94,11 +94,15 @@ Everything from "here is an activity id" to "Strava has it" is `pipeline.py`,
 unchanged. The port/adapter boundary is not decoration: it is the reason the
 whole transform could be built and validated before any cloud account existed.
 
-## Two axes that must not be collapsed
+## Distinctions that must not be collapsed
 
 This codebase has repeatedly been bitten by one mechanism standing in for two
-meanings. Two separate guards exist because of it, and both look redundant until
-you try to merge them.
+meanings. It has happened six times now, and every one of these looks redundant
+until you try to merge it back.
+
+The tell is always the same: two things that answer the same question *most* of
+the time, and disagree exactly when it matters. Splitting them has never once
+been the wrong call here, so when a new one appears, split it.
 
 **`Transient` is a mixin marker, not a `retryable` flag.** "What went wrong" and
 "would retrying help" are independent questions. A 429 and a dropped connection
@@ -106,14 +110,26 @@ are nothing alike as faults but identical as decisions; a 429 and a 404 are the
 reverse. Catch `Transient` to decide about retrying, the concrete class to decide
 what to tell the user.
 
-**`gps_coverage` is separate from `recording_gaps`.** One asks whether the
-trackpoints carried a position; the other asks whether there were trackpoints at
-all. They sound like the same question and are not: a real file reported 100%
-coverage while 47% of its elapsed time fell between trackpoints. Folding gaps
-into coverage would have made a warning into a refusal, and the two failures
-deserve different answers — a missing *fix* loses distance, a missing
-*trackpoint* loses only shape, because the distance stream chords straight
-across it.
+**`gps_coverage`, `recording_gaps` and `unrecorded_time` are three measures, not
+one.** They sound like the same question and are not:
+
+| Measure | Asks | What is lost |
+|---|---|---|
+| `gps_coverage` | did the trackpoints carry a position? | distance — the stream stops advancing |
+| `recording_gaps` | were there trackpoints between the first and the last? | shape only — the stream chords across |
+| `unrecorded_time` | does the track span the activity at all? | distance — the stream never ran |
+
+Each has a blind spot only the others cover. A real file reported 100% coverage
+while 47% of its elapsed time fell between trackpoints. Another reported 100%
+coverage, no gap over five seconds, and was still missing its first kilometre —
+the track began 365 s after the activity did, and both of the first two measures
+are bounded by the track itself, so neither could see it.
+
+Folding any pair together breaks something. Gaps into coverage would have turned
+a warning into a refusal. Late starts into gaps would have conflated a loss of
+shape with a loss of distance. `_fully_recorded` in `rescale.py` requires all
+three, and the refusal message names which one fired, because they mean different
+things to whoever reads it.
 
 **`Status.on_strava` is separate from whether a correction happened.** An
 activity that reached Strava uncorrected is a *success*: yoga, an indoor walk, a
@@ -123,13 +139,18 @@ outcomes — `uploaded`, `passed_through`, `withheld`, `failed` — plus a raise
 exception for transient faults, which is never recorded so that a redelivery is
 never mistaken for a decision.
 
-**"Cannot correct" is separate from "cannot identify."** The fifth instance of
-the same shape, and it decides what `reckon local` does with a file. Cannot
+**"Cannot correct" is separate from "cannot identify."** This one decides what
+`reckon local` does with a file. Cannot
 correct means upload it anyway — that is the rule above. Cannot identify means
 *withhold*, and for a reason that has nothing to do with correction: the activity
 id is what Strava deduplicates on, so an unidentified file uploaded twice becomes
 two activities that nothing can ever reconcile. The file stays on disk and the
 next run tries again.
+
+**`Outcome.archived` is separate from `Outcome.status`.** "Did it reach Strava"
+and "is the file still in the way" are different questions. A move that fails
+leaves a true status and a false flag, rather than casting doubt on an upload
+that already happened.
 
 ## Why local mode exists
 
@@ -261,10 +282,18 @@ Things that will look wrong until you know why.
   builders at 10 s, so a fixed 3 s called ordinary sampling a gap on every
   generated fixture. The multiple is the measured one — seventeen of twenty real
   files top out at exactly 3 s against a 1 s median.
-- **A recording gap warns and never refuses.** The distance stream joins the two
-  ends with a straight line, so no distance is lost, only the shape of that
-  stretch. Refusing would be the dropping the design forbids; correcting
-  silently would say nothing about a file that is half unrecorded.
+- **A recording gap warns and never refuses, but a late start does refuse.** The
+  two look alike and are opposites. A gap between two trackpoints is chorded
+  across, so no distance is lost, only the shape of that stretch. Time before the
+  first trackpoint is not in the stream at all, so scaling up to the device's
+  total spreads a missing stretch of route over the part that was recorded —
+  exactly the failure the partial-GPS guard exists to prevent. Hence
+  `unrecorded_time` alongside `recording_gaps`, and `MAX_UNRECORDED_FRACTION`
+  alongside `MAX_GAP_FRACTION` despite the equal value: the numbers are free to
+  diverge because the failures already have.
+- **`unrecorded_time` reports zero when the lap time is shorter than the track.**
+  Some producers write moving time rather than elapsed. This measure can refuse a
+  correction, so it must never invent a reason to.
 - **The exercise listing is filtered client-side.** The API's documented `filter`
   parameter is rejected for that data type in every spelling. The listing is
   ordered newest-first, so paging stops once it passes the window — but the
