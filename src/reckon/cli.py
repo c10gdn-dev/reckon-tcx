@@ -22,7 +22,7 @@ from reckon.clients.http import retrying, send
 from reckon.core.analyse import ActivityStats, analyse_tcx, summarise
 from reckon.core.errors import ReckonError
 from reckon.core.rescale import DEFAULT_TOLERANCE, RescaleResult, ToleranceAction, rescale_tcx
-from reckon.pipeline import Outcome, Pipeline, token_holder
+from reckon.pipeline import PROCESSED_DIR, Outcome, Pipeline, token_holder
 from reckon.pipeline import summarise as summarise_outcomes
 from reckon.stores.file import DEFAULT_PATH, FileStore
 
@@ -190,6 +190,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="do everything except upload and record; print what would happen",
+    )
+    local.add_argument(
+        "--keep",
+        action="store_true",
+        help=f"leave files where they are instead of moving them into {PROCESSED_DIR}/",
     )
     _add_store_argument(local)
     local.set_defaults(handler=_local_command)
@@ -403,7 +408,7 @@ def _local_command(args: argparse.Namespace, out: Any, err: Any) -> int:
 
     try:
         pipeline = _build_pipeline(args, dry_run=args.dry_run)
-        outcomes = pipeline.local(directory)
+        outcomes = pipeline.local(directory, archive=not args.keep)
     except ReckonError as exc:
         print(f"reckon: {exc}", file=err)
         return 1
@@ -413,7 +418,10 @@ def _local_command(args: argparse.Namespace, out: Any, err: Any) -> int:
     if not outcomes:
         print(f"no .tcx files in {directory}", file=out)
         return 0
-    return _report_outcomes(outcomes, out)
+    code = _report_outcomes(outcomes, out)
+    if moved := sum(1 for o in outcomes if o.archived):
+        print(f"moved {moved} into {directory / PROCESSED_DIR}", file=err)
+    return code
 
 
 def _report_outcomes(outcomes: Sequence[Outcome], out: Any) -> int:

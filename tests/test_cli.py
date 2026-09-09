@@ -749,3 +749,24 @@ def test_local_surfaces_a_missing_authorisation(tmp_path, monkeypatch):
 
     assert code == 1
     assert "no google tokens stored" in err
+
+
+def test_local_reports_what_it_moved(tmp_path, authorised):
+    directory = export_dir(tmp_path, walk=dated_tcx())
+    transport = transport_of(listing("1"), upload_body(activity_id=9))
+
+    code, _, err = local(str(directory), "--store", str(authorised), transport=transport)
+
+    assert code == 0
+    assert "moved 1 into" in err
+    assert (directory / "processed" / "walk.tcx").exists()
+
+
+def test_local_keep_leaves_the_directory_alone(tmp_path, authorised):
+    directory = export_dir(tmp_path, walk=dated_tcx())
+    transport = transport_of(listing("1"), upload_body(activity_id=9))
+
+    _, _, err = local(str(directory), "--keep", "--store", str(authorised), transport=transport)
+
+    assert "moved" not in err
+    assert (directory / "walk.tcx").exists()

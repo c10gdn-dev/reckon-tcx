@@ -80,6 +80,12 @@ SPORT_TYPES: Mapping[str, str] = {
 # what gets the mapping extended.
 DEFAULT_SPORT_TYPE = "Workout"
 
+# Where `reckon local` puts a file once it has reached Strava. A subdirectory
+# rather than a sibling, so it travels with the export folder — and because
+# `glob("*.tcx")` does not recurse, being in it is what takes a file out of
+# scope.
+PROCESSED_DIR = "processed"
+
 # The link every Reckon upload carries, on its own line under the summary.
 PROJECT_URL = "https://github.com/c10gdn-dev/reckon-tcx"
 
@@ -161,6 +167,11 @@ class Outcome:
     description: str = ""
     # The file this came from, in local mode. Empty when the API supplied it.
     source: str = ""
+    # Whether that file was moved into `processed/` afterwards. Separate from the
+    # status on purpose: "did it reach Strava" and "is the file still in the way"
+    # are different questions, and only the first is a decision about the
+    # activity. A failed move leaves a true status and a false flag.
+    archived: bool = False
     # False when this is a stored decision being replayed rather than made. A
     # separate field, not a status: "what was decided" and "was it decided just
     # now" are independent, and merging them is how `passed_through` got lost the
@@ -306,7 +317,7 @@ class Pipeline:
             outcomes.append(outcome)
         return outcomes
 
-    def local(self, directory: Path) -> list[Outcome]:
+    def local(self, directory: Path, *, archive: bool = True) -> list[Outcome]:
         """Correct and upload TCX files exported by hand, from a directory.
 
         The mode that exists because Google's API export omits heart rate. A file
@@ -325,6 +336,17 @@ class Pipeline:
         already on Strava without heart rate, is exactly what this mode is for
         replacing. Delete the Strava copy first — Reckon cannot, and will not,
         delete anything from your account.
+
+        A file that reaches Strava is then **moved into `processed/`**, so the
+        next run sees only what is new. Only files that reached Strava move: a
+        withheld or failed one stays where it is, because the reason to keep it
+        is that it still needs dealing with. Nothing is ever deleted, and
+        `archive=False` leaves everything in place.
+
+        Moving is what makes the override safe to live with. History alone would
+        re-upload the whole directory every run — harmless, since Strava dedupes
+        on the activity id Reckon sends, but it re-sends every file to find that
+        out and loses the recorded Strava id for each one.
         """
         files = sorted(directory.glob("*.tcx"))
         if not files:
@@ -333,7 +355,37 @@ class Pipeline:
         readings = [(path, *_read(path)) for path in files]
         known = self._activities_covering(started for _, started, _ in readings if started)
 
-        return [self._local_file(path, started, why, known) for path, started, why in readings]
+        outcomes = [self._local_file(path, started, why, known) for path, started, why in readings]
+        if archive and not self.dry_run:
+            outcomes = [
+                self._archive(directory, path, outcome)
+                for path, outcome in zip(files, outcomes, strict=True)
+            ]
+        return outcomes
+
+    def _archive(self, directory: Path, path: Path, outcome: Outcome) -> Outcome:
+        """Move a file that reached Strava into `processed/`, or say why not.
+
+        A failure here is reported and never raised: the activity is already on
+        Strava, and an unwritable directory is not a reason to make the caller
+        think otherwise. The cost of a failed move is one duplicate upload
+        attempt next run, which Strava will dedupe.
+        """
+        if not outcome.status.on_strava:
+            return outcome
+        try:
+            destination = directory / PROCESSED_DIR
+            destination.mkdir(exist_ok=True)
+            path.replace(destination / path.name)
+        except OSError as exc:
+            return replace(
+                outcome,
+                warnings=(
+                    *outcome.warnings,
+                    f"could not move {path.name} into {PROCESSED_DIR}/: {exc.strerror or exc}",
+                ),
+            )
+        return replace(outcome, archived=True)
 
     def _local_file(
         self,
@@ -619,6 +671,7 @@ def summarise(outcomes: Sequence[Outcome]) -> Mapping[str, int]:
 __all__ = [
     "DEFAULT_SPORT_TYPE",
     "POLL_ATTEMPTS",
+    "PROCESSED_DIR",
     "SPORT_TYPES",
     "NotAuthorised",
     "Outcome",

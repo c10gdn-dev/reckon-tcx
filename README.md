@@ -347,7 +347,7 @@ Effort is computed from heart rate and nothing else supplies it.
 So `reckon local` reads files from a directory instead of the API:
 
 ```
-reckon local [DIRECTORY] [--dry-run] [--store PATH]
+reckon local [DIRECTORY] [--dry-run] [--keep] [--store PATH]
 ```
 
 Export the activities from the phone app, put the `.tcx` files in
@@ -381,8 +381,16 @@ Two differences from `sync` are worth knowing before you run it:
 - **A file no activity matches is withheld, not uploaded.** Without the activity
   id there is no `external_id` for Strava to deduplicate on, so uploading it
   would risk a duplicate that nothing would ever catch. Fix the match — usually a
-  stale token or a window the export falls outside — and run it again. Files are
-  never moved or deleted; the history is what stops repeat work.
+  stale token or a window the export falls outside — and run it again.
+
+Once a file reaches Strava it is **moved into `processed/`** inside the same
+directory, so the next run sees only what is new and you can leave everything
+where it is. Only files that got there move: a withheld one stays put, because
+the reason to keep it in view is that it still needs dealing with. Nothing is
+ever deleted, and `--keep` turns the moving off.
+
+To re-process something, move it back out of `processed/` and run again — that is
+the deliberate act the override is for.
 
 ## Status
 

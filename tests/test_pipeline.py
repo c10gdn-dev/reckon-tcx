@@ -26,6 +26,7 @@ from reckon.core.errors import AuthError, NetworkError, ReckonError
 from reckon.core.rescale import ToleranceAction
 from reckon.pipeline import (
     DEFAULT_SPORT_TYPE,
+    PROCESSED_DIR,
     PROJECT_URL,
     SPORT_TYPES,
     NotAuthorised,
@@ -1177,3 +1178,97 @@ def test_local_dry_run_uploads_nothing_and_records_nothing(tmp_path: pathlib.Pat
     assert outcome.reason.startswith("dry run")
     assert strava.calls == 0
     assert logs.get("889672") is None
+
+
+# --- moving processed files out of the way ----------------------------------
+
+
+def test_local_moves_a_file_that_reached_strava_into_processed(
+    tmp_path: pathlib.Path,
+) -> None:
+    strava = FakeTransport(upload_response(activity_id=55))
+    directory = exports(tmp_path, walk=LOCAL_TCX)
+
+    (outcome,) = pipeline(FakeTransport(json_response(LOCAL_LISTING)), strava).local(directory)
+
+    assert outcome.archived is True
+    assert not (directory / "walk.tcx").exists()
+    assert (directory / PROCESSED_DIR / "walk.tcx").read_bytes() == LOCAL_TCX
+
+
+def test_local_moves_a_passed_through_file_too(tmp_path: pathlib.Path) -> None:
+    """It reached Strava, which is the only question the move turns on."""
+    no_gps = builders.tcx(
+        distances=[None, None, None], with_position=False, lap_distance_m=0.0, activity_id=LOCAL_ID
+    )
+    strava = FakeTransport(upload_response(activity_id=55))
+
+    directory = exports(tmp_path, yoga=no_gps)
+    (outcome,) = pipeline(FakeTransport(json_response(LOCAL_LISTING)), strava).local(directory)
+
+    assert outcome.status is Status.PASSED_THROUGH
+    assert (directory / PROCESSED_DIR / "yoga.tcx").exists()
+
+
+def test_local_leaves_a_withheld_file_where_it_is(tmp_path: pathlib.Path) -> None:
+    """The reason to keep it is that it still needs dealing with."""
+    directory = exports(tmp_path, junk=b"not tcx")
+
+    (outcome,) = pipeline(FakeTransport()).local(directory)
+
+    assert outcome.archived is False
+    assert (directory / "junk.tcx").exists()
+    assert not (directory / PROCESSED_DIR).exists()
+
+
+def test_local_ignores_files_already_in_processed(tmp_path: pathlib.Path) -> None:
+    """`glob` does not recurse, which is what takes an archived file out of scope."""
+    directory = exports(tmp_path, walk=LOCAL_TCX)
+    (directory / PROCESSED_DIR).mkdir()
+    (directory / PROCESSED_DIR / "old.tcx").write_bytes(LOCAL_TCX)
+    strava = FakeTransport(upload_response(activity_id=55))
+
+    outcomes = pipeline(FakeTransport(json_response(LOCAL_LISTING)), strava).local(directory)
+
+    assert [o.source for o in outcomes] == ["walk.tcx"]
+
+
+def test_local_dry_run_moves_nothing(tmp_path: pathlib.Path) -> None:
+    directory = exports(tmp_path, walk=LOCAL_TCX)
+
+    pipeline(FakeTransport(json_response(LOCAL_LISTING)), dry_run=True).local(directory)
+
+    assert (directory / "walk.tcx").exists()
+
+
+def test_local_can_be_told_to_leave_files_alone(tmp_path: pathlib.Path) -> None:
+    directory = exports(tmp_path, walk=LOCAL_TCX)
+    strava = FakeTransport(upload_response(activity_id=55))
+
+    (outcome,) = pipeline(FakeTransport(json_response(LOCAL_LISTING)), strava).local(
+        directory, archive=False
+    )
+
+    assert outcome.archived is False
+    assert (directory / "walk.tcx").exists()
+
+
+def test_a_failed_move_warns_and_leaves_the_upload_standing(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The activity is on Strava; an unwritable directory must not suggest otherwise."""
+
+    def refuse(self: pathlib.Path, target: object) -> None:
+        raise OSError(13, "Permission denied")
+
+    monkeypatch.setattr(pathlib.Path, "replace", refuse)
+    strava = FakeTransport(upload_response(activity_id=55))
+
+    (outcome,) = pipeline(FakeTransport(json_response(LOCAL_LISTING)), strava).local(
+        exports(tmp_path, walk=LOCAL_TCX)
+    )
+
+    assert outcome.status is Status.UPLOADED
+    assert outcome.strava_activity_id == 55
+    assert outcome.archived is False
+    assert "could not move walk.tcx" in outcome.warnings[-1]
