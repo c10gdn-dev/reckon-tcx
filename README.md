@@ -28,7 +28,7 @@ Real activities from a Fitbit Charge 5:
 Reckon rescales the distance stream so the total matches the device's own
 figure, leaving the GPS geometry and every timestamp untouched.
 
-The size of the correction is not fixed. Across twenty-three activities it ranged
+The size of the correction is not fixed. Across twenty-four activities it ranged
 from 0.6% to 38%. How noisy the track was is the best single predictor, though
 only of the *order* — it ranks the corpus well and predicts the size of any
 individual correction poorly, which is why Reckon measures every file rather than
@@ -58,7 +58,7 @@ Fitbit and Strava disagree because they compute distance differently, and one of
 them is summing noise.
 
 **Strava sums the distance stream in the file, unchanged.** Verified across
-twenty-three exports, and then tested directly: a rescaled file uploaded by hand came
+twenty-four exports, and then tested directly: a rescaled file uploaded by hand came
 back reporting the rescaled total, 21.4 km, where the original stream said
 24.06 km and a raw haversine sum of the same coordinates said 24.08 km. Strava
 takes the stream at face value and does not recompute from position.
@@ -178,7 +178,7 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   that expires weekly. It is off by default and stays that way. It matters only
   for a fully automated pipeline, where nobody is there to export a file.
 - **Elevation is not corrected.** See below; this is deliberate.
-- **The factor is not a constant.** Across twenty-three activities it ranged 0.72–0.99
+- **The factor is not a constant.** Across twenty-four activities it ranged 0.72–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that
   particular track was. Reckon computes it per file and refuses to guess.
 - **A partial GPS track cannot be corrected, and Reckon detects that and
@@ -266,12 +266,28 @@ stream is rescaled.
 $ reckon analyse --corpus training-data/
 file        sport      factor    infl  cover  gaps  wiggle   lead   lag  dMove
 ...
-19 of 23 corrected
+19 of 24 corrected
 factor  0.7229-0.9943  mean 0.8963  stdev 0.0948
 worst moving-time change  113s
 skipped  no_gps  x3
-skipped  partial_gps  x1
+skipped  partial_gps  x2
 ```
+
+| Column | Means |
+|---|---|
+| `factor` | what the stream was multiplied by; blank when the file was left alone |
+| `infl` | how much the stream over-measured, as a percentage |
+| `cover` | share of elapsed time whose trackpoints carried a position fix |
+| `gaps` | share of elapsed time with no trackpoint in it at all |
+| `wiggle` | how much longer the recorded path is than the straight-line displacement — a good rank predictor of inflation and a poor linear one |
+| `lead` | how long after the first trackpoint the first *fix* arrived |
+| `lag` | how long after the activity started the first *trackpoint* arrived |
+| `dMove` | how far Strava's moving time would shift once corrected |
+
+`lead` and `lag` look alike and are the two different ways a track can start
+late. `lead` is the watch writing trackpoints while it hunts for the sky; `lag`
+is it writing nothing at all. A large `lag` on a file Reckon refused is the
+reason it refused.
 
 
 **Guards.** Reckon leaves an activity alone, with a warning naming the reason,
@@ -415,7 +431,7 @@ the deliberate act the override is for.
 ## Status
 
 Alpha, and honest about it. The offline commands — `rescale` and `analyse` —
-work and are validated against twenty-three real exports, including a hand upload to
+work and are validated against twenty-four real exports, including a hand upload to
 Strava confirming it honours the corrected stream.
 
 `reckon fetch`, `reckon sync` and `reckon local` are built: authorise both

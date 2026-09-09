@@ -47,11 +47,11 @@ A real Fitbit TCX carries *two* different distances, and they do not agree:
 - `Lap/DistanceMeters` — the stride-fused total.
 - the final `Trackpoint/DistanceMeters` — the cumulative GPS stream.
 
-Across the twenty corpus files that carry a usable stream, the second runs from
-0.6% to 38.3% larger than the first, and it tracks the raw haversine sum of the
-coordinates to within 0.1%. One further file measures 24.8% *short*, which is the
-partial-GPS case: the watch lost its lock and the stream covers less ground than
-the walk did. So the target total the transform rescales *to* is already present
+Across the corpus files that carry a usable stream, the second runs from 0.6% to
+38.3% larger than the first, and it tracks the raw haversine sum of the
+coordinates to within 0.1%. Two files measure *short* instead, and they are the
+two partial-GPS cases: one by 24.8%, where the watch lost its lock mid-route, and
+one by 9.1%, where it recorded nothing at all for the first six minutes. So the target total the transform rescales *to* is already present
 in the file — no activity summary fetch is needed to compute the factor.
 `reference.json` records both totals so that assumption stays testable against
 what Google Health displays.

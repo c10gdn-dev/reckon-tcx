@@ -65,7 +65,7 @@ MAX_GAP_FRACTION = 0.05
 # the middle is chorded across, while time before the first trackpoint is simply
 # absent from the stream. They are free to diverge.
 #
-# Measured, like the gap threshold. Twenty-one of the twenty-three corpus files
+# Measured, like the gap threshold. Twenty-two of the twenty-four corpus files
 # leave 3.0% or less unrecorded, most of them under 1%; the two exceptions are
 # 12.1% and 25.0%, and both are files whose track really does start late. A watch
 # that takes a minute to find the sky on an hour-long run lands at 1.7%, so the
