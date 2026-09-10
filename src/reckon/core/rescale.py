@@ -65,7 +65,7 @@ MAX_GAP_FRACTION = 0.05
 # the middle is chorded across, while time before the first trackpoint is simply
 # absent from the stream. They are free to diverge.
 #
-# Measured, like the gap threshold. Twenty-two of the twenty-four corpus files
+# Measured, like the gap threshold. Twenty-three of the twenty-five corpus files
 # leave 3.0% or less unrecorded, most of them under 1%; the two exceptions are
 # 12.1% and 25.0%, and both are files whose track really does start late. A watch
 # that takes a minute to find the sky on an hour-long run lands at 1.7%, so the
@@ -188,7 +188,13 @@ def rescale_tcx(
         final, non_monotonic, count = _distance_stream(activity)
         trackpoint_count += count
         if not tcx.has_position(activity):
-            _skip(skips, warnings, name, SkipReason.NO_GPS, "no GPS positions (indoor?)")
+            # Not "(indoor?)", which it said until 2026-09-10. A walk to a
+            # station followed by a train journey came back with no positions at
+            # all across 373 trackpoints, entirely outdoors. Whether the watch
+            # never acquired a fix or acquired one and discarded it cannot be
+            # told from the file. Guessing at the cause in a warning is how a
+            # reader learns the wrong thing from a tool that does not know.
+            _skip(skips, warnings, name, SkipReason.NO_GPS, "no GPS positions recorded")
             continue
         if final is None:
             _skip(
