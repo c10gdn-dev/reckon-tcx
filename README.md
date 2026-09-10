@@ -214,9 +214,15 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
 
 ## Elevation is left alone, on purpose
 
-The altitude stream in a Fitbit export is at least as noisy as the distance
-stream. On one 21 km run its raw deltas sum to **2279 m** of climb, which is not
-a plausible number for the route.
+The altitude stream in a Fitbit export is far noisier than the distance stream.
+On a **2.22 km walk** the raw deltas sum to **1365 m** of climb — no 2 km walk
+gains that, whatever the terrain. A 21 km run sums to 2279 m.
+
+Those two are the point: the second figure is not ten times the first, though the
+run is ten times longer. Across the corpus the raw climb bears little relation to
+distance at all, running from 36 to 989 metres per kilometre with only a weak
+tendency for shorter activities to score worse. Distance inflation is a
+percentage of how far you went; this is not a percentage of anything.
 
 Reckon does not correct it, and that is a deliberate scope decision rather than
 an omission:
@@ -226,10 +232,11 @@ an omission:
   equivalent exists for elevation — Google Health does not report it at all — so
   there is no reference figure to rescale to. Correcting a number with nothing to
   check it against would be inventing one.
-- **Strava already handles it, and handles it well.** On that same 21 km run
-  Strava reported **179 m**, which is reasonable for the route. It smooths the
-  altitude stream by roughly a factor of thirteen. That is a job it already does
-  properly, with better data than this tool has.
+- **Strava already handles it, and handles it well.** For the 21 km run — the one
+  activity here with a Strava elevation figure recorded against it — Strava
+  reported **179 m** against that raw 2279 m, which is reasonable for the route.
+  It smooths the altitude stream by roughly a factor of thirteen. That is a job it
+  already does properly, with better data than this tool has.
 
 So Reckon copies every `AltitudeMeters` value through byte-identically and leaves
 the interpretation to Strava. The one visible consequence is that Strava's
