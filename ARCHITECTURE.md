@@ -147,6 +147,15 @@ id is what Strava deduplicates on, so an unidentified file uploaded twice become
 two activities that nothing can ever reconcile. The file stays on disk and the
 next run tries again.
 
+**An inventory record is separate from a log entry** — planned for deployed mode,
+`PLAN.md` §13.2. "What exists in Google Health, and is it on Strava" is a fact
+about the world; "what Reckon decided about it" is a decision Reckon made. The
+codebase has already conflated them once: `mark_done` writes a `LogEntry` with
+status `uploaded` and the reason "already on Strava before Reckon", which records
+a fact in the shape of a decision. It is expedient and it is wrong, and it is why
+a third activity state — *known, never processed* — cannot currently be
+expressed. Two record types, not a fifth `Status`.
+
 **`Outcome.archived` is separate from `Outcome.status`.** "Did it reach Strava"
 and "is the file still in the way" are different questions. A move that fails
 leaves a true status and a false flag, rather than casting doubt on an upload
@@ -175,6 +184,26 @@ It is not a second pipeline. `local` supplies bytes where `sync` fetches them,
 and the two converge on the same line of `_decide`. The one thing it still needs
 the API for is the sport, because `Sport="Other"` in a real export covers a 5 km
 walk and a stationary yoga session alike.
+
+## Building a heart-rate trace is not fabricating one
+
+Two operations look alike and one of them is forbidden, so the line is drawn here
+rather than left to judgement.
+
+**Forbidden:** synthesising a per-trackpoint trace from an activity's *average*
+heart rate. A flat line across a run is not a measurement of anything, and it
+would look exactly like data to whoever read it.
+
+**Allowed, and planned for deployed mode** (`PLAN.md` §13.4): emitting one
+trackpoint per sample from the `heart-rate` data type, for an activity whose TCX
+carries no GPS. Every value is a real per-second reading; nothing is interpolated
+and nothing is invented. The output is the shape the phone app writes for the
+same activity — the corpus's yoga file is 1867 trackpoints of `Time` and
+`HeartRateBpm` with no position and no distance, and Strava computed Relative
+Effort from it.
+
+The difference is whether a number in the output was measured. Assembling
+measurements into a format is not the same act as deriving many values from one.
 
 ## Design decisions, and when to revisit them
 
