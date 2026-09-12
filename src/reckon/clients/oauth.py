@@ -159,6 +159,31 @@ def authorization_url(
     return f"{authorize_url}?{urllib.parse.urlencode(query)}"
 
 
+def granted_scopes(redirect: str) -> tuple[str, ...]:
+    """What the service actually granted, from the URL the browser came back on.
+
+    The only place this is ever visible. Neither service reports a token's scopes
+    afterwards: Strava's settings pages show the app's registration and a pair of
+    owner-convenience tokens that have nothing to do with the OAuth flow, and its
+    My Apps page lists a name and a revoke button. Google shows the consent screen
+    once. So the callback is the record, and throwing it away — which this module
+    did until 2026-09-12 — leaves no way to answer "what did I grant?" short of
+    probing endpoints and inferring from the errors.
+
+    It matters because a narrower grant is a documented failure mode rather than a
+    hypothetical: Strava answers a space-separated scope list by granting a subset
+    instead of refusing, which is why `authorization_url` takes a separator at
+    all. Reckon could ask for `activity:write`, be given less, and not find out
+    until an upload failed.
+
+    Split on both separators: Strava joins with commas, Google with spaces, and a
+    caller should not have to know which it is looking at.
+    """
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(redirect).query)
+    raw = (query.get("scope") or [""])[0]
+    return tuple(sorted({part for part in raw.replace(",", " ").split() if part}))
+
+
 def code_from_redirect(redirect: str, *, expected_state: str) -> str:
     """Pull the authorisation code out of the URL the browser was redirected to.
 

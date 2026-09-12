@@ -31,6 +31,7 @@ from reckon.clients.oauth import (
     authorization_url,
     code_from_redirect,
     exchange_code,
+    granted_scopes,
     new_state,
     read_client_credentials,
 )
@@ -91,6 +92,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     redirect = input("\nPaste the full redirect URL: ").strip()
 
+    # Read before the exchange, because the redirect URL is the only place the
+    # granted scopes are ever reported. Neither service will tell you afterwards.
+    granted = granted_scopes(redirect)
+
     tokens = exchange_code(
         retrying(send),
         token_url,
@@ -111,6 +116,19 @@ def main(argv: list[str] | None = None) -> int:
     remaining = tokens.expires_at - time.time()
     print(f"stored {args.service} tokens in {args.store}", file=sys.stderr)
     print(f"access token expires in {remaining / 60:.0f} min", file=sys.stderr)
+
+    # Said every time, because there is no way to look it up later.
+    print(f"granted scopes: {', '.join(granted) or '(none reported)'}", file=sys.stderr)
+    if missing := sorted(set(scopes) - set(granted)):
+        # Strava narrows a grant rather than refusing it, so this is a real
+        # outcome and not a defensive branch. Exit non-zero: the tokens are
+        # stored and usable, but not for everything that was asked for.
+        print(
+            f"WARNING: asked for {', '.join(missing)} and did not get it; "
+            f"authorise again, and check the scopes on the approval screen",
+            file=sys.stderr,
+        )
+        return 1
     return 0
 
 

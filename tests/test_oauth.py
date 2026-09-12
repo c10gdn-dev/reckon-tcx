@@ -21,6 +21,7 @@ from reckon.clients.oauth import (
     authorization_url,
     code_from_redirect,
     exchange_code,
+    granted_scopes,
     new_state,
     read_client_credentials,
     refresh,
@@ -523,3 +524,52 @@ def test_a_section_missing_either_half_is_refused(missing: str) -> None:
 def test_a_section_that_is_not_an_object_is_not_mistaken_for_one() -> None:
     with pytest.raises(OAuthError, match="no 'web' or 'installed' section"):
         read_client_credentials(json.dumps({"web": "nope"}))
+
+
+# --- what was actually granted ----------------------------------------------
+#
+# The callback URL is the only place either service reports it. Strava's settings
+# pages show the app registration and a pair of owner-convenience tokens that the
+# OAuth flow never touches; My Apps lists a name and a revoke button. Google shows
+# the consent screen once and never again.
+
+
+def test_granted_scopes_reads_stravas_comma_separated_list() -> None:
+    redirect = "http://localhost:8721/callback?state=s&code=c&scope=activity:write,read"
+
+    assert granted_scopes(redirect) == ("activity:write", "read")
+
+
+def test_granted_scopes_reads_googles_space_separated_list() -> None:
+    """Space-separated and URL-encoded, which is what the specification says."""
+    redirect = (
+        "http://localhost:8721/callback?state=s&code=c"
+        "&scope=https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly"
+        "%20https://www.googleapis.com/auth/googlehealth.location.readonly"
+    )
+
+    assert granted_scopes(redirect) == (
+        "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly",
+        "https://www.googleapis.com/auth/googlehealth.location.readonly",
+    )
+
+
+def test_granted_scopes_is_empty_when_the_service_reports_none() -> None:
+    assert granted_scopes("http://localhost:8721/callback?state=s&code=c") == ()
+
+
+def test_granted_scopes_deduplicates_and_sorts() -> None:
+    """Sorted so a caller can compare two grants without caring about order."""
+    redirect = "http://localhost:8721/callback?scope=b,a%20a"
+
+    assert granted_scopes(redirect) == ("a", "b")
+
+
+def test_granted_scopes_does_not_check_state() -> None:
+    """Deliberately separate from `code_from_redirect`, which does check it.
+
+    This reports what a URL claims; that one decides whether to trust it. Merging
+    them would mean the state check runs twice, or that reporting the scopes
+    requires having the state to hand.
+    """
+    assert granted_scopes("http://localhost:8721/callback?scope=read") == ("read",)

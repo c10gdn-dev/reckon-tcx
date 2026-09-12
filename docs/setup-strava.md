@@ -41,7 +41,7 @@ Only three of these matter.
 | Field | What to put | Why |
 |---|---|---|
 | **Application Name** | `Reckon` | Shown on the approval screen and in your Strava settings. Any name works. |
-| **Category** | *Data Importer* | Nothing depends on it. This is simply the honest answer. |
+| **Category** | *Data Importer* | A label, **not a permission setting** — see below. Any value works; this is the honest one. |
 | **Club** | leave blank | For club-specific apps. Not this. |
 | **Website** | any URL you control | Required, never checked. Your GitHub profile is fine. |
 | **Application Description** | anything, or blank | Never shown to you again. |
@@ -58,6 +58,12 @@ Only three of these matter.
 > look like something else went wrong.
 
 You may also be asked to upload an icon. It is optional and nothing uses it.
+
+> **Category does not grant or restrict anything.** It is tempting to read *Data
+> Importer* as a permission — it is not. Strava decides what an application may do
+> from the scope requested at authorisation time, never from the category, and
+> changing it would not change what Reckon can do. Nothing in this form affects
+> permissions at all.
 
 Click **Create**.
 
@@ -145,6 +151,49 @@ token behind it lasts until you revoke it under **Settings → My Apps**.
 > uploads; it has no way to recognise theirs.
 >
 > Disconnect it in Strava under **Settings → My Apps**.
+
+---
+
+## Where Strava does *not* tell you what you granted
+
+Worth knowing before you go looking, because two pages seem like they should
+answer this and neither does.
+
+**The API settings page shows tokens that are not Reckon's.** Alongside your
+Client ID and secret, `strava.com/settings/api` shows "Your Access Token" and
+"Your Refresh Token", labelled **`scope: read`**. Those are convenience tokens
+Strava mints for you as the *owner* of the application so you can try the API by
+hand. Reckon never uses them. Its token comes from the authorisation you ran, is
+a different token entirely, and lives in `store.json`.
+
+**Nothing on that page will ever say `write`.** Strava applications do not
+declare scopes at registration — the scope is requested in the authorisation URL
+each time and recorded against *your grant*, not against the app. There is no
+field for it to appear in. This is a real difference from Google, where scopes
+are configured on the consent screen, and it makes a correct setup look broken.
+
+**Settings → My Apps lists a name and a Revoke button**, and nothing about
+permissions.
+
+So the only moment the granted scopes are visible is the redirect URL you paste
+back during authorisation — which is why `authorize.py` now prints them:
+
+```console
+$ python scripts/authorize.py strava --credentials ~/.config/reckon/strava-credentials.json
+...
+stored strava tokens in /Users/you/.config/reckon/store.json
+access token expires in 360 min
+granted scopes: activity:write
+```
+
+**Read that line.** Strava answers a malformed scope request by granting a
+*subset* rather than refusing, so asking for something and quietly not getting it
+is a real outcome. If anything you asked for is missing, the script says so and
+exits non-zero.
+
+If you need to check an existing token rather than a fresh one, the only way is
+to ask the API and read the error. A write-only token answers `200` for your
+profile and `401 activity:read_permission missing` for your activities.
 
 ---
 
