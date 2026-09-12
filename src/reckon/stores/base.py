@@ -150,10 +150,11 @@ class InventoryEntry:
 
     **A fact about the world, not a decision Reckon made.** `LogEntry` records
     the decision; this records what there was to decide about. The codebase
-    conflated the two once — `Pipeline.mark_done` writes a `LogEntry` with status
-    `uploaded` and the reason "already on Strava before Reckon", which is a fact
-    wearing a decision's clothes — and that is why *known, never processed* could
-    not be expressed at all. See `ARCHITECTURE.md`.
+    conflated the two once: `Pipeline.mark_done` wrote a `LogEntry` with status
+    `uploaded` and the reason "already on Strava before Reckon" — a fact wearing
+    a decision's clothes — which is why *known, never processed* could not be
+    expressed at all. It was deleted when `reconcile` replaced it with an answer
+    obtained by asking Strava rather than assumed. See `ARCHITECTURE.md`.
     """
 
     activity_id: str

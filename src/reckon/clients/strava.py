@@ -19,9 +19,10 @@ what it sends, so the value comes from the source activity's own type — mappin
 one vocabulary to the other belongs to the pipeline, not here.
 """
 
+import datetime as dt
 import random
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -33,7 +34,15 @@ BASE_URL = "https://www.strava.com/api/v3"
 AUTHORIZE_URL = "https://www.strava.com/oauth/authorize"
 TOKEN_URL = "https://www.strava.com/oauth/token"
 
-SCOPES = ("activity:write",)
+SCOPES = ("activity:write", "activity:read_all")
+
+# The narrower `activity:read` cannot see an activity set to "Only You", and an
+# activity reconcile cannot see is one catch-up would upload again. A scope lives
+# in this tuple and nowhere in Strava's settings, so widening it means editing
+# here and re-running `authorize.py`; `approval_prompt=force` below is what makes
+# Strava ask again rather than returning the grant already held.
+MAX_PAGE_SIZE = 200
+MAX_PAGES = 100
 
 # Strava separates scopes with commas where the specification says spaces, and
 # spells "ask again even though this user already said yes" as `approval_prompt`.
@@ -49,6 +58,24 @@ AUTHORIZE_EXTRA = {"approval_prompt": "force"}
 # either way. If Strava rewords this, Reckon re-uploads and Strava rejects it
 # again — noisy, never wrong.
 _DUPLICATE_MARKER = "duplicate"
+
+
+@dataclass(frozen=True)
+class Activity:
+    """One activity already on Strava, as much of it as reconciling needs.
+
+    `external_id` is what Reckon set when it uploaded, and is the only field that
+    identifies a match rather than suggesting one. `started_at` is kept as epoch
+    seconds because that is what the comparison is: an instant, not a string.
+    **Distance is deliberately absent** — Reckon changes it, so an activity it
+    corrected does not match its own source on distance, and a matcher reaching
+    for the field it must not use is a matcher that will eventually use it.
+    """
+
+    id: int
+    started_at: float
+    name: str = ""
+    external_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -119,6 +146,36 @@ class Strava:
         )
         return _upload(response.json())
 
+    def activities(self, *, after: str, before: str) -> Iterator[Activity]:
+        """Every activity of the athlete's starting in the window, oldest first.
+
+        Needs `activity:read_all`. A token holding only `activity:write` — every
+        token issued before 2026-09-12 — raises `AuthError` naming
+        `activity:read_permission`, which is the signal to re-authorise rather
+        than a fault.
+
+        Strava takes epoch seconds and its `after`/`before` are both exclusive,
+        so the window is widened by a second at each end and trimmed here. Being
+        wrong about that in the other direction would silently drop the activity
+        that starts exactly on the boundary — which, for a caller reconciling one
+        day at a time, is a duplicate upload at midnight.
+        """
+        low, high = _epoch(after), _epoch(before)
+        for page in range(1, MAX_PAGES + 1):
+            payload = self._send(
+                "GET",
+                f"athlete/activities?per_page={MAX_PAGE_SIZE}&page={page}"
+                f"&after={low - 1}&before={high + 1}",
+            ).json()
+            if not isinstance(payload, list):
+                raise ReckonError(f"expected a list of activities, got {type(payload).__name__}")
+            for item in payload:
+                found = _activity(item)
+                if low <= found.started_at < high:
+                    yield found
+            if len(payload) < MAX_PAGE_SIZE:
+                return
+
     def upload_status(self, upload_id: int) -> Upload:
         """Re-read one upload. Poll this until `done`."""
         return _upload(self._send("GET", f"uploads/{upload_id}").json())
@@ -185,6 +242,27 @@ def _multipart(boundary: str, *, fields: Mapping[str, str], filename: str, conte
         b"",
     ]
     return b"\r\n".join(parts)
+
+
+def _epoch(timestamp: str) -> float:
+    try:
+        return dt.datetime.fromisoformat(timestamp).astimezone(dt.UTC).timestamp()
+    except ValueError as exc:
+        raise ReckonError(f"not an RFC 3339 timestamp: {timestamp!r}") from exc
+
+
+def _activity(payload: Any) -> Activity:
+    if not isinstance(payload, dict):
+        raise ReckonError(f"expected an activity object, got {type(payload).__name__}")
+    try:
+        return Activity(
+            id=int(payload["id"]),
+            started_at=_epoch(payload["start_date"]),
+            name=str(payload.get("name") or ""),
+            external_id=payload.get("external_id"),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ReckonError(f"activity is missing id or start_date: {exc}") from exc
 
 
 def _upload(payload: Any) -> Upload:

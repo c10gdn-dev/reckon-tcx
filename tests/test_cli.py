@@ -6,6 +6,7 @@ juggling and no patching of `sys.stdout`.
 
 import argparse
 import io
+import json
 
 import pytest
 
@@ -770,3 +771,133 @@ def test_local_keep_leaves_the_directory_alone(tmp_path, authorised):
 
     assert "moved" not in err
     assert (directory / "walk.tcx").exists()
+
+
+# --- backfill and reconcile -------------------------------------------------
+
+
+def backfill(*argv: str, transport=None):
+    out, err = io.StringIO(), io.StringIO()
+    code = main(["backfill", *argv], stdout=out, stderr=err, transport=transport)
+    return code, out.getvalue(), err.getvalue()
+
+
+def reconcile(*argv: str, transport=None):
+    out, err = io.StringIO(), io.StringIO()
+    code = main(["reconcile", *argv], stdout=out, stderr=err, transport=transport)
+    return code, out.getvalue(), err.getvalue()
+
+
+def test_backfill_lists_what_it_recorded(authorised):
+    code, report, _ = backfill(
+        "--store", str(authorised), transport=transport_of(listing("1", "2"))
+    )
+
+    assert code == 0
+    assert "2 recorded between" in report
+
+
+def test_backfill_surfaces_an_api_failure(authorised):
+    from fakes import FakeTransport
+    from reckon.core.errors import NetworkError
+
+    code, _, err = backfill(
+        "--store", str(authorised), transport=FakeTransport(NetworkError("no route"))
+    )
+
+    assert code == 1
+    assert "no route" in err
+
+
+def test_reconcile_reports_each_match_and_the_counts(authorised):
+    from fakes import FakeTransport, response
+
+    # Backfill first, through the same store, so reconcile has something to read.
+    backfill("--store", str(authorised), transport=transport_of(listing("1")))
+    already_there = json.dumps([{"id": 77, "start_date": ago(1), "external_id": "1"}]).encode()
+
+    code, report, _ = reconcile(
+        "--store", str(authorised), transport=FakeTransport(response(body=already_there))
+    )
+
+    assert code == 0
+    assert "external_id" in report
+    assert "strava 77" in report
+
+
+def test_reconcile_exits_non_zero_on_an_ambiguous_match(authorised):
+    from fakes import FakeTransport, response
+
+    moment = ago(1)
+    backfill("--store", str(authorised), transport=transport_of(listing("1")))
+    two = json.dumps(
+        [
+            {"id": 77, "start_date": moment, "external_id": None},
+            {"id": 78, "start_date": moment, "external_id": None},
+        ]
+    ).encode()
+
+    code, report, _ = reconcile(
+        "--store", str(authorised), transport=FakeTransport(response(body=two))
+    )
+
+    assert code == 1
+    assert "ambiguous" in report
+
+
+def test_reconcile_over_an_empty_inventory_says_so(authorised):
+    from fakes import FakeTransport, response
+
+    code, report, _ = reconcile(
+        "--store", str(authorised), transport=FakeTransport(response(body=b"[]"))
+    )
+
+    assert code == 0
+    assert "nothing to reconcile" in report
+
+
+def test_reconcile_surfaces_a_missing_read_scope(authorised):
+    """The signal to re-authorise, and it arrives twice.
+
+    A 401 for a missing scope is indistinguishable from an expired token by its
+    status alone, so the client spends a refresh finding out. That is the right
+    trade — an expired token is the common case and recovers silently — and it
+    means this failure costs one wasted token exchange before it surfaces.
+    """
+    from fakes import FakeTransport, response
+    from reckon.core.errors import AuthError
+
+    def refused() -> AuthError:
+        return AuthError(
+            401,
+            "GET",
+            "https://www.strava.com/api/v3/athlete/activities",
+            body=b'{"errors":[{"field":"activity:read_permission","code":"missing"}]}',
+        )
+
+    refreshed = response(body=b'{"access_token":"new","refresh_token":"r","expires_in":21600}')
+    code, _, err = reconcile(
+        "--store",
+        str(authorised),
+        transport=FakeTransport(refused(), refreshed, refused()),
+    )
+
+    assert code == 1
+    assert "activity:read_permission" in err
+
+
+def test_table_selects_the_dynamo_adapter_without_importing_it_at_module_scope(authorised):
+    """The lazy import is the point: boto3 is a Lambda dependency, not a CLI one.
+
+    `reckon rescale` must start on a machine without it, which is every machine
+    the offline commands exist for.
+    """
+    import reckon.cli as cli_module
+
+    assert "boto3" not in dir(cli_module)
+
+    args = argparse.Namespace(store=None, table="reckon-test")
+    store = cli_module._store(args)
+
+    assert type(store).__name__ == "DynamoStore"
+    assert store.table_name == "reckon-test"

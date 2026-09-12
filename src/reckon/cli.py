@@ -24,6 +24,7 @@ from reckon.core.errors import ReckonError
 from reckon.core.rescale import DEFAULT_TOLERANCE, RescaleResult, ToleranceAction, rescale_tcx
 from reckon.pipeline import PROCESSED_DIR, Outcome, Pipeline, token_holder
 from reckon.pipeline import summarise as summarise_outcomes
+from reckon.stores.base import MatchKind
 from reckon.stores.file import DEFAULT_PATH, FileStore
 
 DEFAULT_CORPUS = Path("training-data")
@@ -153,10 +154,7 @@ def build_parser() -> argparse.ArgumentParser:
             "dropped. Anything already recorded is left alone."
         ),
     )
-    sync.add_argument(
-        "--since", type=_timestamp, metavar="DATE", help=f"default: {DEFAULT_SINCE_DAYS} days ago"
-    )
-    sync.add_argument("--until", type=_timestamp, metavar="DATE", help="default: now")
+    _add_window_arguments(sync)
     sync.add_argument(
         "--dry-run",
         action="store_true",
@@ -198,7 +196,42 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_store_argument(local)
     local.set_defaults(handler=_local_command)
+
+    backfill = subcommands.add_parser(
+        "backfill",
+        help="record what Google Health holds, without fetching or uploading",
+        description=(
+            "Write one inventory record per activity in the window. Metadata "
+            "only — no file is downloaded, nothing is uploaded and nothing is "
+            "decided. Run it before `reconcile`, which needs something to "
+            "reconcile against. Safe to re-run: it rewrites the same records."
+        ),
+    )
+    _add_window_arguments(backfill)
+    _add_store_argument(backfill)
+    backfill.set_defaults(handler=_backfill_command)
+
+    reconcile = subcommands.add_parser(
+        "reconcile",
+        help="work out which inventoried activities Strava already has",
+        description=(
+            "Ask Strava what it holds over the window and record, per activity, "
+            "whether it is already there and how sure we are. Needs the "
+            "activity:read_all scope. Without this, a first deployed run "
+            "re-uploads a history that is already on Strava."
+        ),
+    )
+    _add_window_arguments(reconcile)
+    _add_store_argument(reconcile)
+    reconcile.set_defaults(handler=_reconcile_command)
     return parser
+
+
+def _add_window_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--since", type=_timestamp, metavar="DATE", help=f"default: {DEFAULT_SINCE_DAYS} days ago"
+    )
+    parser.add_argument("--until", type=_timestamp, metavar="DATE", help="default: now")
 
 
 def _add_store_argument(parser: argparse.ArgumentParser) -> None:
@@ -209,6 +242,28 @@ def _add_store_argument(parser: argparse.ArgumentParser) -> None:
         metavar="PATH",
         help=f"token and dedupe store (default {DEFAULT_PATH})",
     )
+    parser.add_argument(
+        "--table",
+        metavar="NAME",
+        help="use this DynamoDB table instead of the local file",
+    )
+
+
+def _store(args: argparse.Namespace) -> Any:
+    """The store the command was asked for: a JSON file, or DynamoDB.
+
+    **The `stores.dynamo` import is deliberately inside this function.** It pulls
+    in boto3, which ships in the Lambda runtime and is a development dependency
+    here — not a runtime one. At module scope it would make `reckon rescale`
+    fail to start on a machine without boto3, which is every machine the offline
+    commands are meant for, and would cost the zero-dependency property the whole
+    design rests on (`PLAN.md` §3). This is the only lazy import in the codebase.
+    """
+    if args.table is None:
+        return FileStore(args.store)
+    from reckon.stores.dynamo import DynamoStore
+
+    return DynamoStore(args.table)
 
 
 def _timestamp(text: str) -> str:
@@ -377,9 +432,7 @@ def _fetch_command(args: argparse.Namespace, out: Any, err: Any) -> int:
 
 
 def _sync_command(args: argparse.Namespace, out: Any, err: Any) -> int:
-    now = dt.datetime.now(tz=dt.UTC)
-    since = args.since or _rfc3339(now - dt.timedelta(days=DEFAULT_SINCE_DAYS))
-    until = args.until or _rfc3339(now)
+    since, until = _window(args)
 
     try:
         pipeline = _build_pipeline(args, dry_run=args.dry_run)
@@ -395,6 +448,49 @@ def _sync_command(args: argparse.Namespace, out: Any, err: Any) -> int:
         return 0
 
     return _report_outcomes(outcomes, out)
+
+
+def _window(args: argparse.Namespace) -> tuple[str, str]:
+    now = dt.datetime.now(tz=dt.UTC)
+    return (
+        args.since or _rfc3339(now - dt.timedelta(days=DEFAULT_SINCE_DAYS)),
+        args.until or _rfc3339(now),
+    )
+
+
+def _backfill_command(args: argparse.Namespace, out: Any, err: Any) -> int:
+    since, until = _window(args)
+    try:
+        found = _build_pipeline(args).backfill(start_time=since, end_time=until)
+    except ReckonError as exc:
+        print(f"reckon: {exc}", file=err)
+        return 1
+    for entry in found:
+        print(f"  {entry.activity_id:<22}{entry.start_time:<26}{entry.exercise_type}", file=out)
+    print(f"\n{len(found)} recorded between {since} and {until}", file=out)
+    return 0
+
+
+def _reconcile_command(args: argparse.Namespace, out: Any, err: Any) -> int:
+    since, until = _window(args)
+    try:
+        found = _build_pipeline(args).reconcile(start_time=since, end_time=until)
+    except ReckonError as exc:
+        print(f"reckon: {exc}", file=err)
+        return 1
+
+    counts: dict[str, int] = {}
+    for entry in found:
+        counts[str(entry.match)] = counts.get(str(entry.match), 0) + 1
+        strava = "" if entry.strava_activity_id is None else f"  strava {entry.strava_activity_id}"
+        print(f"  {entry.activity_id:<22}{entry.match!s:<14}{strava}", file=out)
+    if found:
+        print("", file=out)
+    summary = "  ".join(f"{n} {label}" for label, n in sorted(counts.items()))
+    print(summary or "nothing to reconcile", file=out)
+    # Ambiguity is the only outcome a person has to resolve: catch-up will skip
+    # those activities, and they stay skipped until someone looks.
+    return 1 if counts.get(str(MatchKind.AMBIGUOUS)) else 0
 
 
 def _local_command(args: argparse.Namespace, out: Any, err: Any) -> int:
@@ -459,7 +555,7 @@ def _build_pipeline(args: argparse.Namespace, *, dry_run: bool = False) -> Pipel
     (`PLAN.md` §2). This is the only place in the codebase that reads os.environ.
     """
     transport = retrying(send) if args.transport is None else args.transport
-    store = FileStore(args.store)
+    store = _store(args)
     google = token_holder(
         store,
         "google",
@@ -478,6 +574,7 @@ def _build_pipeline(args: argparse.Namespace, *, dry_run: bool = False) -> Pipel
         health=health_api.GoogleHealth(transport, google),
         strava=strava_api.Strava(transport, strava),
         logs=store,
+        inventory=store,
         dry_run=dry_run,
     )
 

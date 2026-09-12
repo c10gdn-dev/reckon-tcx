@@ -5,6 +5,7 @@ parsed back with the stdlib `email` package here rather than compared as a blob.
 A test that only asserted on bytes would pass on a body no server could read.
 """
 
+import datetime as dt
 import json
 import random
 from email import message_from_bytes
@@ -17,6 +18,7 @@ from fakes import Clock, FakeTransport, response
 from reckon.clients.oauth import TokenHolder, Tokens
 from reckon.clients.strava import (
     AUTHORIZE_EXTRA,
+    MAX_PAGES,
     SCOPE_SEPARATOR,
     SCOPES,
     Strava,
@@ -83,8 +85,13 @@ def parts_of(request: Any) -> dict[str, bytes]:
 # --- scopes -----------------------------------------------------------------
 
 
-def test_only_write_access_is_requested() -> None:
-    assert SCOPES == ("activity:write",)
+def test_the_scopes_are_write_and_read_all_and_nothing_wider() -> None:
+    """`activity:read_all`, not `activity:read`: the narrower one cannot see an
+    activity set to "Only You", and one reconcile cannot see is one catch-up
+    uploads again. Pinned because widening a scope here is invisible until
+    someone re-authorises, and narrowing it breaks reconcile silently.
+    """
+    assert SCOPES == ("activity:write", "activity:read_all")
 
 
 def test_stravas_non_standard_authorisation_dialect_is_declared() -> None:
@@ -287,3 +294,106 @@ def test_a_trailing_slash_on_the_base_url_does_not_double_up() -> None:
     transport = FakeTransport(upload_response())
     Strava(transport, live_tokens(), base_url=f"{BASE}/").upload_status(1)
     assert transport.requests[0].url == f"{BASE}/uploads/1"
+
+
+# --- listing what Strava already has ----------------------------------------
+
+
+def activities_response(*items: object) -> Any:
+    return response(body=json.dumps(list(items)).encode())
+
+
+def an_activity(**overrides: Any) -> dict[str, Any]:
+    payload = {"id": 77, "start_date": "2026-02-23T13:10:00Z", "name": "Walk", "external_id": "1"}
+    payload.update(overrides)
+    return payload
+
+
+WINDOW = {"after": "2026-02-23T00:00:00Z", "before": "2026-02-24T00:00:00Z"}
+
+
+def test_activities_reads_the_fields_reconciling_needs() -> None:
+    transport = FakeTransport(activities_response(an_activity()))
+
+    (found,) = list(client(transport).activities(**WINDOW))
+
+    assert found.id == 77
+    assert found.name == "Walk"
+    assert found.external_id == "1"
+    assert found.started_at == dt.datetime(2026, 2, 23, 13, 10, tzinfo=dt.UTC).timestamp()
+
+
+def test_activities_widens_the_window_because_stravas_bounds_are_exclusive() -> None:
+    """Both `after` and `before` exclude their own second.
+
+    Not widening drops an activity starting exactly on the boundary — which, for
+    a caller reconciling a day at a time, is a duplicate upload at midnight.
+    """
+    transport = FakeTransport(activities_response())
+
+    list(client(transport).activities(**WINDOW))
+
+    url = transport.requests[0].url
+    low = dt.datetime(2026, 2, 23, tzinfo=dt.UTC).timestamp()
+    high = dt.datetime(2026, 2, 24, tzinfo=dt.UTC).timestamp()
+    assert f"after={int(low) - 1}" in url
+    assert f"before={int(high) + 1}" in url
+
+
+def test_activities_trims_what_the_widened_window_let_in() -> None:
+    """Half-open, matching the inventory port, so adjacent windows tile."""
+    transport = FakeTransport(
+        activities_response(
+            an_activity(id=1, start_date="2026-02-22T23:59:59Z"),
+            an_activity(id=2, start_date="2026-02-23T00:00:00Z"),
+            an_activity(id=3, start_date="2026-02-24T00:00:00Z"),
+        )
+    )
+
+    assert [a.id for a in client(transport).activities(**WINDOW)] == [2]
+
+
+def test_activities_pages_until_a_short_page() -> None:
+    full = activities_response(*[an_activity(id=i) for i in range(200)])
+    transport = FakeTransport(full, activities_response(an_activity(id=999)))
+
+    found = list(client(transport).activities(**WINDOW))
+
+    assert len(found) == 201
+    assert "page=2" in transport.requests[1].url
+
+
+def test_activities_stops_at_the_page_cap() -> None:
+    """A bounded loop rather than a trusting one; the cap is the only guarantee."""
+    full = activities_response(*[an_activity(id=i) for i in range(200)])
+    transport = FakeTransport(*[full] * (MAX_PAGES + 2))
+
+    list(client(transport).activities(**WINDOW))
+
+    assert transport.calls == MAX_PAGES
+
+
+def test_activities_rejects_a_payload_that_is_not_a_list() -> None:
+    transport = FakeTransport(response(body=b'{"message":"Authorization Error"}'))
+
+    with pytest.raises(ReckonError, match="expected a list of activities"):
+        list(client(transport).activities(**WINDOW))
+
+
+def test_activities_rejects_an_entry_that_is_not_an_object() -> None:
+    transport = FakeTransport(activities_response("not an activity"))
+
+    with pytest.raises(ReckonError, match="expected an activity object"):
+        list(client(transport).activities(**WINDOW))
+
+
+def test_activities_rejects_an_entry_with_no_start_date() -> None:
+    transport = FakeTransport(activities_response({"id": 77}))
+
+    with pytest.raises(ReckonError, match="missing id or start_date"):
+        list(client(transport).activities(**WINDOW))
+
+
+def test_activities_rejects_a_window_that_is_not_a_timestamp() -> None:
+    with pytest.raises(ReckonError, match="not an RFC 3339 timestamp"):
+        list(client(FakeTransport()).activities(after="whenever", before="2026-02-24T00:00:00Z"))

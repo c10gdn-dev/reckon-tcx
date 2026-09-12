@@ -36,7 +36,7 @@ One line each, saying what the module owns.
 | `aws/secrets.py` | Configuration resolution: environment first, then SSM SecureString at run time. |
 | `stores/transfer.py` | Copying one store's contents into another. Direction-agnostic, because both satisfy the same ports. |
 | `deploy/terraform/` | The deployment. Depends on `src/`, never the reverse. |
-| `cli.py` | Argument parsing and configuration for the local CLI. |
+| `cli.py` | Argument parsing and configuration for the local CLI, and the only lazy import in the codebase — `--table` pulls in `stores/dynamo.py`, and with it boto3, inside the function rather than at module scope. |
 
 ## The invariants
 

@@ -367,9 +367,14 @@ RECKON_STRAVA_CLIENT_ID   RECKON_STRAVA_CLIENT_SECRET
 ```
 
 ```
-reckon fetch ACTIVITY_ID [--raw] [-o OUTPUT] [--store PATH]
-reckon sync [--since DATE] [--until DATE] [--dry-run] [--store PATH]
+reckon fetch ACTIVITY_ID [--raw] [-o OUTPUT]
+reckon sync      [--since DATE] [--until DATE] [--dry-run]
+reckon backfill  [--since DATE] [--until DATE]
+reckon reconcile [--since DATE] [--until DATE]
 ```
+
+All of these take `--store PATH` for the local JSON store, or `--table NAME` to
+work against DynamoDB instead.
 
 `fetch` downloads one activity and corrects it; `--raw` gives you Google's bytes
 untouched, which is what you want when reporting a bug. `sync` walks every
@@ -391,8 +396,42 @@ first column means the decision was already on record and nothing was done.
 **`sync` exits non-zero only when something did not reach Strava.** A yoga session
 uploaded without correction is a success; a file Reckon refused is not.
 
-The store at `~/.config/reckon/store.json` holds both the OAuth tokens and the
-record of what has been uploaded. It is created `0600` and re-chmodded on every
+### Knowing what Strava already has
+
+`sync` and `local` avoid duplicating **their own** uploads, and cannot see an
+activity that reached Strava by any other route — the built-in connection, a
+manual upload, another tool. On a fresh install that is the difference between
+correcting your history and uploading a second copy of it.
+
+```console
+$ reckon backfill --since 2026-01-01     # what does Google Health hold?
+$ reckon reconcile --since 2026-01-01    # which of those is Strava already showing?
+```
+
+`backfill` records one entry per activity — metadata only, no file downloaded,
+nothing uploaded and nothing decided. `reconcile` then asks Strava what it holds
+and records, per activity, **how** we know:
+
+| | Meaning |
+|---|---|
+| `external_id` | Certain. Reckon uploaded it and Strava echoed back the id it sent. |
+| `start_time` | An inference. Something on Strava starts when this activity does. |
+| `ambiguous` | Two candidates within a minute. Nothing is assumed and nothing will be uploaded. |
+| `none` | Looked, found nothing. |
+
+Keeping those apart rather than reducing them to yes/no is the point: an
+`external_id` match is proof, a `start_time` match is a good guess, and guessing
+wrong in either direction costs you a duplicate or a missing activity.
+`reconcile` exits non-zero if anything is ambiguous, because that is the only
+outcome needing a person.
+
+**`reconcile` needs the `activity:read_all` scope**, which tokens issued before
+September 2026 do not carry. Re-run `scripts/authorize.py strava` and check the
+`granted scopes:` line it prints — see
+[docs/setup-strava.md](docs/setup-strava.md).
+
+The store at `~/.config/reckon/store.json` holds the OAuth tokens, the record of
+what has been uploaded, and the inventory of what exists. It is created `0600` and re-chmodded on every
 open, because it contains refresh tokens.
 
 ### Local mode: files you exported yourself

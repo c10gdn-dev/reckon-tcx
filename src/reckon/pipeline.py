@@ -28,7 +28,7 @@ from pathlib import Path
 
 from reckon.clients.health import Exercise, GoogleHealth
 from reckon.clients.oauth import TokenHolder, Tokens
-from reckon.clients.strava import Strava, Upload
+from reckon.clients.strava import Activity, Strava, Upload
 from reckon.core import heartrate, tcx
 from reckon.core.errors import AuthError, ReckonError
 from reckon.core.rescale import (
@@ -40,7 +40,10 @@ from reckon.core.rescale import (
     rescale_tcx,
 )
 from reckon.stores.base import (
+    InventoryEntry,
+    InventoryStore,
     LogEntry,
+    MatchKind,
     ProcessedLogStore,
     Status,
     StoreError,
@@ -241,6 +244,9 @@ class Pipeline:
     health: GoogleHealth
     strava: Strava
     logs: ProcessedLogStore
+    # Defaulted so every existing caller and test is untouched: the three
+    # commands that need it pass one, and nothing else in the pipeline reads it.
+    inventory: InventoryStore = field(default_factory=lambda: _NoInventory())
     now: Callable[[], float] = time.time
     sleep: Callable[[float], None] = time.sleep
     tolerance: float = DEFAULT_TOLERANCE
@@ -257,6 +263,12 @@ class Pipeline:
     # needs no extra scope, is written regardless.
     merge_heart_rate: bool = False
     heart_rate_tolerance_s: float = heartrate.DEFAULT_TOLERANCE_S
+    # How far a Strava activity's start may sit from Google's and still be the
+    # same outing. Wider than local mode's five seconds, because these two
+    # timestamps come from different services rather than two readings of one
+    # file, and a minute is still far tighter than the gap between two real
+    # activities. Widen it and coincidences become matches.
+    match_tolerance_s: float = 60.0
 
     def sync(self, *, start_time: str, end_time: str) -> list[Outcome]:
         """Process every activity starting in the window, oldest first."""
@@ -282,40 +294,6 @@ class Pipeline:
         if outcome.fresh and not self.dry_run:
             self.logs.record(outcome.entry(self.now()))
         return outcome
-
-    def mark_done(self, *, start_time: str, end_time: str, reason: str) -> list[Outcome]:
-        """Record every activity in a window as handled, without fetching or uploading.
-
-        The adoption step for anyone whose activities already reach Strava by
-        another route. Without it, a first `sync` re-uploads a history that is
-        already there — and Strava's `external_id` deduplication does not save
-        you, because whatever put them there first used its own.
-
-        Recorded as `uploaded` because that is what is true: the activity is on
-        Strava. The reason records that Reckon was not what put it there.
-        """
-        outcomes: list[Outcome] = []
-        for exercise in self.exercises(start_time, end_time):
-            if (known := self.logs.get(exercise.id)) is not None:
-                outcomes.append(
-                    Outcome(
-                        activity_id=known.activity_id,
-                        status=known.status,
-                        name=exercise.display_name,
-                        reason=known.reason,
-                        fresh=False,
-                    )
-                )
-                continue
-            outcome = Outcome(
-                activity_id=exercise.id,
-                status=Status.UPLOADED,
-                name=exercise.display_name,
-                reason=reason,
-            )
-            self.logs.record(outcome.entry(self.now()))
-            outcomes.append(outcome)
-        return outcomes
 
     def local(self, directory: Path, *, archive: bool = True) -> list[Outcome]:
         """Correct and upload TCX files exported by hand, from a directory.
@@ -428,6 +406,60 @@ class Pipeline:
             if moment is not None:
                 found[moment] = exercise
         return found
+
+    def backfill(self, *, start_time: str, end_time: str) -> list[InventoryEntry]:
+        """Record every activity Google Health holds in the window.
+
+        Metadata only — no TCX is fetched — so it is cheap, and idempotent: a
+        second run rewrites the same records and changes only `seen_at`. It
+        decides nothing and uploads nothing; it establishes what there is to
+        decide about.
+
+        An activity already reconciled keeps its match. Backfill knows nothing
+        about Strava and must not erase what reconcile learned, which a blind
+        overwrite would do on every run.
+        """
+        found: list[InventoryEntry] = []
+        for exercise in self.exercises(start_time, end_time):
+            known = self.inventory.inventory(exercise.id)
+            entry = InventoryEntry(
+                activity_id=exercise.id,
+                start_time=exercise.start_time,
+                end_time=exercise.end_time,
+                exercise_type=exercise.exercise_type,
+                display_name=exercise.display_name,
+                distance_m=exercise.distance_m,
+                seen_at=known.seen_at if known else self.now(),
+                strava_activity_id=known.strava_activity_id if known else None,
+                match=known.match if known else MatchKind.NONE,
+                checked_at=known.checked_at if known else 0.0,
+            )
+            self.inventory.put(entry)
+            found.append(entry)
+        return found
+
+    def reconcile(self, *, start_time: str, end_time: str) -> list[InventoryEntry]:
+        """Work out which inventoried activities Strava already holds.
+
+        The point is not tidiness: without it, a first deployed run re-uploads a
+        history that is already on Strava, and `external_id` does not save you
+        because whatever put them there first used its own.
+        """
+        candidates = list(self.strava.activities(after=start_time, before=end_time))
+        by_external = {a.external_id: a for a in candidates if a.external_id}
+
+        updated: list[InventoryEntry] = []
+        for entry in self.inventory.between(start_time, end_time):
+            match, found = _match(entry, candidates, by_external, self.match_tolerance_s)
+            revised = replace(
+                entry,
+                match=match,
+                strava_activity_id=found.id if found else None,
+                checked_at=self.now(),
+            )
+            self.inventory.put(revised)
+            updated.append(revised)
+        return updated
 
     def fetch(self, activity_id: str, *, raw: bool = False) -> bytes:
         """One activity's TCX, corrected unless `raw`. No store, no upload.
@@ -637,6 +669,57 @@ def _unidentified(path: Path, why: str) -> Outcome:
         reason=f"not uploaded: {why}",
         source=path.name,
     )
+
+
+class _NoInventory:
+    """The default `InventoryStore`, which refuses rather than pretends.
+
+    A pipeline built without one can still `sync`, `local` and `fetch`; only
+    backfill and reconcile need it. Returning empty results instead would make a
+    missing store look like an empty one, and an empty inventory means "nothing
+    is on Strava" — which is the answer that causes duplicate uploads.
+    """
+
+    def _refuse(self) -> StoreError:
+        return StoreError("this pipeline was built without an inventory store")
+
+    def put(self, entry: InventoryEntry) -> None:
+        raise self._refuse()
+
+    def inventory(self, activity_id: str) -> InventoryEntry | None:
+        raise self._refuse()
+
+    def between(self, start_time: str, end_time: str) -> list[InventoryEntry]:
+        raise self._refuse()
+
+
+def _match(
+    entry: InventoryEntry,
+    candidates: Sequence[Activity],
+    by_external: Mapping[str, Activity],
+    tolerance_s: float,
+) -> tuple[MatchKind, Activity | None]:
+    """Decide whether Strava already holds this activity, and how sure we are.
+
+    `external_id` first and alone: Reckon set it, so it is proof rather than
+    evidence. Only when that fails does start time get a say, and then a second
+    candidate inside the window makes the answer `AMBIGUOUS` rather than
+    whichever happened to be nearest. Distance is never consulted — Reckon
+    changes it, so an activity it corrected will not match its own source.
+    """
+    if (exact := by_external.get(entry.activity_id)) is not None:
+        return MatchKind.EXTERNAL_ID, exact
+
+    started = _instant(entry.start_time)
+    if started is None:
+        return MatchKind.NONE, None
+    moment = started.timestamp()
+    near = [a for a in candidates if abs(a.started_at - moment) <= tolerance_s]
+    if not near:
+        return MatchKind.NONE, None
+    if len(near) > 1:
+        return MatchKind.AMBIGUOUS, None
+    return MatchKind.START_TIME, near[0]
 
 
 def _device(data: bytes) -> str | None:

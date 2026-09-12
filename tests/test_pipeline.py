@@ -12,6 +12,7 @@ deliberately does not reach it at all.
 
 import json
 import pathlib
+from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -33,11 +34,20 @@ from reckon.pipeline import (
     Outcome,
     Pipeline,
     _device,
+    _match,
     describe,
     summarise,
     token_holder,
 )
-from reckon.stores.base import LogEntry, Status, StoreError, VersionedTokens
+from reckon.stores.base import (
+    InventoryEntry,
+    LogEntry,
+    MatchKind,
+    Status,
+    StoreError,
+    VersionedTokens,
+)
+from reckon.stores.file import FileStore
 
 LIVE = Tokens("live-access", "refresh", 10_000.0)
 
@@ -636,87 +646,6 @@ def test_a_reckon_error_is_what_the_cli_catches() -> None:
 # --- adopting an account that already syncs by another route ----------------
 
 
-def test_mark_done_records_without_fetching_or_uploading() -> None:
-    """The whole point: a first sync must not re-upload a history already there."""
-    listing = json_response(
-        {
-            "dataPoints": [
-                {
-                    "name": f"users/me/dataTypes/exercise/dataPoints/{i}",
-                    "exercise": {
-                        "interval": {"startTime": "2026-02-15T00:00:00Z"},
-                        "exerciseType": "WALKING",
-                        "displayName": "Walk",
-                    },
-                }
-                for i in ("1", "2")
-            ]
-        }
-    )
-    health = FakeTransport(listing)
-    strava = FakeTransport()
-    logs = FakeLogStore()
-    outcomes = pipeline(health, strava, logs).mark_done(reason="already there", **WINDOW)
-
-    assert [o.activity_id for o in outcomes] == ["1", "2"]
-    assert health.calls == 1, "the listing only; no TCX was downloaded"
-    assert strava.calls == 0
-    assert [e.status for e in logs.recorded] == [Status.UPLOADED, Status.UPLOADED]
-    assert logs.recorded[0].reason == "already there"
-
-
-def test_mark_done_leaves_an_existing_decision_alone() -> None:
-    listing = json_response(
-        {
-            "dataPoints": [
-                {
-                    "name": "users/me/dataTypes/exercise/dataPoints/1",
-                    "exercise": {
-                        "interval": {"startTime": "2026-02-15T00:00:00Z"},
-                        "exerciseType": "WALKING",
-                        "displayName": "Walk",
-                    },
-                }
-            ]
-        }
-    )
-    logs = FakeLogStore(LogEntry("1", Status.WITHHELD, reason="malformed"))
-    (outcome,) = pipeline(FakeTransport(listing), FakeTransport(), logs).mark_done(
-        reason="already there", **WINDOW
-    )
-    assert (outcome.status, outcome.fresh, outcome.reason) == (
-        Status.WITHHELD,
-        False,
-        "malformed",
-    )
-    assert logs.recorded == []
-
-
-def test_a_marked_activity_is_then_skipped_by_sync() -> None:
-    """Proves the seeding actually stops the re-upload."""
-    point = {
-        "name": "users/me/dataTypes/exercise/dataPoints/1",
-        "exercise": {
-            "interval": {"startTime": "2026-02-15T00:00:00Z"},
-            "exerciseType": "WALKING",
-            "displayName": "Walk",
-        },
-    }
-    logs = FakeLogStore()
-    pipeline(
-        FakeTransport(json_response({"dataPoints": [point]})), FakeTransport(), logs
-    ).mark_done(reason="already there", **WINDOW)
-    strava = FakeTransport()
-    outcomes = pipeline(FakeTransport(json_response({"dataPoints": [point]})), strava, logs).sync(
-        **WINDOW
-    )
-    assert [o.fresh for o in outcomes] == [False]
-    assert strava.calls == 0
-
-
-# --- putting back the heart rate the API's export leaves out ----------------
-
-
 def hr_page(*samples: tuple[str, int]) -> Any:
     return json_response(
         {"dataPoints": [{"sampleTime": t, "beatsPerMinute": bpm} for t, bpm in samples]}
@@ -1272,3 +1201,238 @@ def test_a_failed_move_warns_and_leaves_the_upload_standing(
     assert outcome.strava_activity_id == 55
     assert outcome.archived is False
     assert "could not move walk.tcx" in outcome.warnings[-1]
+
+
+# --- backfill and reconcile -------------------------------------------------
+#
+# Two commands that decide nothing and upload nothing. Backfill establishes what
+# there is to decide about; reconcile establishes what Strava already holds. The
+# processed log answers neither, which is why the inventory port exists.
+
+
+def inventoried(**settings: Any) -> tuple[Pipeline, FileStore]:
+    """A pipeline with a real store behind the inventory port."""
+    import tempfile
+
+    store = FileStore(pathlib.Path(tempfile.mkdtemp()) / "store.json", now=Clock(1000.0).time)
+    return pipeline(inventory=store, **settings), store
+
+
+def listing(*entries: tuple[str, str]) -> Any:
+    return json_response(
+        {
+            "dataPoints": [
+                {
+                    "name": f"users/me/dataTypes/exercise/dataPoints/{point_id}",
+                    "exercise": {
+                        "interval": {"startTime": started},
+                        "exerciseType": "WALKING",
+                        "displayName": "Walk",
+                        "distance": {"value": 930.0},
+                    },
+                }
+                for point_id, started in entries
+            ]
+        }
+    )
+
+
+def strava_activities(*items: dict[str, Any]) -> Any:
+    return json_response(list(items))
+
+
+def on_strava(activity_id: int, started: str, external_id: str | None = None) -> dict[str, Any]:
+    return {"id": activity_id, "start_date": started, "name": "Walk", "external_id": external_id}
+
+
+def test_backfill_records_every_activity_without_fetching_a_file(tmp_path: pathlib.Path) -> None:
+    health = FakeTransport(listing(("1", "2026-02-23T13:10:00Z"), ("2", "2026-02-23T15:00:00Z")))
+    line, store = inventoried(health_transport=health)
+
+    found = line.backfill(**WINDOW)
+
+    assert [e.activity_id for e in found] == ["1", "2"]
+    assert store.inventory("1").exercise_type == "WALKING"
+    # One listing call and no `:exportExerciseTcx`: metadata only.
+    assert health.calls == 1
+
+
+def test_backfill_decides_nothing(tmp_path: pathlib.Path) -> None:
+    """It writes no log entry, so nothing is on Strava and nothing is withheld."""
+    logs = FakeLogStore()
+    line, store = inventoried(
+        health_transport=FakeTransport(listing(("1", "2026-02-23T13:10:00Z"))), logs=logs
+    )
+
+    line.backfill(**WINDOW)
+
+    assert store.inventory("1") is not None
+    assert logs.get("1") is None
+
+
+def test_backfill_run_twice_keeps_the_original_seen_at(tmp_path: pathlib.Path) -> None:
+    page = listing(("1", "2026-02-23T13:10:00Z"))
+    line, store = inventoried(health_transport=FakeTransport(page, page))
+
+    line.backfill(**WINDOW)
+    line.backfill(**WINDOW)
+
+    assert store.inventory("1").seen_at == 1000.0
+
+
+def test_backfill_does_not_erase_what_reconcile_learned(tmp_path: pathlib.Path) -> None:
+    """It knows nothing about Strava, so a blind overwrite would forget a match."""
+    page = listing(("1", "2026-02-23T13:10:00Z"))
+    line, store = inventoried(health_transport=FakeTransport(page, page))
+    line.backfill(**WINDOW)
+    store.put(
+        replace(
+            store.inventory("1"),
+            match=MatchKind.EXTERNAL_ID,
+            strava_activity_id=77,
+            checked_at=2000.0,
+        )
+    )
+
+    line.backfill(**WINDOW)
+
+    kept = store.inventory("1")
+    assert kept.match is MatchKind.EXTERNAL_ID
+    assert kept.strava_activity_id == 77
+    assert kept.checked_at == 2000.0
+
+
+def test_reconcile_matches_on_external_id(tmp_path: pathlib.Path) -> None:
+    """Reckon set it, so it is proof rather than evidence — even at a wrong time."""
+    strava = FakeTransport(
+        strava_activities(on_strava(77, "2026-02-23T19:00:00Z", external_id="1"))
+    )
+    line, store = inventoried(
+        health_transport=FakeTransport(listing(("1", "2026-02-23T13:10:00Z"))),
+        strava_transport=strava,
+    )
+    line.backfill(**WINDOW)
+
+    (found,) = line.reconcile(**WINDOW)
+
+    assert found.match is MatchKind.EXTERNAL_ID
+    assert found.strava_activity_id == 77
+    assert store.inventory("1").checked_at == 1000.0
+
+
+def test_reconcile_matches_on_start_time_when_nothing_set_an_external_id(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The activity arrived by another route — the case that causes duplicates."""
+    strava = FakeTransport(strava_activities(on_strava(77, "2026-02-23T13:10:30Z")))
+    line, _ = inventoried(
+        health_transport=FakeTransport(listing(("1", "2026-02-23T13:10:00Z"))),
+        strava_transport=strava,
+    )
+    line.backfill(**WINDOW)
+
+    (found,) = line.reconcile(**WINDOW)
+
+    assert found.match is MatchKind.START_TIME
+    assert found.strava_activity_id == 77
+
+
+def test_reconcile_refuses_to_choose_between_two_candidates(tmp_path: pathlib.Path) -> None:
+    """Ambiguity blocks catch-up as firmly as a match, and for the opposite reason."""
+    strava = FakeTransport(
+        strava_activities(
+            on_strava(77, "2026-02-23T13:10:10Z"), on_strava(78, "2026-02-23T13:10:20Z")
+        )
+    )
+    line, _ = inventoried(
+        health_transport=FakeTransport(listing(("1", "2026-02-23T13:10:00Z"))),
+        strava_transport=strava,
+    )
+    line.backfill(**WINDOW)
+
+    (found,) = line.reconcile(**WINDOW)
+
+    assert found.match is MatchKind.AMBIGUOUS
+    assert found.strava_activity_id is None
+
+
+def test_reconcile_records_none_when_strava_has_nothing_near(tmp_path: pathlib.Path) -> None:
+    strava = FakeTransport(strava_activities(on_strava(77, "2026-02-23T17:00:00Z")))
+    line, _ = inventoried(
+        health_transport=FakeTransport(listing(("1", "2026-02-23T13:10:00Z"))),
+        strava_transport=strava,
+    )
+    line.backfill(**WINDOW)
+
+    (found,) = line.reconcile(**WINDOW)
+
+    assert found.match is MatchKind.NONE
+    assert found.checked_at == 1000.0
+
+
+def test_reconcile_never_matches_on_distance(tmp_path: pathlib.Path) -> None:
+    """Reckon changes distance, so a corrected activity will not match its source."""
+    strava = FakeTransport(
+        strava_activities({"id": 77, "start_date": "2026-02-23T17:00:00Z", "distance": 930.0})
+    )
+    line, _ = inventoried(
+        health_transport=FakeTransport(listing(("1", "2026-02-23T13:10:00Z"))),
+        strava_transport=strava,
+    )
+    line.backfill(**WINDOW)
+
+    assert line.reconcile(**WINDOW)[0].match is MatchKind.NONE
+
+
+def test_an_unreadable_timestamp_is_inventoried_but_falls_outside_every_window(
+    tmp_path: pathlib.Path,
+) -> None:
+    """`clients/health.py` yields such an activity rather than dropping it.
+
+    It is recorded, and `between` cannot place it in time, so reconcile never
+    considers it — visibly absent from a listing rather than silently mismatched.
+    """
+    strava = FakeTransport(strava_activities(on_strava(77, "2026-02-23T13:10:00Z")))
+    line, store = inventoried(
+        health_transport=FakeTransport(listing(("1", "whenever"))), strava_transport=strava
+    )
+    line.backfill(**WINDOW)
+
+    assert store.inventory("1") is not None
+    assert line.reconcile(**WINDOW) == []
+
+
+def test_matching_gives_up_on_a_timestamp_it_cannot_read() -> None:
+    """`_match` holds on its own, not only for the entries `between` can return.
+
+    Reached directly because the window filter already excludes such an entry, so
+    `reconcile` cannot produce one. The guard stays because the function's
+    contract is "decide about this entry", not "decide about entries that
+    happened to survive a filter upstream".
+    """
+    entry = InventoryEntry("1", "whenever")
+
+    assert _match(entry, [], {}, 60.0) == (MatchKind.NONE, None)
+
+
+def test_a_pipeline_without_an_inventory_refuses_rather_than_answering_empty() -> None:
+    """An empty inventory means "nothing is on Strava", which uploads duplicates.
+
+    So the default port raises on every method instead of returning a plausible
+    nothing. `sync`, `local` and `fetch` are unaffected: they never touch it.
+    """
+    line = pipeline(FakeTransport(listing(("1", "2026-02-23T13:10:00Z"))))
+
+    with pytest.raises(StoreError, match="without an inventory store"):
+        line.backfill(**WINDOW)
+    with pytest.raises(StoreError, match="without an inventory store"):
+        line.inventory.put(InventoryEntry("1", "2026-02-23T13:10:00Z"))
+    with pytest.raises(StoreError, match="without an inventory store"):
+        line.inventory.between("2026-02-01T00:00:00Z", "2026-03-01T00:00:00Z")
+
+
+def test_reconcile_without_an_inventory_refuses_too() -> None:
+    line = pipeline(FakeTransport(), FakeTransport(strava_activities()))
+
+    with pytest.raises(StoreError, match="without an inventory store"):
+        line.reconcile(**WINDOW)
