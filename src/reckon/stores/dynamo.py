@@ -100,6 +100,7 @@ class DynamoStore:
                     access_token=item["access_token"]["S"],
                     refresh_token=item["refresh_token"]["S"],
                     expires_at=float(item["expires_at"]["N"]),
+                    authorised_at=float(item.get("authorised_at", {}).get("N", 0.0)),
                 ),
                 version=int(item["version"]["N"]),
             )
@@ -125,6 +126,7 @@ class DynamoStore:
                     "pk": {"S": f"{_TOKEN_PREFIX}{service}"},
                     "access_token": {"S": tokens.access_token},
                     "refresh_token": {"S": tokens.refresh_token},
+                    "authorised_at": {"N": repr(tokens.authorised_at)},
                     "expires_at": {"N": repr(tokens.expires_at)},
                     "version": {"N": str(saved.version)},
                 },

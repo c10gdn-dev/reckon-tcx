@@ -41,7 +41,15 @@ DEFAULT_PATH = Path.home() / ".config" / "reckon" / "store.json"
 
 # The file's own schema version, not a token version. Bumped only if the layout
 # changes in a way an older Reckon could misread.
-SCHEMA = 1
+#
+# 2 (2026-09-12) added `authorised_at` to a token record. The inventory arrived
+# without a bump because an absent key reads correctly as "nothing yet"; this
+# does not, because an absent `authorised_at` read by *older* code is invisible
+# while a *newer* reader must know the difference between "granted at the epoch"
+# and "never recorded". Reading a schema-1 document is therefore allowed and its
+# tokens come back with `authorised_at=0.0`, which is the truth about them.
+SCHEMA = 2
+_READABLE = (1, 2)
 
 _MODE = 0o600
 
@@ -152,11 +160,16 @@ class FileStore:
         if not isinstance(document, dict):
             raise StoreError(f"{self.path} does not contain a JSON object")
         schema = document.get("schema")
-        if schema != SCHEMA:
+        if schema not in _READABLE:
             raise StoreError(
-                f"{self.path} is schema {schema!r}, this Reckon reads {SCHEMA}; "
-                f"move it aside and re-authorise"
+                f"{self.path} is schema {schema!r}, this Reckon reads "
+                f"{' and '.join(str(v) for v in _READABLE)}; move it aside and re-authorise"
             )
+        # Upgraded in place on the next write rather than migrated by a separate
+        # step: every schema-1 field means the same thing in schema 2, so there
+        # is nothing to convert and a migration script would only be a thing to
+        # forget to run.
+        document["schema"] = SCHEMA
         document.setdefault("tokens", {})
         document.setdefault("logs", {})
         # Added with the inventory port and deliberately *not* a schema bump: an
@@ -177,6 +190,9 @@ def _versioned(raw: Any) -> VersionedTokens | None:
                 access_token=raw["access_token"],
                 refresh_token=raw["refresh_token"],
                 expires_at=float(raw["expires_at"]),
+                # Absent in a schema-1 document, where it means the grant's age
+                # was never recorded — not that it was granted at the epoch.
+                authorised_at=float(raw.get("authorised_at", 0.0)),
             ),
             version=int(raw["version"]),
         )

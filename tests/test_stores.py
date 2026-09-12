@@ -274,3 +274,43 @@ def test_a_store_written_before_the_inventory_existed_still_loads(tmp_path: Path
 
     assert store.inventory("1") is None
     assert store.between("2026-01-01T00:00:00Z", "2027-01-01T00:00:00Z") == []
+
+
+def test_a_schema_1_store_is_read_and_upgraded_in_place(tmp_path: Path) -> None:
+    """Every schema-1 field means the same in schema 2, so there is nothing to
+    convert — and a migration script would only be a thing to forget to run."""
+    path = tmp_path / "store.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema": 1,
+                "tokens": {
+                    "google": {
+                        "access_token": "a",
+                        "refresh_token": "r",
+                        "expires_at": 5000.0,
+                        "version": 3,
+                    }
+                },
+                "logs": {},
+            }
+        )
+    )
+    store = FileStore(path)
+
+    loaded = store.load("google")
+    # Absent means "never recorded", not "granted at the epoch".
+    assert loaded.tokens.authorised_at == 0.0
+    assert loaded.tokens.granted_days_ago(9000.0) is None
+
+    store.save("google", loaded.tokens, expected_version=3)
+
+    assert json.loads(path.read_text())["schema"] == 2
+
+
+def test_a_store_from_the_future_is_still_refused(tmp_path: Path) -> None:
+    path = tmp_path / "store.json"
+    path.write_text(json.dumps({"schema": 99, "tokens": {}, "logs": {}}))
+
+    with pytest.raises(StoreError, match="is schema 99, this Reckon reads 1 and 2"):
+        FileStore(path).load("google")

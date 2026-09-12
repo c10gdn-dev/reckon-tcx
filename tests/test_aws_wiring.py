@@ -7,21 +7,24 @@ environment variables in, real (mocked) AWS clients out.
 """
 
 import json
+from dataclasses import replace
 from typing import Any
 
 import pytest
 
 from conftest import REGION, TABLE
 from fakes import Clock, FakeTransport, response
-from reckon.aws import receiver, worker
+from reckon.aws import receiver, warden, worker
 from reckon.aws.config import build_pipeline, from_environment
 from reckon.aws.queue import Sqs
 from reckon.aws.secrets import Secrets, parameter_name
 from reckon.clients.oauth import Tokens
+from reckon.core.errors import ReckonError
 from reckon.stores.base import Status
 from reckon.stores.dynamo import DynamoStore
 
 LIVE = Tokens("live-access", "refresh", 4_000_000_000.0)
+DAY = 86400.0
 
 
 def received(client: Any, url: str) -> list[dict[str, Any]]:
@@ -65,6 +68,33 @@ def test_a_missing_variable_names_itself(monkeypatch: pytest.MonkeyPatch) -> Non
         from_environment("RECKON_TEST_VALUE")
 
 
+def _secrets(table: str, profile: str | None = None):
+    """A secret resolver that answers by name, as the real one does.
+
+    A stub returning one value for every key hid a real failure once: the
+    profile lookup got a table name and the enum raised a bare ValueError.
+    """
+
+    def resolve(name: str) -> str:
+        if name == "RECKON_TABLE":
+            return table
+        if name == "RECKON_GOOGLE_PROFILE":
+            if profile is None:
+                raise KeyError(name)
+            return profile
+        return "x"
+
+    return resolve
+
+
+def _authorised(dynamo) -> DynamoStore:
+    """A store with both services authorised, since `build_pipeline` reads tokens."""
+    store = DynamoStore(TABLE, client=dynamo)
+    store.save("google", LIVE, expected_version=0)
+    store.save("strava", LIVE, expected_version=0)
+    return store
+
+
 def test_the_pipeline_is_assembled_from_secrets(dynamo) -> None:
     store = DynamoStore(TABLE, client=dynamo)
     store.save("google", LIVE, expected_version=0)
@@ -93,7 +123,7 @@ def test_an_unauthorised_service_fails_at_assembly(dynamo) -> None:
         build_pipeline(
             store=DynamoStore(TABLE, client=dynamo),
             transport=FakeTransport(),
-            secret=lambda name: "x",
+            secret=_secrets("reckon"),
         )
 
 
@@ -104,7 +134,7 @@ def test_the_store_defaults_to_dynamo_named_by_configuration(dynamo, monkeypatch
     )
     DynamoStore(TABLE, client=dynamo).save("google", LIVE, expected_version=0)
     DynamoStore(TABLE, client=dynamo).save("strava", LIVE, expected_version=0)
-    pipeline = build_pipeline(transport=FakeTransport(), secret=lambda name: TABLE)
+    pipeline = build_pipeline(transport=FakeTransport(), secret=_secrets(TABLE))
     assert isinstance(pipeline.logs, DynamoStore)
     assert pipeline.logs.table_name == TABLE
 
@@ -225,3 +255,128 @@ def test_the_ssm_client_is_built_lazily(aws_credentials: None) -> None:
     secrets = Secrets()
     assert secrets._injected is None
     assert secrets.client is secrets.client
+
+
+# --- profiles ---------------------------------------------------------------
+
+
+def test_a_deployment_that_says_nothing_does_not_ask_for_the_restricted_scope(dynamo) -> None:
+    """The safe way round: `published` not fetching costs a trace it could not
+    have had, where `testing` misconfigured costs a 403 on every activity."""
+    store = _authorised(dynamo)
+    pipeline = build_pipeline(store=store, transport=FakeTransport(), secret=_secrets(TABLE))
+
+    assert pipeline.merge_heart_rate is False
+
+
+def test_the_testing_profile_fetches_the_heart_rate_series(dynamo) -> None:
+    pipeline = build_pipeline(
+        store=_authorised(dynamo),
+        transport=FakeTransport(),
+        secret=_secrets(TABLE, profile="testing"),
+    )
+
+    assert pipeline.merge_heart_rate is True
+
+
+def test_a_misconfigured_profile_fails_at_startup_naming_what_is_allowed(dynamo) -> None:
+    """Rather than as a bare ValueError, or as a 403 per activity hours later."""
+    with pytest.raises(ReckonError, match="expected one of testing, published"):
+        build_pipeline(
+            store=_authorised(dynamo),
+            transport=FakeTransport(),
+            secret=_secrets(TABLE, profile="full"),
+        )
+
+
+def test_the_deployed_pipeline_gets_an_inventory(dynamo) -> None:
+    """Deployed mode reconciles, and a pipeline without one refuses rather than
+    answering "nothing is on Strava"."""
+    store = _authorised(dynamo)
+    pipeline = build_pipeline(store=store, transport=FakeTransport(), secret=_secrets(TABLE))
+
+    assert pipeline.inventory is store
+
+
+# --- the warden -------------------------------------------------------------
+#
+# The `testing` profile's grant dies after seven days and nothing reports a
+# refresh token's expiry, so the only way to warn before it stops is to remember
+# when a human last authorised.
+
+
+def test_the_warden_reports_how_old_each_grant_is(dynamo) -> None:
+    store = DynamoStore(TABLE, client=dynamo)
+    store.save("google", replace(LIVE, authorised_at=0.0), expected_version=0)
+    store.save("google", replace(LIVE, authorised_at=86400.0 * 10), expected_version=1)
+
+    report = warden.check(store=store, now=Clock(now=86400.0 * 13).time)
+
+    assert report["services"]["google"]["days"] == 3.0
+
+
+def test_the_warden_warns_once_the_grant_is_near_seven_days(dynamo) -> None:
+    store = DynamoStore(TABLE, client=dynamo)
+    store.save("google", replace(LIVE, authorised_at=DAY), expected_version=0)
+
+    assert warden.check(store=store, now=Clock(now=DAY * 7.5).time)["warn"] is True
+    assert warden.check(store=store, now=Clock(now=DAY * 4).time)["warn"] is False
+
+
+def test_the_warden_never_warns_about_strava(dynamo) -> None:
+    """Its grant lasts until revoked; the age is reported and not acted on."""
+    store = DynamoStore(TABLE, client=dynamo)
+    store.save("strava", replace(LIVE, authorised_at=DAY), expected_version=0)
+
+    report = warden.check(store=store, now=Clock(now=DAY * 900).time)
+
+    assert report["services"]["strava"]["watched"] is False
+    assert report["warn"] is False
+
+
+def test_the_warden_separates_never_authorised_from_never_recorded(dynamo) -> None:
+    """Both give an unknown age and they are not the same thing, and neither is
+    grounds for a warning — one that fires on "unknown" fires forever."""
+    store = DynamoStore(TABLE, client=dynamo)
+    store.save("google", LIVE, expected_version=0)  # authorised_at defaults to 0.0
+
+    report = warden.check(store=store, now=Clock(now=DAY * 30).time)
+
+    assert report["services"]["google"]["state"] == "authorised before this was recorded"
+    assert report["services"]["strava"]["state"] == "not authorised"
+    assert report["warn"] is False
+
+
+def test_the_warden_handler_prints_the_report_for_the_metric_filter(
+    dynamo, monkeypatch, capsys
+) -> None:
+    """A scheduled invocation's return value goes nowhere; the alarm reads the log.
+
+    The filter matches `{"warn": true}` at the top level, so the shape of this
+    line is load-bearing rather than cosmetic.
+    """
+    store = DynamoStore(TABLE, client=dynamo)
+    store.save("google", replace(LIVE, authorised_at=DAY), expected_version=0)
+    monkeypatch.setattr(warden, "DynamoStore", lambda name, **kw: store)
+    monkeypatch.setenv("RECKON_TABLE", TABLE)
+
+    # The handler uses the real clock, and a grant stamped at day one of the
+    # epoch is long past seven days — so this is the warning case, printed.
+    warden.handler({}, None)
+
+    logged = json.loads(capsys.readouterr().out)
+    assert logged["warn"] is True
+    assert logged["services"]["google"]["state"] == "ok"
+
+
+def test_the_warden_handler_returns_the_report_rather_than_raising(dynamo, monkeypatch) -> None:
+    """An expiring grant is news, not a fault. Raising would put it on the
+    dead-letter queue beside activities that genuinely failed to reach Strava."""
+    store = DynamoStore(TABLE, client=dynamo)
+    store.save("google", replace(LIVE, authorised_at=DAY), expected_version=0)
+    monkeypatch.setattr(warden, "DynamoStore", lambda name, **kw: store)
+    monkeypatch.setenv("RECKON_TABLE", TABLE)
+
+    report = warden.handler({})
+
+    assert report["services"]["google"]["state"] == "ok"

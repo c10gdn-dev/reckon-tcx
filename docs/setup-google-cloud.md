@@ -338,27 +338,46 @@ Two things are still worth knowing:
   worked around, because nobody is there to export a file.
 
 <details>
-<summary><strong>The second-app route, and why you almost certainly do not want it</strong></summary>
+<summary><strong>The second app, which you need only for an automated deployment</strong></summary>
 
-The per-second series *can* be fetched from the API and merged in. It needs the
-`health_metrics_and_measurements` scope, which Google classes as **Restricted**.
-A published app may only hold a Restricted scope after verification, and
-verification for these scopes requires an annual security assessment by a
-Google-empanelled assessor — a recurring paid audit.
+Skip this unless you are running Reckon on AWS. `reckon local` needs nothing
+here.
 
-An **unpublished** app may use Restricted scopes freely, which is Google's
-exemption for personal use, but its logins expire every seven days:
+The per-second series *can* be fetched from the API, and Reckon will build a
+heart-rate track out of it — which is the only way a deployed Reckon gets
+Relative Effort, because no human is there to export a file. It needs the
+`health_metrics_and_measurements` scope, which Google classes as **Restricted**,
+and the constraints cannot both be met by one app:
 
-| | This app | A heart-rate app |
+| | The app you just made | A second app |
 |---|---|---|
 | Published? | yes, so your login lasts | **no**, so it may use the scope |
 | Login expires | when you revoke it | **every 7 days** |
 
-You cannot have both properties in one app. The code for this path exists
-(`heartrate.merge`, `HEART_RATE_SCOPES`) and is **off by default** — enabling it
-without the scope makes every activity return 403. Since `reckon local` gets the
-same data from a file you already have, this is only worth building for a fully
-automated setup where no human is present to export one.
+A published app may hold a Restricted scope only after verification, and
+verification for these scopes means an annual security assessment by a
+Google-empanelled assessor — a recurring paid audit. An unpublished app may use
+them freely, which is Google's own exemption for personal use, at the cost of a
+weekly re-authorisation.
+
+**Making the second app** is steps 1 to 5 and 7 again in a new project, with two
+differences: add the third scope at step 4, and **do not publish it** at step 6.
+Then authorise it as the `testing` profile:
+
+```console
+$ python scripts/authorize.py google --profile testing \
+    --credentials ~/Downloads/client_secret_second_app.json
+```
+
+The `--profile testing` is what asks for the extra scope. Read the
+`granted scopes:` line it prints afterwards: if the heart-rate scope is missing,
+the app is published and you will get a 403 on every activity rather than an
+error now.
+
+Deploy with `google_profile = "testing"` in `terraform.tfvars`, and put *this*
+app's client id and secret in SSM. A daily check emails you a day before the
+seven days are up. Nothing is lost if you miss it — Google retries a failed
+delivery for up to seven days, so the backlog arrives once you renew.
 
 </details>
 

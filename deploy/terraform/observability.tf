@@ -76,3 +76,42 @@ resource "aws_cloudwatch_metric_alarm" "authorisation_expired" {
 
   alarm_actions = [aws_sns_topic.alarms.arn]
 }
+
+resource "aws_cloudwatch_log_group" "warden" {
+  name              = "/aws/lambda/${var.name}-warden"
+  retention_in_days = var.log_retention_days
+}
+
+# The grant is close to expiring. Distinct from the dead-letter alarm, and
+# deliberately so: that one means an activity did not reach Strava, this one
+# means one will stop reaching it soon. Folding them together would make the
+# signal that something is *missing* fire when nothing is.
+#
+# Driven by a metric filter on the warden's own log rather than by the function
+# failing, because an expiring grant is news and not a fault -- raising would put
+# it on the dead-letter queue beside activities that genuinely failed.
+resource "aws_cloudwatch_log_metric_filter" "grant_expiring" {
+  name           = "${var.name}-grant-expiring"
+  log_group_name = aws_cloudwatch_log_group.warden.name
+  pattern        = "{ $.warn IS TRUE }"
+
+  metric_transformation {
+    name      = "GrantExpiring"
+    namespace = var.name
+    value     = "1"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "grant_expiring" {
+  alarm_name          = "${var.name}-grant-expiring"
+  alarm_description   = "The Google authorisation is within a day of expiring. Re-run scripts/authorize.py google --profile testing --table ${var.name}."
+  namespace           = var.name
+  metric_name         = "GrantExpiring"
+  statistic           = "Sum"
+  period              = 86400
+  evaluation_periods  = 1
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alarms.arn]
+}

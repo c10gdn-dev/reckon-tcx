@@ -143,6 +143,16 @@ class MatchKind(StrEnum):
     `checked_at == 0.0` — the two are the same `MatchKind` and must not be the
     same answer to "should catch-up consider this"."""
 
+    @property
+    def blocks_upload(self) -> bool:
+        """Whether catch-up should leave this activity alone.
+
+        Ambiguity blocks as firmly as a match does, and for the opposite reason:
+        a match means the work is already done, ambiguity means we cannot tell
+        and a wrong guess is a duplicate nobody will reconcile.
+        """
+        return self is not MatchKind.NONE
+
 
 @dataclass(frozen=True)
 class InventoryEntry:
@@ -167,6 +177,22 @@ class InventoryEntry:
     strava_activity_id: int | None = None
     match: MatchKind = MatchKind.NONE
     checked_at: float = 0.0
+
+    @property
+    def reconciled(self) -> bool:
+        """Whether reconcile has ever looked at this activity.
+
+        Separate from `match`, because "we looked and found nothing" and "we have
+        not looked" are both `MatchKind.NONE`. Catch-up must upload the first and
+        refuse the second: uploading an activity nobody has checked is how a
+        second copy of an existing one gets made.
+        """
+        return self.checked_at > 0.0
+
+    @property
+    def uploadable(self) -> bool:
+        """Checked, and found to be absent from Strava."""
+        return self.reconciled and not self.match.blocks_upload
 
 
 def chronological(start_time: str) -> str:

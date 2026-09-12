@@ -551,14 +551,37 @@ Optional, and only worth it if you want activities corrected without running a
 command. Steady-state cost is pennies a month — a handful of Lambda invocations,
 a nearly-empty DynamoDB table and an SQS queue that is idle almost all the time.
 
-> **It costs you heart rate, and that is not a detail.** A deployed Reckon fetches
-> from the Google Health API, whose export carries no heart rate, and nobody is
-> there to export a file by hand. So activities arrive without a trace, and
-> Strava's Relative Effort — and therefore Fitness — does not accrue. `reckon
-> local` is the mode that keeps it. This is a genuine trade between automation
-> and completeness, not a gap waiting to be closed: the API route to the
-> per-second series needs a scope Google will only grant after an annual paid
-> security assessment.
+### Two profiles, and the trade between them
+
+A deployed Reckon fetches from the Google Health API, and **that export has no
+heart rate in it** — nobody is there to export a file by hand. Reckon can fetch
+the per-second series separately and build the trace itself, but that needs a
+scope Google classes as *Restricted*, and the constraints are irreconcilable:
+
+| | `testing` | `published` |
+|---|---|---|
+| Google OAuth client | unpublished | published to production |
+| Restricted heart-rate scope | **yes** | no — needs an annual paid audit |
+| Relative Effort and Fitness | **yes** | no |
+| Login lasts | **7 days** | until you revoke it |
+| Maintenance | re-authorise weekly | none |
+
+Set `google_profile` in `terraform.tfvars`. It is named for the client's
+publishing status because that is the one thing you can go and check — the
+Audience page in the Cloud console says "Testing" or "In production" — and
+everything else follows from it.
+
+Pick `testing` if Fitness matters to you and a weekly browser visit does not.
+Pick `published` if you want uploads to happen and never think about it again.
+
+**A lapsed grant costs latency, not data.** Google retries a failed webhook
+delivery with backoff for up to seven days, so anything that arrives while your
+login is dead is delivered once you renew it. A daily check emails you a day
+before it expires; renewing is one command:
+
+```console
+$ python scripts/authorize.py google --profile testing --table reckon
+```
 
 <details>
 <summary><strong>Deploying</strong></summary>

@@ -97,3 +97,27 @@ resource "aws_iam_role_policy_attachment" "worker_logs" {
   role       = aws_iam_role.worker.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
+
+# The warden reads token records and nothing else. No PutItem: it reports on the
+# grant's age and never renews anything, so a bug in it cannot cost a credential.
+resource "aws_iam_role" "warden" {
+  name               = "${var.name}-warden"
+  assume_role_policy = data.aws_iam_policy_document.assume_lambda.json
+}
+
+data "aws_iam_policy_document" "warden" {
+  statement {
+    actions   = ["dynamodb:GetItem"]
+    resources = [aws_dynamodb_table.store.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "warden" {
+  role   = aws_iam_role.warden.id
+  policy = data.aws_iam_policy_document.warden.json
+}
+
+resource "aws_iam_role_policy_attachment" "warden_logs" {
+  role       = aws_iam_role.warden.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}

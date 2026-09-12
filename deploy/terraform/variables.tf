@@ -27,3 +27,26 @@ variable "worker_timeout_seconds" {
   type        = number
   default     = 60
 }
+
+
+variable "google_profile" {
+  description = <<-EOT
+    Which Google OAuth client this deployment authenticates against.
+
+    "testing"   an unpublished client. May hold the Restricted heart-rate scope,
+                so Strava shows Relative Effort -- at the cost of a grant that
+                expires after seven days and must be renewed by hand.
+    "published" a published client. No heart rate, and no maintenance.
+
+    Named for the client's publishing status because that is what a person can
+    check: the Audience page in the Cloud console says "Testing" or "In
+    production".
+  EOT
+  type        = string
+  default     = "published"
+
+  validation {
+    condition     = contains(["testing", "published"], var.google_profile)
+    error_message = "google_profile must be \"testing\" or \"published\"."
+  }
+}

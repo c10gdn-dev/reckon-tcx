@@ -41,6 +41,10 @@ REDIRECT_URI = "http://localhost:8721/callback"
 
 SERVICES = {
     "google": (health.AUTHORIZE_URL, health.TOKEN_URL, health.SCOPES, health.AUTHORIZE_EXTRA, " "),
+    # Same endpoints as `google`, different scopes and a different client. Stored
+    # under its own service key so the two never overwrite each other: the trial
+    # client's grant dies weekly and the published one's does not, and losing the
+    # long-lived pair to a weekly re-authorisation would be a quiet disaster.
     "strava": (
         strava.AUTHORIZE_URL,
         strava.TOKEN_URL,
@@ -54,6 +58,16 @@ SERVICES = {
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("service", choices=sorted(SERVICES))
+    parser.add_argument(
+        "--profile",
+        choices=[str(p) for p in health.Profile],
+        default=str(health.Profile.PUBLISHED),
+        help=(
+            "google only: which OAuth client this is. `testing` is an unpublished "
+            "client, which may hold the Restricted heart-rate scope and whose "
+            "grant expires after seven days (default: published)"
+        ),
+    )
     parser.add_argument(
         "--credentials",
         type=Path,
@@ -78,6 +92,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("pass --credentials FILE, or both --client-id and --client-secret")
 
     authorize_url, token_url, scopes, extra, separator = SERVICES[args.service]
+    if args.service == "google":
+        scopes = health.Profile(args.profile).scopes
     state = new_state()
     print(
         authorization_url(

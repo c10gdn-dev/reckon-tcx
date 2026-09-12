@@ -1520,3 +1520,110 @@ def test_samples_outside_the_activity_are_reported(tmp_path: pathlib.Path) -> No
     outcome = pipeline(health, strava, merge_heart_rate=True).process(skeleton_exercise())
 
     assert any("fell outside the activity" in w for w in outcome.warnings)
+
+
+# --- catchup ----------------------------------------------------------------
+
+
+def inventory_entry(activity_id: str, started: str, **kwargs: Any) -> InventoryEntry:
+    return InventoryEntry(
+        activity_id=activity_id,
+        start_time=started,
+        end_time="2026-02-23T13:25:00Z",
+        exercise_type="WALKING",
+        display_name="Walk",
+        **kwargs,
+    )
+
+
+def test_catchup_uploads_what_reconcile_found_missing(tmp_path: pathlib.Path) -> None:
+    line, store = inventoried(
+        health_transport=FakeTransport(response(body=CORRECTABLE)),
+        strava_transport=FakeTransport(upload_response(activity_id=55)),
+    )
+    store.put(inventory_entry("1", "2026-02-23T13:10:00Z", match=MatchKind.NONE, checked_at=900.0))
+
+    (outcome,) = line.catchup(**WINDOW)
+
+    assert outcome.status is Status.UPLOADED
+    assert outcome.strava_activity_id == 55
+
+
+def test_catchup_refuses_an_activity_nobody_has_checked(tmp_path: pathlib.Path) -> None:
+    """Not reconciled is not "known absent" — uploading it makes a second copy."""
+    line, store = inventoried(health_transport=FakeTransport(), strava_transport=FakeTransport())
+    store.put(inventory_entry("1", "2026-02-23T13:10:00Z"))
+
+    assert line.catchup(**WINDOW) == []
+
+
+def test_catchup_skips_what_strava_already_has(tmp_path: pathlib.Path) -> None:
+    line, store = inventoried(health_transport=FakeTransport(), strava_transport=FakeTransport())
+    store.put(
+        inventory_entry(
+            "1",
+            "2026-02-23T13:10:00Z",
+            match=MatchKind.START_TIME,
+            strava_activity_id=77,
+            checked_at=900.0,
+        )
+    )
+
+    assert line.catchup(**WINDOW) == []
+
+
+def test_catchup_skips_an_ambiguous_match(tmp_path: pathlib.Path) -> None:
+    """A wrong guess here is a duplicate nothing will ever reconcile."""
+    line, store = inventoried(health_transport=FakeTransport(), strava_transport=FakeTransport())
+    store.put(
+        inventory_entry("1", "2026-02-23T13:10:00Z", match=MatchKind.AMBIGUOUS, checked_at=900.0)
+    )
+
+    assert line.catchup(**WINDOW) == []
+
+
+def test_catchup_skips_what_the_log_already_decided(tmp_path: pathlib.Path) -> None:
+    """Reconcile can be stale; the log is not, and a decision is final."""
+    logs = FakeLogStore(LogEntry("1", Status.WITHHELD, reason="malformed"))
+    line, store = inventoried(
+        health_transport=FakeTransport(), strava_transport=FakeTransport(), logs=logs
+    )
+    store.put(inventory_entry("1", "2026-02-23T13:10:00Z", match=MatchKind.NONE, checked_at=900.0))
+
+    assert line.catchup(**WINDOW) == []
+
+
+def test_catchup_stops_at_the_limit(tmp_path: pathlib.Path) -> None:
+    """A years-deep history must not fire a thousand uploads unattended."""
+    health = FakeTransport(*[response(body=CORRECTABLE)] * 2)
+    strava = FakeTransport(upload_response(activity_id=55), upload_response(activity_id=56))
+    line, store = inventoried(health_transport=health, strava_transport=strava)
+    for i in range(4):
+        store.put(
+            inventory_entry(
+                str(i),
+                f"2026-02-23T1{i}:00:00Z",
+                match=MatchKind.NONE,
+                checked_at=900.0,
+            )
+        )
+
+    outcomes = line.catchup(**WINDOW, limit=2)
+
+    assert len(outcomes) == 2
+    assert [o.activity_id for o in outcomes] == ["0", "1"]
+
+
+def test_catchup_goes_oldest_first(tmp_path: pathlib.Path) -> None:
+    """So a stopped run resumes where it left off rather than skipping a gap."""
+    health = FakeTransport(*[response(body=CORRECTABLE)] * 2)
+    strava = FakeTransport(upload_response(activity_id=55), upload_response(activity_id=56))
+    line, store = inventoried(health_transport=health, strava_transport=strava)
+    store.put(
+        inventory_entry("late", "2026-02-23T18:00:00Z", match=MatchKind.NONE, checked_at=900.0)
+    )
+    store.put(
+        inventory_entry("early", "2026-02-23T09:00:00Z", match=MatchKind.NONE, checked_at=900.0)
+    )
+
+    assert [o.activity_id for o in line.catchup(**WINDOW)] == ["early", "late"]

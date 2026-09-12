@@ -103,7 +103,8 @@ def test_exchange_code_posts_a_form_and_returns_tokens() -> None:
         redirect_uri="http://localhost/cb",
         now=clock.time,
     )
-    assert tokens == Tokens("fresh", "rolling", 4600.0)
+    # A code exchange is the moment a human granted access, so it stamps now.
+    assert tokens == Tokens("fresh", "rolling", 4600.0, authorised_at=1000.0)
 
     sent = transport.requests[0]
     assert sent.method == "POST"
@@ -573,3 +574,43 @@ def test_granted_scopes_does_not_check_state() -> None:
     requires having the state to hand.
     """
     assert granted_scopes("http://localhost:8721/callback?scope=read") == ("read",)
+
+
+# --- how old is the grant ---------------------------------------------------
+#
+# No API reports a refresh token's expiry, and the deployed `testing` profile
+# runs on an unpublished client whose grant lasts seven days. When the clock
+# started is the only thing that can warn before it stops rather than after.
+
+
+def test_a_refresh_does_not_restamp_when_access_was_granted() -> None:
+    """The access half is renewed; the grant behind it is no younger for it.
+
+    Google does not rotate its refresh token, so a refresh is not a new grant —
+    restamping here would hide an expiry that is arriving regardless.
+    """
+    transport = FakeTransport(response(body=b'{"access_token":"new","expires_in":3600}'))
+    original = Tokens("old", "rolling", 100.0, authorised_at=500.0)
+
+    renewed = refresh(
+        transport,
+        TOKEN_URL,
+        client_id="cid",
+        client_secret="secret",
+        tokens=original,
+        now=Clock(now=9000.0).time,
+    )
+
+    assert renewed.authorised_at == 500.0
+    assert renewed.expires_at == 12600.0
+
+
+def test_granted_days_ago_measures_from_the_authorisation() -> None:
+    tokens = Tokens("a", "r", 0.0, authorised_at=86400.0)
+
+    assert tokens.granted_days_ago(86400.0 * 4) == pytest.approx(3.0)
+
+
+def test_granted_days_ago_is_unknown_for_a_pair_stored_before_this_existed() -> None:
+    """Zero means "never recorded", which is what an older store truthfully says."""
+    assert Tokens("a", "r", 0.0).granted_days_ago(9000.0) is None

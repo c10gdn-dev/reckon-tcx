@@ -22,7 +22,7 @@ from reckon.clients.http import retrying, send
 from reckon.core.analyse import ActivityStats, analyse_tcx, summarise
 from reckon.core.errors import ReckonError
 from reckon.core.rescale import DEFAULT_TOLERANCE, RescaleResult, ToleranceAction, rescale_tcx
-from reckon.pipeline import PROCESSED_DIR, Outcome, Pipeline, token_holder
+from reckon.pipeline import CATCHUP_LIMIT, PROCESSED_DIR, Outcome, Pipeline, token_holder
 from reckon.pipeline import summarise as summarise_outcomes
 from reckon.stores.base import MatchKind
 from reckon.stores.file import DEFAULT_PATH, FileStore
@@ -224,6 +224,32 @@ def build_parser() -> argparse.ArgumentParser:
     _add_window_arguments(reconcile)
     _add_store_argument(reconcile)
     reconcile.set_defaults(handler=_reconcile_command)
+
+    catchup = subcommands.add_parser(
+        "catchup",
+        help="upload the activities reconcile found Strava is missing",
+        description=(
+            "Send inventoried activities that Strava does not have, oldest "
+            "first, stopping at --limit. Run `backfill` and `reconcile` first: "
+            "an activity nobody has checked is not an activity known to be "
+            "absent, and this refuses to upload one."
+        ),
+    )
+    _add_window_arguments(catchup)
+    catchup.add_argument(
+        "--limit",
+        type=int,
+        default=CATCHUP_LIMIT,
+        metavar="N",
+        help=f"stop after this many uploads (default {CATCHUP_LIMIT})",
+    )
+    catchup.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="do everything except upload and record; print what would happen",
+    )
+    _add_store_argument(catchup)
+    catchup.set_defaults(handler=_catchup_command)
     return parser
 
 
@@ -491,6 +517,28 @@ def _reconcile_command(args: argparse.Namespace, out: Any, err: Any) -> int:
     # Ambiguity is the only outcome a person has to resolve: catch-up will skip
     # those activities, and they stay skipped until someone looks.
     return 1 if counts.get(str(MatchKind.AMBIGUOUS)) else 0
+
+
+def _catchup_command(args: argparse.Namespace, out: Any, err: Any) -> int:
+    since, until = _window(args)
+    try:
+        pipeline = _build_pipeline(args, dry_run=args.dry_run)
+        outcomes = pipeline.catchup(start_time=since, end_time=until, limit=args.limit)
+    except ReckonError as exc:
+        print(f"reckon: {exc}", file=err)
+        return 1
+
+    if args.dry_run:
+        print("reckon: dry run — nothing uploaded, nothing recorded", file=err)
+    if not outcomes:
+        print("nothing outstanding; run `reckon reconcile` if that is a surprise", file=out)
+        return 0
+    if len(outcomes) >= args.limit:
+        print(
+            f"reckon: stopped at the limit of {args.limit}; run it again for the rest",
+            file=err,
+        )
+    return _report_outcomes(outcomes, out)
 
 
 def _local_command(args: argparse.Namespace, out: Any, err: Any) -> int:

@@ -901,3 +901,76 @@ def test_table_selects_the_dynamo_adapter_without_importing_it_at_module_scope(a
 
     assert type(store).__name__ == "DynamoStore"
     assert store.table_name == "reckon-test"
+
+
+def catchup(*argv: str, transport=None):
+    out, err = io.StringIO(), io.StringIO()
+    code = main(["catchup", *argv], stdout=out, stderr=err, transport=transport)
+    return code, out.getvalue(), err.getvalue()
+
+
+def _reconciled(path, activity_id="1", days_ago=1):
+    """An inventory entry reconcile has checked and found Strava lacks."""
+    from reckon.stores.base import InventoryEntry, MatchKind
+    from reckon.stores.file import FileStore
+
+    FileStore(path).put(
+        InventoryEntry(
+            activity_id=activity_id,
+            start_time=ago(days_ago),
+            end_time=ago(days_ago),
+            exercise_type="WALKING",
+            display_name="Walk",
+            match=MatchKind.NONE,
+            checked_at=1000.0,
+        )
+    )
+
+
+def test_catchup_uploads_and_reports(authorised):
+    _reconciled(authorised)
+    transport = transport_of(CORRECTABLE, upload_body(activity_id=9))
+
+    code, report, _ = catchup("--store", str(authorised), transport=transport)
+
+    assert code == 0
+    assert "1 uploaded" in report
+
+
+def test_catchup_with_nothing_outstanding_says_so(authorised):
+    code, report, _ = catchup("--store", str(authorised), transport=transport_of())
+
+    assert code == 0
+    assert "nothing outstanding" in report
+
+
+def test_catchup_says_when_it_stopped_at_the_limit(authorised):
+    _reconciled(authorised, "1")
+    transport = transport_of(CORRECTABLE, upload_body(activity_id=9))
+
+    _, _, err = catchup("--limit", "1", "--store", str(authorised), transport=transport)
+
+    assert "stopped at the limit of 1" in err
+
+
+def test_catchup_dry_run_uploads_nothing(authorised):
+    _reconciled(authorised)
+
+    _, _, err = catchup(
+        "--dry-run", "--store", str(authorised), transport=transport_of(CORRECTABLE)
+    )
+
+    assert "dry run" in err
+
+
+def test_catchup_surfaces_a_failure(authorised):
+    from fakes import FakeTransport
+    from reckon.core.errors import NetworkError
+
+    _reconciled(authorised)
+    code, _, err = catchup(
+        "--store", str(authorised), transport=FakeTransport(NetworkError("no route"))
+    )
+
+    assert code == 1
+    assert "no route" in err

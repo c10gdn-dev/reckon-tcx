@@ -5,6 +5,11 @@ locals {
   common_environment = {
     RECKON_TABLE     = aws_dynamodb_table.store.name
     RECKON_QUEUE_URL = aws_sqs_queue.work.url
+    # Which Google OAuth client this deployment authenticates against. `testing`
+    # is an unpublished client: it may hold the Restricted heart-rate scope, so
+    # Relative Effort works, and its grant expires after seven days. `published`
+    # is the reverse. See PLAN.md 13.1.
+    RECKON_GOOGLE_PROFILE = var.google_profile
   }
 }
 
@@ -74,4 +79,50 @@ resource "aws_lambda_event_source_mapping" "worker" {
   scaling_config {
     maximum_concurrency = 2
   }
+}
+
+
+# The warden: a daily look at how old the stored grant is.
+#
+# Only worth its keep on the `testing` profile, whose grant Google expires after
+# seven days -- but it costs one invocation a day either way, and a deployment
+# that switches profile should not also have to remember to add a schedule.
+resource "aws_lambda_function" "warden" {
+  function_name = "${var.name}-warden"
+  role          = aws_iam_role.warden.arn
+  handler       = "reckon.aws.warden.handler"
+  runtime       = "python3.13"
+  architectures = ["arm64"]
+
+  filename         = data.archive_file.source.output_path
+  source_code_hash = data.archive_file.source.output_base64sha256
+
+  timeout     = 10
+  memory_size = 128
+
+  environment {
+    variables = local.common_environment
+  }
+
+  depends_on = [aws_cloudwatch_log_group.warden]
+}
+
+resource "aws_cloudwatch_event_rule" "warden" {
+  name                = "${var.name}-warden-daily"
+  description         = "Check how old the Google grant is"
+  schedule_expression = "cron(0 18 * * ? *)"
+}
+
+resource "aws_cloudwatch_event_target" "warden" {
+  rule      = aws_cloudwatch_event_rule.warden.name
+  target_id = "warden"
+  arn       = aws_lambda_function.warden.arn
+}
+
+resource "aws_lambda_permission" "warden" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.warden.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.warden.arn
 }

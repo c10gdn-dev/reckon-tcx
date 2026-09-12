@@ -27,6 +27,7 @@ import time
 import urllib.parse
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 
 from reckon.clients.http import Request, Response, Transport
@@ -65,6 +66,56 @@ HEART_RATE_SCOPES = (
 # The service name the second client's tokens are stored under, so the two never
 # collide in a store keyed by service.
 HEART_RATE_SERVICE = "google-hr"
+
+
+class Profile(StrEnum):
+    """Which Google OAuth client Reckon is authenticating against.
+
+    The two deployed variants differ in exactly one thing, and everything else
+    follows from it. Named for the client's **publishing status** rather than for
+    its consequence, because that is the property a person can go and check — the
+    Audience page in the Cloud console says "Testing" or "In production" — where
+    a name like "full" or "unattended" would name an inference instead.
+
+    | | `testing` | `published` |
+    |---|---|---|
+    | Restricted heart-rate scope | may hold it | may not, without a paid audit |
+    | Refresh token | **seven days** | until revoked |
+    | Relative Effort on Strava | yes | no |
+    | Human intervention | weekly | none |
+
+    A published client cannot hold a Restricted scope without Google's
+    verification, which for these scopes means an annual security assessment by
+    an empanelled assessor. An unpublished one may use them freely — Google's own
+    exemption for personal use — at the cost of a grant that expires weekly. The
+    constraints are irreconcilable, so the choice is which to pay.
+    """
+
+    TESTING = "testing"
+    PUBLISHED = "published"
+
+    @property
+    def scopes(self) -> tuple[str, ...]:
+        """What to ask for at authorisation.
+
+        Asking a published client for the Restricted scope does not fail at
+        authorisation; it fails later, per activity, with a 403. Getting this
+        wrong has happened once already, which is why `SCOPES` and
+        `HEART_RATE_SCOPES` are separate tuples with a test pinning them apart.
+        """
+        if self is Profile.TESTING:
+            return (*SCOPES, *HEART_RATE_SCOPES)
+        return SCOPES
+
+    @property
+    def merges_heart_rate(self) -> bool:
+        """Whether to fetch the per-second series at all.
+
+        Off for `published`, where it would 403 on every activity and cost a
+        request each time to learn nothing new.
+        """
+        return self is Profile.TESTING
+
 
 # Sampled far more often than a trackpoint, and on its own clock. Merging is
 # nearest-sample-within-tolerance rather than exact matching for that reason.

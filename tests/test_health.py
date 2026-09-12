@@ -21,6 +21,7 @@ from reckon.clients.health import (
     AccountNotLinked,
     Exercise,
     GoogleHealth,
+    Profile,
     UnexpectedPayload,
     token_holder,
 )
@@ -693,3 +694,19 @@ def test_the_shape_googles_own_cli_documents_is_parsed() -> None:
         start_time="2026-02-15T09:00:00Z", end_time="2026-02-15T11:00:00Z"
     )
     assert [bpm for _, bpm in found] == [142]
+
+
+# --- profiles ---------------------------------------------------------------
+
+
+def test_the_testing_profile_asks_for_the_restricted_scope() -> None:
+    """An unpublished client may hold it freely; that is what buys heart rate."""
+    assert Profile.TESTING.scopes == (*SCOPES, *HEART_RATE_SCOPES)
+    assert Profile.TESTING.merges_heart_rate is True
+
+
+def test_the_published_profile_asks_for_neither() -> None:
+    """A published client holding a Restricted scope needs an annual paid audit,
+    and asking anyway fails per activity with a 403 rather than at authorisation."""
+    assert Profile.PUBLISHED.scopes == SCOPES
+    assert Profile.PUBLISHED.merges_heart_rate is False

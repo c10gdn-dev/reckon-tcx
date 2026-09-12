@@ -66,9 +66,28 @@ class Tokens:
     access_token: str
     refresh_token: str
     expires_at: float
+    # When a human last granted access, as opposed to when the access half was
+    # last renewed. Set by `authorize.py` and deliberately carried unchanged
+    # through every refresh: Google does not rotate its refresh token, so the
+    # grant's age is the number that matters and refreshing does not reset it.
+    #
+    # It exists because no API reports a refresh token's expiry. An unpublished
+    # OAuth client issues one lasting seven days, and the deployed `testing`
+    # profile runs on exactly that — so knowing when the clock started is the
+    # only way to warn before it stops rather than after.
+    #
+    # Zero means "unknown", which is what every pair stored before 2026-09-12
+    # says about itself, truthfully.
+    authorised_at: float = 0.0
 
     def expired(self, now: float, skew: float = EXPIRY_SKEW) -> bool:
         return now >= self.expires_at - skew
+
+    def granted_days_ago(self, now: float) -> float | None:
+        """How long since a human authorised, or None if that was never recorded."""
+        if self.authorised_at <= 0.0:
+            return None
+        return (now - self.authorised_at) / 86400.0
 
 
 @dataclass(frozen=True)
@@ -263,6 +282,10 @@ def refresh(
         },
         now=now,
         fallback_refresh_token=tokens.refresh_token,
+        # Carried through, never restamped. A refresh renews the access half; the
+        # grant behind it is exactly as old as it was a moment ago, and that age
+        # is what the seven-day clock is measured against.
+        authorised_at=tokens.authorised_at,
     )
 
 
@@ -311,6 +334,7 @@ def _token_request(
     *,
     now: Callable[[], float],
     fallback_refresh_token: str | None = None,
+    authorised_at: float | None = None,
 ) -> Tokens:
     # Read the clock *before* the request. Overstating a token's life by the
     # round-trip time risks using an expired one; understating it costs a refresh.
@@ -344,6 +368,9 @@ def _token_request(
         access_token=access_token,
         refresh_token=refresh_token,
         expires_at=issued_at + _lifetime(payload, token_url, issued_at),
+        # A code exchange *is* the moment a human granted access, so it stamps
+        # now; a refresh passes the original through.
+        authorised_at=issued_at if authorised_at is None else authorised_at,
     )
 
 

@@ -32,7 +32,8 @@ One line each, saying what the module owns.
 | `aws/receiver.py` | Webhook endpoint. Authenticates, enqueues, acknowledges. Nothing else. |
 | `aws/worker.py` | SQS handler. Routes the two message shapes; re-enqueues delayed rather than sleeping. |
 | `aws/queue.py` | The SQS seam, as `http.py` is the network seam. |
-| `aws/config.py` | Assembles the pipeline inside Lambda, as `cli.py` does locally. |
+| `aws/config.py` | Assembles the pipeline inside Lambda, as `cli.py` does locally. Resolves `RECKON_GOOGLE_PROFILE`, the one setting the two deployed variants differ in. |
+| `aws/warden.py` | A daily look at how old the Google grant is, for the `testing` profile whose grant expires weekly. Reads token records and writes nothing. |
 | `aws/secrets.py` | Configuration resolution: environment first, then SSM SecureString at run time. |
 | `stores/transfer.py` | Copying one store's contents into another. Direction-agnostic, because both satisfy the same ports. |
 | `deploy/terraform/` | The deployment. Depends on `src/`, never the reverse. |

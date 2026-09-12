@@ -129,6 +129,12 @@ def _km(metres: float) -> str:
     return f"{metres / 1000:.2f}"
 
 
+# How many activities one `catchup` will send before stopping. Strava allows a
+# thousand requests a day and a hundred per fifteen minutes, and an upload costs
+# several — so the cap is what keeps a years-deep history from running away on a
+# first unattended run. Raise it deliberately, per invocation, never by default.
+CATCHUP_LIMIT = 25
+
 # Strava's upload is asynchronous. Locally a bounded loop is fine; in Lambda this
 # must become a delayed SQS re-enqueue, because a sleeping handler is billed
 # wall-clock time (`PLAN.md` §9). Five attempts matches the cap set there.
@@ -461,6 +467,31 @@ class Pipeline:
             updated.append(revised)
         return updated
 
+    def catchup(
+        self, *, start_time: str, end_time: str, limit: int = CATCHUP_LIMIT
+    ) -> list[Outcome]:
+        """Upload inventoried activities Strava does not have, oldest first.
+
+        The bounded half of deployed mode's first run. `backfill` and `reconcile`
+        establish what is missing; this sends it, and stops at `limit` because a
+        years-deep history must not fire a thousand uploads unattended — Strava
+        allows a thousand requests a day and a hundred per fifteen minutes.
+
+        **Only activities reconcile has actually looked at.** An entry nobody has
+        checked is not an entry known to be absent, and uploading one is how a
+        second copy of an existing activity gets made. An ambiguous match blocks
+        as firmly as a certain one: a wrong guess there is a duplicate nothing
+        will ever reconcile.
+        """
+        outcomes: list[Outcome] = []
+        for entry in self.inventory.between(start_time, end_time):
+            if len(outcomes) >= limit:
+                break
+            if not entry.uploadable or self.logs.get(entry.activity_id) is not None:
+                continue
+            outcomes.append(self.process(_exercise_from(entry)))
+        return outcomes
+
     def fetch(self, activity_id: str, *, raw: bool = False) -> bytes:
         """One activity's TCX, corrected unless `raw`. No store, no upload.
 
@@ -731,6 +762,24 @@ def _match(
     if len(near) > 1:
         return MatchKind.AMBIGUOUS, None
     return MatchKind.START_TIME, near[0]
+
+
+def _exercise_from(entry: InventoryEntry) -> Exercise:
+    """The inventory record as the pipeline's own vocabulary.
+
+    Catch-up re-enters `process` rather than duplicating it, so everything after
+    this point — the fetch, the transform, the guards, the log entry — is the
+    same code `sync` runs. The inventory holds exactly the fields `Exercise`
+    needs because backfill wrote it from one.
+    """
+    return Exercise(
+        name=f"users/me/dataTypes/exercise/dataPoints/{entry.activity_id}",
+        exercise_type=entry.exercise_type,
+        display_name=entry.display_name,
+        start_time=entry.start_time,
+        end_time=entry.end_time,
+        distance_m=entry.distance_m,
+    )
 
 
 def _device(data: bytes) -> str | None:

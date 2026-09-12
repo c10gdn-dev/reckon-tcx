@@ -275,3 +275,12 @@ def test_a_timestamp_that_cannot_be_parsed_is_kept_as_it_came(store) -> None:
 
     assert store.inventory("odd").start_time == "whenever"
     assert store.between("2026-02-23T00:00:00Z", "2026-02-24T00:00:00Z") == []
+
+
+def test_when_access_was_granted_survives_a_round_trip(store) -> None:
+    """The seven-day clock is measured against this, so losing it loses the warning."""
+    granted = Tokens("access", "refresh", 5000.0, authorised_at=1234.0)
+
+    store.save("google", granted, expected_version=0)
+
+    assert store.load("google").tokens.authorised_at == 1234.0

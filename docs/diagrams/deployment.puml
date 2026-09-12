@@ -1,0 +1,80 @@
+@startuml deployment
+' What Terraform creates, and which way the arrows point.
+'
+' The question this diagram exists to answer: where does a credential live, and
+' who can read it? Every other detail here is in the README's Mermaid flowchart,
+' which shows the *request* path. This shows the *trust* boundaries — because the
+' one surprising thing about this deployment is an unauthenticated Function URL,
+' and a reader who sees that without seeing why is right to be alarmed.
+'
+' Rendered by `make diagrams`. Do not hand-edit the SVG.
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam componentStyle rectangle
+skinparam linetype ortho
+
+cloud "Google Health" as GH
+cloud "Strava" as ST
+actor "you" as HUMAN
+
+rectangle "AWS account" {
+  component "receiver\n<size:10>Function URL, no AWS auth</size>" as RX
+  queue "work queue\n<size:10>SQS + DLQ</size>" as Q
+  component "worker" as W
+  component "warden\n<size:10>daily, GetItem only</size>" as WD
+  database "store\n<size:10>DynamoDB, single table</size>" as DB
+  component "SSM\n<size:10>SecureString</size>" as SSM
+  component "alarms\n<size:10>SNS to email</size>" as SNS
+}
+
+GH --> RX : notification\n<size:10>shared secret in Authorization</size>
+RX --> Q : enqueue raw body
+Q --> W
+W --> GH : re-fetch the activity
+W --> ST : upload corrected TCX
+W <--> DB : tokens (CAS), log, inventory
+W ..> Q : delayed upload check
+Q ..> SNS : 3 failures
+WD --> DB : read token age
+WD ..> SNS : grant expiring
+SSM --> W : client id / secret\n<size:10>at run time</size>
+SSM --> RX : webhook secret
+SNS --> HUMAN
+HUMAN --> SSM : put-parameter
+HUMAN --> DB : scripts/authorize.py --table
+
+note bottom of RX
+  **No AWS authentication, deliberately.**
+  Google cannot sign with SigV4, so the
+  shared secret *is* the authentication,
+  compared with hmac.compare_digest.
+
+  Safe because the receiver trusts the
+  body for nothing: it authenticates,
+  copies to the queue and returns. The
+  worker re-fetches everything from the
+  API, so a forged notification costs an
+  empty query rather than a bad upload.
+end note
+
+note right of DB
+  Token records carry no TTL — expiring
+  one would silently deauthorise the
+  pipeline. Inventory records carry none
+  either: forgetting an activity exists
+  is how a second copy gets uploaded.
+  Only the processed log expires, at 90d.
+end note
+
+note bottom of HUMAN
+  The only manual step in steady state,
+  and only on the `testing` profile:
+  its grant dies after seven days.
+  Google retries a failed delivery for
+  up to seven days, so a lapsed grant
+  costs latency and not data.
+end note
+
+@enduml
