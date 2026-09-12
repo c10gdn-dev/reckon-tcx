@@ -19,7 +19,7 @@ One line each, saying what the module owns.
 | `core/tcx.py` | Parsing and serialising TCX. Namespaces, element lookup, GPS coverage, recording gaps, the device name and the start timestamp. Knows nothing about rescaling. |
 | `core/rescale.py` | The transform. Pure: bytes and a target in, bytes and numbers out. |
 | `core/analyse.py` | Corpus measurement. Pure. Feeds `reckon analyse`. |
-| `core/heartrate.py` | Putting heart rate back into a TCX: a fetched series, or the summary's average onto the lap. |
+| `core/heartrate.py` | Putting heart rate back into a TCX: annotating existing trackpoints (`merge`), building them where the API exported none (`build`), or the summary's average onto the lap (`set_average`). |
 | `core/errors.py` | The exception hierarchy, and the `Transient` marker. |
 | `clients/http.py` | **The only module that touches the network.** `send` performs one request; `retrying` decides what is worth repeating. |
 | `clients/oauth.py` | OAuth 2.0: authorisation URLs, code exchange, refresh, and `TokenHolder`. |
@@ -202,7 +202,7 @@ rather than left to judgement.
 heart rate. A flat line across a run is not a measurement of anything, and it
 would look exactly like data to whoever read it.
 
-**Allowed, and planned for deployed mode** (`PLAN.md` §13.4): emitting one
+**Allowed, and built** (`heartrate.build`, `PLAN.md` §13.4): emitting one
 trackpoint per sample from the `heart-rate` data type, for an activity whose TCX
 carries no GPS. Every value is a real per-second reading; nothing is interpolated
 and nothing is invented. The output is the shape the phone app writes for the

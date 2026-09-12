@@ -530,12 +530,23 @@ class Pipeline:
         if not samples:
             return data, warnings
 
-        merged = heartrate.merge(data, samples, tolerance_s=self.heart_rate_tolerance_s)
-        if merged.matched == 0:
+        # Build first, then merge. `build` populates an activity with no GPS,
+        # whose API export is a two-trackpoint skeleton, and skips any activity
+        # that has a track; `merge` then annotates those. Running both is what
+        # makes a document holding one of each come out right, and on the
+        # single-activity files Fitbit actually emits one of them is a no-op.
+        built = heartrate.build(data, samples, tolerance_s=self.heart_rate_tolerance_s)
+        merged = heartrate.merge(built.data, samples, tolerance_s=self.heart_rate_tolerance_s)
+        if built.created == 0 and merged.matched == 0:
             return data, (
                 *warnings,
                 f"heart-rate series not merged: {len(samples)} samples, none within "
                 f"{self.heart_rate_tolerance_s:g}s of a trackpoint",
+            )
+        if built.outside:
+            warnings = (
+                *warnings,
+                f"{built.outside} heart-rate samples fell outside the activity and were dropped",
             )
         return merged.data, warnings
 

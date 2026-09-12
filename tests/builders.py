@@ -100,6 +100,7 @@ def activity(
     with_heart_rate: bool = True,
     activity_id: str | None = None,
     start_offset: int = 0,
+    spacing_seconds: int = 10,
     laps: int = 1,
     lap_distance_m: float | None = None,
     lap_total_time_s: float | None = None,
@@ -118,7 +119,7 @@ def activity(
         positions = [with_position] * len(distances)
     points = [
         trackpoint(
-            offset_seconds=start_offset + index * 10,
+            offset_seconds=start_offset + index * spacing_seconds,
             distance_m=distance,
             with_position=present,
             speed=speed,
@@ -138,7 +139,7 @@ def activity(
     # difference between the two is now load-bearing: `tcx.unrecorded_time` reads
     # it as activity time the track does not cover. Leaving the old fixed 600 s
     # against a 20 s span would have made every synthetic file look 97% missing.
-    span = float(max(0, len(chunks[0]) - 1) * 10) if chunks and chunks[0] else 0.0
+    span = float(max(0, len(chunks[0]) - 1) * spacing_seconds) if chunks and chunks[0] else 0.0
     body = "".join(
         lap(
             start_offset=start_offset + index * 600,

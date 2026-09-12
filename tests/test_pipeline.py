@@ -10,6 +10,7 @@ distinction the whole design turns on: one reaches Strava uncorrected, the other
 deliberately does not reach it at all.
 """
 
+import datetime as dt
 import json
 import pathlib
 from dataclasses import replace
@@ -1436,3 +1437,86 @@ def test_reconcile_without_an_inventory_refuses_too() -> None:
 
     with pytest.raises(StoreError, match="without an inventory store"):
         line.reconcile(**WINDOW)
+
+
+# --- heart rate built, not merged -------------------------------------------
+
+
+# builders writes its trackpoints from a fixed epoch, so an exercise whose window
+# spans them is what makes the two line up. The client filters samples to the
+# *exercise* window before `build` ever sees them, which is why a sample can only
+# be "outside" by falling beyond the trackpoint span inside that window.
+BUILDER_EPOCH = "2024-01-01T09:00:00Z"
+
+
+def skeleton_exercise() -> Exercise:
+    return Exercise(
+        name="users/me/dataTypes/exercise/dataPoints/889672",
+        exercise_type="YOGA",
+        display_name="Yoga",
+        start_time=BUILDER_EPOCH,
+        end_time="2024-01-01T10:00:00Z",
+        distance_m=0.0,
+    )
+
+
+def hr_response(count: int, *, start: str = BUILDER_EPOCH, every: int = 60) -> Any:
+    moment = dt.datetime.fromisoformat(start)
+    return json_response(
+        {
+            "dataPoints": [
+                {
+                    "sampleTime": (moment + dt.timedelta(seconds=every * i))
+                    .isoformat()
+                    .replace("+00:00", "Z"),
+                    "beatsPerMinute": 70 + i,
+                }
+                for i in range(count)
+            ]
+        }
+    )
+
+
+def test_a_gpsless_activity_gains_a_trackpoint_per_sample(tmp_path: pathlib.Path) -> None:
+    """The API's export is a two-trackpoint skeleton; merging onto it gives two
+    readings, and Relative Effort needs time in zones."""
+    # Two trackpoints an hour apart, which is the shape the API actually returns:
+    # the activity's start and end, and nothing between them.
+    skeleton = builders.tcx(
+        distances=[None, None],
+        with_position=False,
+        lap_distance_m=0.0,
+        with_heart_rate=False,
+        spacing_seconds=3600,
+    )
+    health = FakeTransport(response(body=skeleton), hr_response(5, every=120))
+    strava = FakeTransport(upload_response(activity_id=55))
+
+    pipeline(health, strava, merge_heart_rate=True).process(skeleton_exercise())
+
+    body = strava.requests[-1].body or b""
+    assert body.count(b"<HeartRateBpm>") >= 5
+
+
+def test_samples_outside_the_activity_are_reported(tmp_path: pathlib.Path) -> None:
+    """Dropped rather than clamped, and said out loud rather than silently."""
+    skeleton = builders.tcx(
+        distances=[None, None],
+        with_position=False,
+        lap_distance_m=0.0,
+        with_heart_rate=False,
+        spacing_seconds=600,
+    )
+    # Inside the exercise window the client filters on, and straddling the end of
+    # the two-trackpoint span the skeleton actually covers: 09:05 and 09:10 land
+    # inside it, 09:15 does not. That gap is the only way a sample reaches
+    # `build` and cannot be placed — and some must land, or the earlier
+    # "none within tolerance" return fires before this warning is reached.
+    health = FakeTransport(
+        response(body=skeleton), hr_response(3, start="2024-01-01T09:05:00Z", every=300)
+    )
+    strava = FakeTransport(upload_response(activity_id=55))
+
+    outcome = pipeline(health, strava, merge_heart_rate=True).process(skeleton_exercise())
+
+    assert any("fell outside the activity" in w for w in outcome.warnings)

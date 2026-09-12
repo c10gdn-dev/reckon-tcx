@@ -27,6 +27,7 @@ from reckon.core import tcx
 HEART_RATE_BPM = tcx.qn(tcx.TCX_NS, "HeartRateBpm")
 AVERAGE_HEART_RATE_BPM = tcx.qn(tcx.TCX_NS, "AverageHeartRateBpm")
 VALUE = tcx.qn(tcx.TCX_NS, "Value")
+TRACK = tcx.qn(tcx.TCX_NS, "Track")
 
 # A Lap's children, in the order the schema requires.
 _LAP_ORDER = [
@@ -118,6 +119,132 @@ def merge(
         already_present=already,
         samples=len(ordered),
     )
+
+
+@dataclass(frozen=True)
+class BuildResult:
+    """The document with a heart-rate track in it, and what was made."""
+
+    data: bytes
+    created: int
+    annotated: int
+    outside: int
+    skipped_activities: int
+
+
+def build(
+    tcx_bytes: bytes,
+    samples: list[tuple[dt.datetime, int]],
+    *,
+    tolerance_s: float = DEFAULT_TOLERANCE_S,
+) -> BuildResult:
+    """Give a GPS-less activity the per-trackpoint heart rate the API omits.
+
+    `:exportExerciseTcx` returns a **two-trackpoint skeleton** for an activity
+    with no GPS — verified against the live API on 2026-09-12, where a yoga
+    session and a walk-plus-train came back with two bare `<Time>` trackpoints
+    and no heart rate, against 373 in the phone app's export of the same walk.
+    Merging a series onto two trackpoints gives two readings, and Relative Effort
+    needs time in zones, so deployed mode would contribute nothing to Fitness for
+    exactly the activities local mode proved gain the most.
+
+    **This is not the fabrication the project forbids.** That rule says: never
+    synthesise a per-trackpoint trace from an *average*, because a flat line
+    across a run looks like data and is not. Here every value is a real
+    per-second reading from the `heart-rate` data type, and the output is the
+    shape the phone app itself writes — the corpus's yoga file is 1867
+    trackpoints of `Time` and `HeartRateBpm` with no position and no distance,
+    and Strava computed Relative Effort from it. Assembling measurements into a
+    format is not deriving many values from one. See `ARCHITECTURE.md`.
+
+    Three rules, each of which would be a bug to drop:
+
+    - **Only activities with no GPS.** Where there is a track, `merge` annotates
+      what is already there and nothing is created.
+    - **The existing trackpoints survive.** They mark the activity's start and
+      end, and Strava reads elapsed time from the trackpoint span rather than
+      from `TotalTimeSeconds` — dropping them would shorten the activity by
+      however long the watch waited for its first reading.
+    - **Nothing outside the lap's own span.** A sample from before the activity
+      began or after it ended is dropped rather than clamped: clamping would
+      invent a reading at a time it was not taken, which is the line this
+      function is careful to stay on the right side of.
+    """
+    root = tcx.parse(tcx_bytes)
+    ordered = sorted(samples, key=lambda pair: pair[0])
+    times = [moment for moment, _ in ordered]
+
+    created = annotated = outside = skipped = 0
+    for activity in tcx.activities(root):
+        if tcx.has_position(activity):
+            skipped += 1
+            continue
+        for lap in activity.iter(tcx.LAP):
+            track = lap.find(TRACK)
+            if track is None:
+                continue
+            points = list(track)
+            entries = [
+                (tcx.read_time(element), point)
+                for point in points
+                for element in [point.find(tcx.TIME)]
+                if element is not None
+            ]
+            # Every child must be a trackpoint carrying a time, or this lap is
+            # left alone. The track is rewritten in time order below, and
+            # reordering a track holding something unrecognised would move it
+            # somewhere arbitrary. `merge` still annotates such a lap; only the
+            # creating half declines.
+            if not entries or len(entries) != len(points):
+                continue
+            first, last = entries[0][0], entries[-1][0]
+
+            for moment, point in entries:
+                if point.find(HEART_RATE_BPM) is not None:
+                    continue
+                bpm = _nearest(times, ordered, moment, tolerance_s)
+                if bpm is not None:
+                    _insert(point, bpm)
+                    annotated += 1
+
+            taken = [moment for moment, _ in entries]
+            for moment, bpm in ordered:
+                if not first <= moment <= last:
+                    outside += 1
+                    continue
+                if any(abs((moment - held).total_seconds()) <= tolerance_s for held in taken):
+                    continue
+                entries.append((moment, _trackpoint(moment, bpm)))
+                taken.append(moment)
+                created += 1
+
+            # Rewritten from the pairs rather than sorted in place, so ordering
+            # never re-reads a `Time` that was already parsed.
+            entries.sort(key=lambda pair: pair[0])
+            for point in list(track):
+                track.remove(point)
+            track.extend(point for _, point in entries)
+
+    return BuildResult(
+        data=tcx.serialise(root),
+        created=created,
+        annotated=annotated,
+        outside=outside,
+        skipped_activities=skipped,
+    )
+
+
+def _trackpoint(moment: dt.datetime, bpm: int) -> ET.Element:
+    """One `<Trackpoint>` carrying a time and a reading, and nothing else.
+
+    No `Position` and no `DistanceMeters`, deliberately: there is no GPS here and
+    inventing either would be the fabrication this module exists to avoid. The
+    shape matches what the phone app writes for the same activity.
+    """
+    point = ET.Element(tcx.TRACKPOINT)
+    ET.SubElement(point, tcx.TIME).text = moment.isoformat().replace("+00:00", "Z")
+    _insert(point, bpm)
+    return point
 
 
 def _nearest(

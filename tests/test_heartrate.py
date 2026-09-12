@@ -240,3 +240,187 @@ def test_the_result_is_still_valid() -> None:
     data, _ = heartrate.set_average(document(), 146)
     ET.fromstring(data)
     assert tcx.lap_distance_total(next(tcx.activities(tcx.parse(data)))) == 930.0
+
+
+# --- building a track the API will not export -------------------------------
+#
+# Verified against the live API on 2026-09-12: a yoga session and a
+# walk-plus-train both came back from `:exportExerciseTcx` as two bare `<Time>`
+# trackpoints with no heart rate, where the phone app's export of the same walk
+# has 373. Merging onto two trackpoints gives two readings, and Relative Effort
+# needs time in zones.
+
+SKELETON = (
+    b'<?xml version="1.0"?>'
+    b'<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">'
+    b'<Activities><Activity Sport="Other"><Id>2026-09-11T07:00:00Z</Id>'
+    b'<Lap StartTime="2026-09-11T07:00:00Z"><TotalTimeSeconds>600.0</TotalTimeSeconds>'
+    b"<DistanceMeters>0.0</DistanceMeters><Intensity>Active</Intensity>"
+    b"<TriggerMethod>Manual</TriggerMethod><Track>"
+    b"<Trackpoint><Time>2026-09-11T07:00:00Z</Time></Trackpoint>"
+    b"<Trackpoint><Time>2026-09-11T07:10:00Z</Time></Trackpoint>"
+    b"</Track></Lap></Activity></Activities></TrainingCenterDatabase>"
+)
+
+SKELETON_START = dt.datetime(2026, 9, 11, 7, 0, tzinfo=dt.UTC)
+
+
+def readings(count: int, *, every: int = 60, offset: int = 0) -> list[tuple[dt.datetime, int]]:
+    return [
+        (SKELETON_START + dt.timedelta(seconds=offset + every * i), 70 + i) for i in range(count)
+    ]
+
+
+def built(data: bytes) -> list[tuple[str, int | None]]:
+    """Every trackpoint as (time, bpm), in document order."""
+    activity = next(tcx.activities(tcx.parse(data)))
+    found = []
+    for point in tcx.trackpoints(activity):
+        element = point.find(heartrate.HEART_RATE_BPM)
+        value = None if element is None else int(element.findtext(heartrate.VALUE))
+        found.append((point.findtext(tcx.TIME), value))
+    return found
+
+
+def test_build_creates_a_trackpoint_for_every_sample() -> None:
+    """Offset past the tolerance, or the first sample annotates the skeleton
+    point instead of creating one — which the next test covers."""
+    result = heartrate.build(SKELETON, readings(5, every=100, offset=30))
+
+    assert result.created == 5
+    assert [bpm for _, bpm in built(result.data)] == [None, 70, 71, 72, 73, 74, None]
+
+
+def test_build_keeps_the_bounding_trackpoints_so_elapsed_time_survives() -> None:
+    """Strava reads elapsed from the trackpoint span, not from TotalTimeSeconds.
+
+    Dropping the skeleton's two points would shorten the activity by however
+    long the watch waited before its first reading.
+    """
+    result = heartrate.build(SKELETON, readings(3, every=100, offset=120))
+
+    times = [moment for moment, _ in built(result.data)]
+    assert times[0] == "2026-09-11T07:00:00Z"
+    assert times[-1] == "2026-09-11T07:10:00Z"
+
+
+def test_build_annotates_an_existing_trackpoint_rather_than_duplicating_it() -> None:
+    """A sample landing on the skeleton's own timestamp is not a second point."""
+    result = heartrate.build(SKELETON, [(SKELETON_START, 66)])
+
+    assert result.created == 0
+    assert result.annotated == 1
+    assert built(result.data) == [("2026-09-11T07:00:00Z", 66), ("2026-09-11T07:10:00Z", None)]
+
+
+def test_build_emits_trackpoints_in_time_order() -> None:
+    shuffled = list(reversed(readings(4, every=120, offset=30)))
+
+    result = heartrate.build(SKELETON, shuffled)
+
+    times = [moment for moment, _ in built(result.data)]
+    assert times == sorted(times)
+
+
+def test_build_drops_a_sample_from_outside_the_activity(recwarn) -> None:
+    """Dropped rather than clamped: clamping invents a reading at a time it was
+    not taken, which is the line this function exists to stay on."""
+    before = [(SKELETON_START - dt.timedelta(minutes=5), 99)]
+    after = [(SKELETON_START + dt.timedelta(minutes=20), 98)]
+
+    result = heartrate.build(SKELETON, before + readings(2, every=120, offset=60) + after)
+
+    assert result.outside == 2
+    assert 99 not in [bpm for _, bpm in built(result.data)]
+    assert 98 not in [bpm for _, bpm in built(result.data)]
+
+
+def test_build_leaves_an_activity_with_gps_to_merge() -> None:
+    """Where there is a track, nothing is created — `merge` annotates it."""
+    with_gps = builders.tcx(distances=(0.0, 500.0), with_heart_rate=False)
+
+    result = heartrate.build(with_gps, readings(5, every=5))
+
+    assert result.created == 0
+    assert result.annotated == 0
+    assert result.skipped_activities == 1
+    # Compared as content rather than bytes: the document is re-serialised either
+    # way, and the claim is that nothing in it changed.
+    assert built(result.data) == built(with_gps)
+
+
+def test_build_never_touches_the_lap_distance() -> None:
+    """The stride total is already the right answer; building adds no distance."""
+    result = heartrate.build(SKELETON, readings(3, every=120, offset=30))
+
+    activity = next(tcx.activities(tcx.parse(result.data)))
+    assert tcx.lap_distance_total(activity) == 0.0
+
+
+def test_build_creates_trackpoints_with_no_position_and_no_distance() -> None:
+    """The shape the phone app writes, which Strava has already accepted."""
+    result = heartrate.build(SKELETON, readings(2, every=120, offset=30))
+
+    activity = next(tcx.activities(tcx.parse(result.data)))
+    created = list(tcx.trackpoints(activity))[1]
+    assert created.find(tcx.POSITION) is None
+    assert created.find(tcx.DISTANCE_METERS) is None
+
+
+def test_build_with_no_samples_changes_nothing() -> None:
+    result = heartrate.build(SKELETON, [])
+
+    assert (result.created, result.annotated) == (0, 0)
+    assert built(result.data) == [("2026-09-11T07:00:00Z", None), ("2026-09-11T07:10:00Z", None)]
+
+
+def test_build_leaves_a_reading_that_is_already_there_alone() -> None:
+    already = SKELETON.replace(
+        b"<Trackpoint><Time>2026-09-11T07:00:00Z</Time></Trackpoint>",
+        b"<Trackpoint><Time>2026-09-11T07:00:00Z</Time>"
+        b"<HeartRateBpm><Value>55</Value></HeartRateBpm></Trackpoint>",
+    )
+
+    result = heartrate.build(already, [(SKELETON_START, 66)])
+
+    assert result.annotated == 0
+    assert built(result.data)[0] == ("2026-09-11T07:00:00Z", 55)
+
+
+def test_build_skips_a_lap_with_no_track() -> None:
+    """Nothing to build into, and nothing to be confused by."""
+    no_track = SKELETON.replace(
+        b"<Track><Trackpoint><Time>2026-09-11T07:00:00Z</Time></Trackpoint>"
+        b"<Trackpoint><Time>2026-09-11T07:10:00Z</Time></Trackpoint></Track>",
+        b"",
+    )
+
+    result = heartrate.build(no_track, readings(3, every=120, offset=30))
+
+    assert result.created == 0
+
+
+def test_build_skips_a_lap_whose_track_is_empty() -> None:
+    empty = SKELETON.replace(
+        b"<Trackpoint><Time>2026-09-11T07:00:00Z</Time></Trackpoint>"
+        b"<Trackpoint><Time>2026-09-11T07:10:00Z</Time></Trackpoint>",
+        b"",
+    )
+
+    result = heartrate.build(empty, readings(3, every=120, offset=30))
+
+    assert result.created == 0
+
+
+def test_build_leaves_a_track_it_cannot_order_alone() -> None:
+    """A trackpoint with no time cannot be placed, and the track is rewritten in
+    time order — so moving it somewhere arbitrary is the alternative."""
+    odd = SKELETON.replace(
+        b"<Trackpoint><Time>2026-09-11T07:10:00Z</Time></Trackpoint>",
+        b"<Trackpoint><Time>2026-09-11T07:10:00Z</Time></Trackpoint><Trackpoint/>",
+    )
+
+    result = heartrate.build(odd, readings(3, every=120, offset=30))
+
+    assert result.created == 0
+    assert len(built(result.data)) == 3
