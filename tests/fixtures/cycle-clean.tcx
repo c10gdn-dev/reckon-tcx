@@ -28,8 +28,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:00:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8549433</LatitudeDegrees>
-                            <LongitudeDegrees>37.7357100</LongitudeDegrees>
+                            <LatitudeDegrees>0.0000321</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000499</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>43.1</AltitudeMeters>
                         <DistanceMeters>0.0</DistanceMeters>
@@ -49,8 +49,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:00:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8555367</LatitudeDegrees>
-                            <LongitudeDegrees>37.7359317</LongitudeDegrees>
+                            <LatitudeDegrees>0.0000957</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0001175</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>12.3</AltitudeMeters>
                         <DistanceMeters>77.01590963884192</DistanceMeters>
@@ -70,8 +70,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:00:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8559800</LatitudeDegrees>
-                            <LongitudeDegrees>37.7360867</LongitudeDegrees>
+                            <LatitudeDegrees>0.0000743</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0001194</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>13.1</AltitudeMeters>
                         <DistanceMeters>127.81259880959344</DistanceMeters>
@@ -91,8 +91,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:00:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8562967</LatitudeDegrees>
-                            <LongitudeDegrees>37.7365267</LongitudeDegrees>
+                            <LatitudeDegrees>0.0000968</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000412</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>15.0</AltitudeMeters>
                         <DistanceMeters>172.77422346255116</DistanceMeters>
@@ -112,8 +112,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:01:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8565800</LatitudeDegrees>
-                            <LongitudeDegrees>37.7364933</LongitudeDegrees>
+                            <LatitudeDegrees>0.0001488</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000431</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>9.8</AltitudeMeters>
                         <DistanceMeters>211.8957208912742</DistanceMeters>
@@ -133,8 +133,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:01:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8566467</LatitudeDegrees>
-                            <LongitudeDegrees>37.7356050</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002164</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000354</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>10.5</AltitudeMeters>
                         <DistanceMeters>267.96758138816926</DistanceMeters>
@@ -154,8 +154,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:01:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8567117</LatitudeDegrees>
-                            <LongitudeDegrees>37.7348800</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002489</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000221</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>9.3</AltitudeMeters>
                         <DistanceMeters>317.5140814966771</DistanceMeters>
@@ -172,8 +172,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:01:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8567967</LatitudeDegrees>
-                            <LongitudeDegrees>37.7348350</LongitudeDegrees>
+                            <LatitudeDegrees>0.0003129</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000511</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>8.499</AltitudeMeters>
                         <DistanceMeters>328.3507217744846</DistanceMeters>
@@ -193,8 +193,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:01:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8568600</LatitudeDegrees>
-                            <LongitudeDegrees>37.7347017</LongitudeDegrees>
+                            <LatitudeDegrees>0.0003405</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000771</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>3.0</AltitudeMeters>
                         <DistanceMeters>342.0965005000578</DistanceMeters>
@@ -214,8 +214,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:01:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8571317</LatitudeDegrees>
-                            <LongitudeDegrees>37.7348350</LongitudeDegrees>
+                            <LatitudeDegrees>0.0003004</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000823</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>7.3</AltitudeMeters>
                         <DistanceMeters>374.1077722598507</DistanceMeters>
@@ -235,8 +235,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:02:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8575000</LatitudeDegrees>
-                            <LongitudeDegrees>37.7347800</LongitudeDegrees>
+                            <LatitudeDegrees>0.0003619</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000230</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>12.6</AltitudeMeters>
                         <DistanceMeters>420.3897960638223</DistanceMeters>
@@ -256,8 +256,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:02:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8580450</LatitudeDegrees>
-                            <LongitudeDegrees>37.7348383</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002978</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000605</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>14.6</AltitudeMeters>
                         <DistanceMeters>481.1470444593883</DistanceMeters>
@@ -277,8 +277,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:02:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8584233</LatitudeDegrees>
-                            <LongitudeDegrees>37.7348983</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002580</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000508</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>15.799</AltitudeMeters>
                         <DistanceMeters>523.4283132069894</DistanceMeters>
@@ -295,8 +295,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:02:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8587950</LatitudeDegrees>
-                            <LongitudeDegrees>37.7349817</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002284</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000014</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>20.5</AltitudeMeters>
                         <DistanceMeters>575.1407781542788</DistanceMeters>
@@ -316,8 +316,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:02:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8587867</LatitudeDegrees>
-                            <LongitudeDegrees>37.7356550</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002292</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000505</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>19.0</AltitudeMeters>
                         <DistanceMeters>618.4317006285779</DistanceMeters>
@@ -337,8 +337,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:02:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8591283</LatitudeDegrees>
-                            <LongitudeDegrees>37.7358250</LongitudeDegrees>
+                            <LatitudeDegrees>0.0001605</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000553</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>21.5</AltitudeMeters>
                         <DistanceMeters>660.131155623498</DistanceMeters>
@@ -355,8 +355,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:03:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8597450</LatitudeDegrees>
-                            <LongitudeDegrees>37.7361250</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002114</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000027</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>22.3</AltitudeMeters>
                         <DistanceMeters>731.2887079416674</DistanceMeters>
@@ -376,8 +376,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:03:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8601550</LatitudeDegrees>
-                            <LongitudeDegrees>37.7362917</LongitudeDegrees>
+                            <LatitudeDegrees>0.0001649</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000436</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>26.8</AltitudeMeters>
                         <DistanceMeters>778.142452914041</DistanceMeters>
@@ -394,8 +394,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:03:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8605300</LatitudeDegrees>
-                            <LongitudeDegrees>37.7364700</LongitudeDegrees>
+                            <LatitudeDegrees>0.0001699</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000093</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>35.3</AltitudeMeters>
                         <DistanceMeters>821.530260951804</DistanceMeters>
@@ -412,8 +412,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:03:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8608750</LatitudeDegrees>
-                            <LongitudeDegrees>37.7365483</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002477</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000022</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>37.3</AltitudeMeters>
                         <DistanceMeters>860.7913372866292</DistanceMeters>
@@ -433,8 +433,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:03:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8611100</LatitudeDegrees>
-                            <LongitudeDegrees>37.7366217</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002792</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000204</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>45.5</AltitudeMeters>
                         <DistanceMeters>887.5442560852355</DistanceMeters>
@@ -451,8 +451,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:03:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8612900</LatitudeDegrees>
-                            <LongitudeDegrees>37.7368167</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002679</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000698</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>48.6</AltitudeMeters>
                         <DistanceMeters>911.2797251781631</DistanceMeters>
@@ -472,8 +472,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:04:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8612300</LatitudeDegrees>
-                            <LongitudeDegrees>37.7373833</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002102</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000057</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>51.0</AltitudeMeters>
                         <DistanceMeters>948.0826929825488</DistanceMeters>
@@ -493,8 +493,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:04:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8613083</LatitudeDegrees>
-                            <LongitudeDegrees>37.7380617</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002459</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000917</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>50.8</AltitudeMeters>
                         <DistanceMeters>992.8211800489887</DistanceMeters>
@@ -511,8 +511,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:04:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8616617</LatitudeDegrees>
-                            <LongitudeDegrees>37.7382500</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002699</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000957</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>50.8</AltitudeMeters>
                         <DistanceMeters>1034.7453840046587</DistanceMeters>
@@ -532,8 +532,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:04:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8619667</LatitudeDegrees>
-                            <LongitudeDegrees>37.7385000</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002342</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000432</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>45.8</AltitudeMeters>
                         <DistanceMeters>1075.94506443395</DistanceMeters>
@@ -553,8 +553,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:04:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8623250</LatitudeDegrees>
-                            <LongitudeDegrees>37.7386100</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002139</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001249</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>45.6</AltitudeMeters>
                         <DistanceMeters>1116.815220882514</DistanceMeters>
@@ -571,8 +571,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:04:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8626383</LatitudeDegrees>
-                            <LongitudeDegrees>37.7386833</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002296</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000858</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>44.099</AltitudeMeters>
                         <DistanceMeters>1152.9112628554335</DistanceMeters>
@@ -592,8 +592,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:05:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8628417</LatitudeDegrees>
-                            <LongitudeDegrees>37.7388767</LongitudeDegrees>
+                            <LatitudeDegrees>0.0002517</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000768</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>45.1</AltitudeMeters>
                         <DistanceMeters>1179.568965880398</DistanceMeters>
@@ -613,8 +613,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:05:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8631567</LatitudeDegrees>
-                            <LongitudeDegrees>37.7389600</LongitudeDegrees>
+                            <LatitudeDegrees>0.0003319</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000601</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>45.5</AltitudeMeters>
                         <DistanceMeters>1215.5630933399088</DistanceMeters>
@@ -631,8 +631,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:05:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8634267</LatitudeDegrees>
-                            <LongitudeDegrees>37.7391217</LongitudeDegrees>
+                            <LatitudeDegrees>0.0003403</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000662</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>45.3</AltitudeMeters>
                         <DistanceMeters>1247.7133129673996</DistanceMeters>
@@ -652,8 +652,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:05:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8637550</LatitudeDegrees>
-                            <LongitudeDegrees>37.7392083</LongitudeDegrees>
+                            <LatitudeDegrees>0.0004280</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000217</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>42.599</AltitudeMeters>
                         <DistanceMeters>1285.8160324465102</DistanceMeters>
@@ -673,8 +673,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:05:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8640233</LatitudeDegrees>
-                            <LongitudeDegrees>37.7393917</LongitudeDegrees>
+                            <LatitudeDegrees>0.0003705</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000234</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>45.3</AltitudeMeters>
                         <DistanceMeters>1318.9074082036284</DistanceMeters>
@@ -691,8 +691,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:05:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8644283</LatitudeDegrees>
-                            <LongitudeDegrees>37.7394950</LongitudeDegrees>
+                            <LatitudeDegrees>0.0004179</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000344</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>46.6</AltitudeMeters>
                         <DistanceMeters>1364.5069050238787</DistanceMeters>
@@ -712,8 +712,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:06:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8647550</LatitudeDegrees>
-                            <LongitudeDegrees>37.7396083</LongitudeDegrees>
+                            <LatitudeDegrees>0.0003982</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001068</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>46.0</AltitudeMeters>
                         <DistanceMeters>1401.7532975605786</DistanceMeters>
@@ -730,8 +730,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:06:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8650883</LatitudeDegrees>
-                            <LongitudeDegrees>37.7396333</LongitudeDegrees>
+                            <LatitudeDegrees>0.0004738</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000494</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>42.1</AltitudeMeters>
                         <DistanceMeters>1438.9997493194328</DistanceMeters>
@@ -748,8 +748,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:06:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8653950</LatitudeDegrees>
-                            <LongitudeDegrees>37.7397383</LongitudeDegrees>
+                            <LatitudeDegrees>0.0004216</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000203</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>39.8</AltitudeMeters>
                         <DistanceMeters>1474.104721665865</DistanceMeters>
@@ -769,8 +769,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:06:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8657100</LatitudeDegrees>
-                            <LongitudeDegrees>37.7399033</LongitudeDegrees>
+                            <LatitudeDegrees>0.0004104</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000312</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>39.6</AltitudeMeters>
                         <DistanceMeters>1511.1636895191443</DistanceMeters>
@@ -787,8 +787,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:06:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8661367</LatitudeDegrees>
-                            <LongitudeDegrees>37.7400567</LongitudeDegrees>
+                            <LatitudeDegrees>0.0003477</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000075</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>40.3</AltitudeMeters>
                         <DistanceMeters>1559.8558273021188</DistanceMeters>
@@ -805,8 +805,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:06:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8666633</LatitudeDegrees>
-                            <LongitudeDegrees>37.7403467</LongitudeDegrees>
+                            <LatitudeDegrees>0.0003895</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000584</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>45.3</AltitudeMeters>
                         <DistanceMeters>1621.3147521890826</DistanceMeters>
@@ -823,8 +823,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:07:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8673033</LatitudeDegrees>
-                            <LongitudeDegrees>37.7405400</LongitudeDegrees>
+                            <LatitudeDegrees>0.0004709</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000827</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>44.8</AltitudeMeters>
                         <DistanceMeters>1693.7564683211092</DistanceMeters>
@@ -844,8 +844,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:07:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8677433</LatitudeDegrees>
-                            <LongitudeDegrees>37.7398867</LongitudeDegrees>
+                            <LatitudeDegrees>0.0005257</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001547</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>42.1</AltitudeMeters>
                         <DistanceMeters>1758.4737781756185</DistanceMeters>
@@ -862,8 +862,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:07:26.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8682017</LatitudeDegrees>
-                            <LongitudeDegrees>37.7403967</LongitudeDegrees>
+                            <LatitudeDegrees>0.0005748</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000869</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>41.0</AltitudeMeters>
                         <DistanceMeters>1832.8439013332531</DistanceMeters>
@@ -880,8 +880,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:07:36.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8686817</LatitudeDegrees>
-                            <LongitudeDegrees>37.7403483</LongitudeDegrees>
+                            <LatitudeDegrees>0.0005746</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000477</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>37.0</AltitudeMeters>
                         <DistanceMeters>1887.6278739363136</DistanceMeters>
@@ -898,8 +898,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:07:46.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8691900</LatitudeDegrees>
-                            <LongitudeDegrees>37.7402000</LongitudeDegrees>
+                            <LatitudeDegrees>0.0005990</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000013</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>35.6</AltitudeMeters>
                         <DistanceMeters>1945.32874971154</DistanceMeters>
@@ -919,8 +919,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:07:56.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8697067</LatitudeDegrees>
-                            <LongitudeDegrees>37.7402367</LongitudeDegrees>
+                            <LatitudeDegrees>0.0005468</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000054</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>30.299</AltitudeMeters>
                         <DistanceMeters>2003.1610710514494</DistanceMeters>
@@ -940,8 +940,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:08:06.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8701350</LatitudeDegrees>
-                            <LongitudeDegrees>37.7401817</LongitudeDegrees>
+                            <LatitudeDegrees>0.0005164</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000456</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>31.6</AltitudeMeters>
                         <DistanceMeters>2051.13420944913</DistanceMeters>
@@ -961,8 +961,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:08:16.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8704883</LatitudeDegrees>
-                            <LongitudeDegrees>37.7399083</LongitudeDegrees>
+                            <LatitudeDegrees>0.0005811</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000219</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>33.599</AltitudeMeters>
                         <DistanceMeters>2100.880124002372</DistanceMeters>
@@ -982,8 +982,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:08:26.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8706317</LatitudeDegrees>
-                            <LongitudeDegrees>37.7402683</LongitudeDegrees>
+                            <LatitudeDegrees>0.0006023</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000554</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>33.8</AltitudeMeters>
                         <DistanceMeters>2135.636647867743</DistanceMeters>
@@ -1003,8 +1003,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:08:36.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8707100</LatitudeDegrees>
-                            <LongitudeDegrees>37.7408633</LongitudeDegrees>
+                            <LatitudeDegrees>0.0006161</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000100</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>32.6</AltitudeMeters>
                         <DistanceMeters>2174.03367589413</DistanceMeters>
@@ -1021,8 +1021,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:08:46.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8705633</LatitudeDegrees>
-                            <LongitudeDegrees>37.7413717</LongitudeDegrees>
+                            <LatitudeDegrees>0.0005834</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000725</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>33.099</AltitudeMeters>
                         <DistanceMeters>2210.5963226086915</DistanceMeters>
@@ -1039,8 +1039,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:08:56.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8704850</LatitudeDegrees>
-                            <LongitudeDegrees>37.7418217</LongitudeDegrees>
+                            <LatitudeDegrees>0.0006150</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000636</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>34.1</AltitudeMeters>
                         <DistanceMeters>2241.46624510662</DistanceMeters>
@@ -1060,8 +1060,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:09:06.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8706317</LatitudeDegrees>
-                            <LongitudeDegrees>37.7418817</LongitudeDegrees>
+                            <LatitudeDegrees>0.0005849</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000645</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>38.8</AltitudeMeters>
                         <DistanceMeters>2264.124266821289</DistanceMeters>
@@ -1081,8 +1081,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:09:16.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8707883</LatitudeDegrees>
-                            <LongitudeDegrees>37.7419733</LongitudeDegrees>
+                            <LatitudeDegrees>0.0006040</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000088</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>42.099</AltitudeMeters>
                         <DistanceMeters>2287.957191615264</DistanceMeters>
@@ -1102,8 +1102,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:09:26.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8708750</LatitudeDegrees>
-                            <LongitudeDegrees>37.7423233</LongitudeDegrees>
+                            <LatitudeDegrees>0.0006207</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000606</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>47.6</AltitudeMeters>
                         <DistanceMeters>2311.9845022571903</DistanceMeters>
@@ -1123,8 +1123,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:09:36.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8709867</LatitudeDegrees>
-                            <LongitudeDegrees>37.7427083</LongitudeDegrees>
+                            <LatitudeDegrees>0.0006890</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000034</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>51.099</AltitudeMeters>
                         <DistanceMeters>2339.9203283692655</DistanceMeters>
@@ -1144,8 +1144,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:09:46.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8708817</LatitudeDegrees>
-                            <LongitudeDegrees>37.7435833</LongitudeDegrees>
+                            <LatitudeDegrees>0.0007211</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000524</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>47.1</AltitudeMeters>
                         <DistanceMeters>2396.377602661822</DistanceMeters>
@@ -1165,8 +1165,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:09:56.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8709000</LatitudeDegrees>
-                            <LongitudeDegrees>37.7442517</LongitudeDegrees>
+                            <LatitudeDegrees>0.0007619</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000354</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>47.6</AltitudeMeters>
                         <DistanceMeters>2438.565044206424</DistanceMeters>
@@ -1186,8 +1186,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:10:06.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8709550</LatitudeDegrees>
-                            <LongitudeDegrees>37.7447850</LongitudeDegrees>
+                            <LatitudeDegrees>0.0008070</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000244</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>49.0</AltitudeMeters>
                         <DistanceMeters>2472.659867503902</DistanceMeters>
@@ -1204,8 +1204,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:10:16.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8710783</LatitudeDegrees>
-                            <LongitudeDegrees>37.7451767</LongitudeDegrees>
+                            <LatitudeDegrees>0.0008080</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000495</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>49.099</AltitudeMeters>
                         <DistanceMeters>2501.2829741413016</DistanceMeters>
@@ -1222,8 +1222,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:10:26.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8712000</LatitudeDegrees>
-                            <LongitudeDegrees>37.7451483</LongitudeDegrees>
+                            <LatitudeDegrees>0.0008729</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000823</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>48.599</AltitudeMeters>
                         <DistanceMeters>2516.217028273943</DistanceMeters>
@@ -1243,8 +1243,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:10:36.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8713967</LatitudeDegrees>
-                            <LongitudeDegrees>37.7455650</LongitudeDegrees>
+                            <LatitudeDegrees>0.0009573</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000143</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>50.0</AltitudeMeters>
                         <DistanceMeters>2551.181617522087</DistanceMeters>
@@ -1264,8 +1264,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:10:46.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8715900</LatitudeDegrees>
-                            <LongitudeDegrees>37.7461967</LongitudeDegrees>
+                            <LatitudeDegrees>0.0009164</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000198</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>49.3</AltitudeMeters>
                         <DistanceMeters>2596.1486447683296</DistanceMeters>
@@ -1282,8 +1282,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:10:56.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8718483</LatitudeDegrees>
-                            <LongitudeDegrees>37.7469517</LongitudeDegrees>
+                            <LatitudeDegrees>0.0009384</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000268</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>50.3</AltitudeMeters>
                         <DistanceMeters>2651.3643297059666</DistanceMeters>
@@ -1303,8 +1303,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:11:06.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8721400</LatitudeDegrees>
-                            <LongitudeDegrees>37.7477867</LongitudeDegrees>
+                            <LatitudeDegrees>0.0009478</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000215</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>51.1</AltitudeMeters>
                         <DistanceMeters>2712.8040095021447</DistanceMeters>
@@ -1324,8 +1324,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:11:16.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8724617</LatitudeDegrees>
-                            <LongitudeDegrees>37.7486617</LongitudeDegrees>
+                            <LatitudeDegrees>0.0010275</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000398</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>53.299</AltitudeMeters>
                         <DistanceMeters>2778.1154869397687</DistanceMeters>
@@ -1342,8 +1342,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:11:26.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8728133</LatitudeDegrees>
-                            <LongitudeDegrees>37.7496483</LongitudeDegrees>
+                            <LatitudeDegrees>0.0010761</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000241</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>53.8</AltitudeMeters>
                         <DistanceMeters>2851.083197718447</DistanceMeters>
@@ -1363,8 +1363,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:11:36.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8731300</LatitudeDegrees>
-                            <LongitudeDegrees>37.7506800</LongitudeDegrees>
+                            <LatitudeDegrees>0.0010540</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000328</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>51.6</AltitudeMeters>
                         <DistanceMeters>2924.5400642914865</DistanceMeters>
@@ -1384,8 +1384,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:11:46.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8733100</LatitudeDegrees>
-                            <LongitudeDegrees>37.7517633</LongitudeDegrees>
+                            <LatitudeDegrees>0.0010514</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000179</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>50.599</AltitudeMeters>
                         <DistanceMeters>2995.299324304601</DistanceMeters>
@@ -1402,8 +1402,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:11:56.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8734533</LatitudeDegrees>
-                            <LongitudeDegrees>37.7528750</LongitudeDegrees>
+                            <LatitudeDegrees>0.0010687</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000396</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>51.1</AltitudeMeters>
                         <DistanceMeters>3066.5127087367187</DistanceMeters>
@@ -1420,8 +1420,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:12:06.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8735633</LatitudeDegrees>
-                            <LongitudeDegrees>37.7539533</LongitudeDegrees>
+                            <LatitudeDegrees>0.0010754</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000379</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>49.8</AltitudeMeters>
                         <DistanceMeters>3135.054748603514</DistanceMeters>
@@ -1441,8 +1441,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:12:16.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8736100</LatitudeDegrees>
-                            <LongitudeDegrees>37.7549800</LongitudeDegrees>
+                            <LatitudeDegrees>0.0010678</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000713</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>53.1</AltitudeMeters>
                         <DistanceMeters>3199.584177109074</DistanceMeters>
@@ -1462,8 +1462,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:12:26.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8739783</LatitudeDegrees>
-                            <LongitudeDegrees>37.7549817</LongitudeDegrees>
+                            <LatitudeDegrees>0.0011474</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0001123</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>57.3</AltitudeMeters>
                         <DistanceMeters>3249.2223927423975</DistanceMeters>
@@ -1480,8 +1480,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:12:36.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8744167</LatitudeDegrees>
-                            <LongitudeDegrees>37.7546683</LongitudeDegrees>
+                            <LatitudeDegrees>0.0012140</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0001684</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>54.599</AltitudeMeters>
                         <DistanceMeters>3301.9420500895235</DistanceMeters>
@@ -1501,8 +1501,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:12:46.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8748217</LatitudeDegrees>
-                            <LongitudeDegrees>37.7541800</LongitudeDegrees>
+                            <LatitudeDegrees>0.0012486</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0001616</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>52.8</AltitudeMeters>
                         <DistanceMeters>3356.353735672107</DistanceMeters>
@@ -1519,8 +1519,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:12:56.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8752867</LatitudeDegrees>
-                            <LongitudeDegrees>37.7536583</LongitudeDegrees>
+                            <LatitudeDegrees>0.0012999</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0001277</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>50.599</AltitudeMeters>
                         <DistanceMeters>3417.691870434385</DistanceMeters>
@@ -1537,8 +1537,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:13:06.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8757767</LatitudeDegrees>
-                            <LongitudeDegrees>37.7531967</LongitudeDegrees>
+                            <LatitudeDegrees>0.0013542</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0001261</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>58.3</AltitudeMeters>
                         <DistanceMeters>3479.5699236105957</DistanceMeters>
@@ -1558,8 +1558,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:13:16.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8762833</LatitudeDegrees>
-                            <LongitudeDegrees>37.7528183</LongitudeDegrees>
+                            <LatitudeDegrees>0.0014289</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0001021</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>53.6</AltitudeMeters>
                         <DistanceMeters>3540.9709552083937</DistanceMeters>
@@ -1576,8 +1576,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:13:26.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8766200</LatitudeDegrees>
-                            <LongitudeDegrees>37.7526850</LongitudeDegrees>
+                            <LatitudeDegrees>0.0014237</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000971</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>60.8</AltitudeMeters>
                         <DistanceMeters>3581.5728383139985</DistanceMeters>
@@ -1597,8 +1597,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:13:36.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8766417</LatitudeDegrees>
-                            <LongitudeDegrees>37.7532983</LongitudeDegrees>
+                            <LatitudeDegrees>0.0015049</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000772</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>62.599</AltitudeMeters>
                         <DistanceMeters>3621.1772435422577</DistanceMeters>
@@ -1615,8 +1615,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:13:46.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8767250</LatitudeDegrees>
-                            <LongitudeDegrees>37.7541983</LongitudeDegrees>
+                            <LatitudeDegrees>0.0015185</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000233</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>63.0</AltitudeMeters>
                         <DistanceMeters>3678.889644447553</DistanceMeters>
@@ -1633,8 +1633,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:13:56.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8768350</LatitudeDegrees>
-                            <LongitudeDegrees>37.7553317</LongitudeDegrees>
+                            <LatitudeDegrees>0.0015222</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000723</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>57.8</AltitudeMeters>
                         <DistanceMeters>3750.978395190623</DistanceMeters>
@@ -1654,8 +1654,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:14:06.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8770833</LatitudeDegrees>
-                            <LongitudeDegrees>37.7562217</LongitudeDegrees>
+                            <LatitudeDegrees>0.0015925</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000379</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>60.6</AltitudeMeters>
                         <DistanceMeters>3813.1268067593132</DistanceMeters>
@@ -1675,8 +1675,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:14:16.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8773783</LatitudeDegrees>
-                            <LongitudeDegrees>37.7569200</LongitudeDegrees>
+                            <LatitudeDegrees>0.0015580</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000712</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>60.099</AltitudeMeters>
                         <DistanceMeters>3867.90199168161</DistanceMeters>
@@ -1693,8 +1693,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:14:26.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8778033</LatitudeDegrees>
-                            <LongitudeDegrees>37.7572817</LongitudeDegrees>
+                            <LatitudeDegrees>0.0015333</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000151</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>60.0</AltitudeMeters>
                         <DistanceMeters>3920.4844183020437</DistanceMeters>
@@ -1714,8 +1714,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:14:36.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8781950</LatitudeDegrees>
-                            <LongitudeDegrees>37.7572633</LongitudeDegrees>
+                            <LatitudeDegrees>0.0015533</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000583</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>61.5</AltitudeMeters>
                         <DistanceMeters>3967.9232635541744</DistanceMeters>
@@ -1735,8 +1735,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:14:46.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8785683</LatitudeDegrees>
-                            <LongitudeDegrees>37.7569067</LongitudeDegrees>
+                            <LatitudeDegrees>0.0015845</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000455</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>62.6</AltitudeMeters>
                         <DistanceMeters>4015.071079657763</DistanceMeters>
@@ -1756,8 +1756,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:14:56.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8788967</LatitudeDegrees>
-                            <LongitudeDegrees>37.7566000</LongitudeDegrees>
+                            <LatitudeDegrees>0.0015382</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000060</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>62.6</AltitudeMeters>
                         <DistanceMeters>4056.347175702484</DistanceMeters>
@@ -1774,8 +1774,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:15:06.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8792917</LatitudeDegrees>
-                            <LongitudeDegrees>37.7563833</LongitudeDegrees>
+                            <LatitudeDegrees>0.0015414</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000524</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>62.099</AltitudeMeters>
                         <DistanceMeters>4102.341261520418</DistanceMeters>
@@ -1795,8 +1795,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:15:16.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8796050</LatitudeDegrees>
-                            <LongitudeDegrees>37.7563467</LongitudeDegrees>
+                            <LatitudeDegrees>0.0016220</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000152</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>64.099</AltitudeMeters>
                         <DistanceMeters>4138.595615862884</DistanceMeters>
@@ -1816,8 +1816,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:15:26.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8799517</LatitudeDegrees>
-                            <LongitudeDegrees>37.7565033</LongitudeDegrees>
+                            <LatitudeDegrees>0.0015555</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000284</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>64.5</AltitudeMeters>
                         <DistanceMeters>4179.268836863626</DistanceMeters>
@@ -1837,8 +1837,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:15:36.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8803983</LatitudeDegrees>
-                            <LongitudeDegrees>37.7566133</LongitudeDegrees>
+                            <LatitudeDegrees>0.0015616</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000159</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>61.3</AltitudeMeters>
                         <DistanceMeters>4229.502075178751</DistanceMeters>
@@ -1858,8 +1858,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:15:46.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8807800</LatitudeDegrees>
-                            <LongitudeDegrees>37.7566733</LongitudeDegrees>
+                            <LatitudeDegrees>0.0015758</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000360</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>62.599</AltitudeMeters>
                         <DistanceMeters>4272.233249404558</DistanceMeters>
@@ -1879,8 +1879,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:15:56.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8812650</LatitudeDegrees>
-                            <LongitudeDegrees>37.7567467</LongitudeDegrees>
+                            <LatitudeDegrees>0.0015860</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000571</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>65.8</AltitudeMeters>
                         <DistanceMeters>4326.442050065768</DistanceMeters>
@@ -1897,8 +1897,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:16:06.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8817900</LatitudeDegrees>
-                            <LongitudeDegrees>37.7568517</LongitudeDegrees>
+                            <LatitudeDegrees>0.0016633</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000093</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>61.6</AltitudeMeters>
                         <DistanceMeters>4385.24438311108</DistanceMeters>
@@ -1915,8 +1915,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:16:16.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8823533</LatitudeDegrees>
-                            <LongitudeDegrees>37.7568933</LongitudeDegrees>
+                            <LatitudeDegrees>0.0017213</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000919</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>62.5</AltitudeMeters>
                         <DistanceMeters>4448.038451694858</DistanceMeters>
@@ -1933,8 +1933,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:16:26.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8828183</LatitudeDegrees>
-                            <LongitudeDegrees>37.7570417</LongitudeDegrees>
+                            <LatitudeDegrees>0.0017016</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000780</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>64.3</AltitudeMeters>
                         <DistanceMeters>4500.688474640883</DistanceMeters>
@@ -1951,8 +1951,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:16:36.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8833033</LatitudeDegrees>
-                            <LongitudeDegrees>37.7570883</LongitudeDegrees>
+                            <LatitudeDegrees>0.0016932</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000699</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>64.0</AltitudeMeters>
                         <DistanceMeters>4555.021311911078</DistanceMeters>
@@ -1969,8 +1969,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:16:46.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8838333</LatitudeDegrees>
-                            <LongitudeDegrees>37.7571717</LongitudeDegrees>
+                            <LatitudeDegrees>0.0017683</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000086</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>66.3</AltitudeMeters>
                         <DistanceMeters>4614.227471187189</DistanceMeters>
@@ -1990,8 +1990,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:16:56.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8843350</LatitudeDegrees>
-                            <LongitudeDegrees>37.7572217</LongitudeDegrees>
+                            <LatitudeDegrees>0.0017026</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000567</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>65.8</AltitudeMeters>
                         <DistanceMeters>4670.159807871755</DistanceMeters>
@@ -2008,8 +2008,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:17:06.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8848833</LatitudeDegrees>
-                            <LongitudeDegrees>37.7572533</LongitudeDegrees>
+                            <LatitudeDegrees>0.0016876</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000326</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>64.599</AltitudeMeters>
                         <DistanceMeters>4731.185565667964</DistanceMeters>
@@ -2026,8 +2026,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:17:16.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8853717</LatitudeDegrees>
-                            <LongitudeDegrees>37.7573267</LongitudeDegrees>
+                            <LatitudeDegrees>0.0017637</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000777</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>65.0</AltitudeMeters>
                         <DistanceMeters>4785.718624894822</DistanceMeters>
@@ -2044,8 +2044,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:17:26.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8859400</LatitudeDegrees>
-                            <LongitudeDegrees>37.7574133</LongitudeDegrees>
+                            <LatitudeDegrees>0.0017254</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001034</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>64.5</AltitudeMeters>
                         <DistanceMeters>4849.199470803897</DistanceMeters>
@@ -2062,8 +2062,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:17:36.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8863633</LatitudeDegrees>
-                            <LongitudeDegrees>37.7574600</LongitudeDegrees>
+                            <LatitudeDegrees>0.0017464</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000365</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>62.8</AltitudeMeters>
                         <DistanceMeters>4896.472080596701</DistanceMeters>
@@ -2080,8 +2080,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:17:46.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8868783</LatitudeDegrees>
-                            <LongitudeDegrees>37.7575667</LongitudeDegrees>
+                            <LatitudeDegrees>0.0017949</LatitudeDegrees>
+                            <LongitudeDegrees>-0.0000138</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>59.6</AltitudeMeters>
                         <DistanceMeters>4954.323288589516</DistanceMeters>
@@ -2098,8 +2098,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:17:56.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8870683</LatitudeDegrees>
-                            <LongitudeDegrees>37.7580867</LongitudeDegrees>
+                            <LatitudeDegrees>0.0017324</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000746</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>60.099</AltitudeMeters>
                         <DistanceMeters>4999.454315893943</DistanceMeters>
@@ -2116,8 +2116,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:18:06.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8871333</LatitudeDegrees>
-                            <LongitudeDegrees>37.7591383</LongitudeDegrees>
+                            <LatitudeDegrees>0.0017211</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001482</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>58.0</AltitudeMeters>
                         <DistanceMeters>5065.55902750972</DistanceMeters>
@@ -2137,8 +2137,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:18:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8871600</LatitudeDegrees>
-                            <LongitudeDegrees>37.7605250</LongitudeDegrees>
+                            <LatitudeDegrees>0.0017501</LatitudeDegrees>
+                            <LongitudeDegrees>0.0000988</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>50.8</AltitudeMeters>
                         <DistanceMeters>5153.278256655501</DistanceMeters>
@@ -2155,8 +2155,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:18:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8869950</LatitudeDegrees>
-                            <LongitudeDegrees>37.7613367</LongitudeDegrees>
+                            <LatitudeDegrees>0.0017922</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001357</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>56.3</AltitudeMeters>
                         <DistanceMeters>5209.163796321446</DistanceMeters>
@@ -2173,8 +2173,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:18:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8868700</LatitudeDegrees>
-                            <LongitudeDegrees>37.7620233</LongitudeDegrees>
+                            <LatitudeDegrees>0.0018384</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002243</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>57.8</AltitudeMeters>
                         <DistanceMeters>5254.297237971017</DistanceMeters>
@@ -2194,8 +2194,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:18:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8867417</LatitudeDegrees>
-                            <LongitudeDegrees>37.7628483</LongitudeDegrees>
+                            <LatitudeDegrees>0.0019101</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002361</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>59.8</AltitudeMeters>
                         <DistanceMeters>5307.7893612113285</DistanceMeters>
@@ -2212,8 +2212,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:19:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8866067</LatitudeDegrees>
-                            <LongitudeDegrees>37.7636183</LongitudeDegrees>
+                            <LatitudeDegrees>0.0018849</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001887</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>62.3</AltitudeMeters>
                         <DistanceMeters>5358.659692848143</DistanceMeters>
@@ -2233,8 +2233,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:19:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8865333</LatitudeDegrees>
-                            <LongitudeDegrees>37.7643067</LongitudeDegrees>
+                            <LatitudeDegrees>0.0018513</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001370</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>69.3</AltitudeMeters>
                         <DistanceMeters>5402.874544698921</DistanceMeters>
@@ -2251,8 +2251,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:19:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8863850</LatitudeDegrees>
-                            <LongitudeDegrees>37.7649733</LongitudeDegrees>
+                            <LatitudeDegrees>0.0019080</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001323</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>69.3</AltitudeMeters>
                         <DistanceMeters>5447.88749610138</DistanceMeters>
@@ -2272,8 +2272,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:19:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8864967</LatitudeDegrees>
-                            <LongitudeDegrees>37.7654017</LongitudeDegrees>
+                            <LatitudeDegrees>0.0019311</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001512</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>68.0</AltitudeMeters>
                         <DistanceMeters>5481.03901752838</DistanceMeters>
@@ -2290,8 +2290,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:19:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8868700</LatitudeDegrees>
-                            <LongitudeDegrees>37.7655083</LongitudeDegrees>
+                            <LatitudeDegrees>0.0019360</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001992</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>68.3</AltitudeMeters>
                         <DistanceMeters>5523.224121250598</DistanceMeters>
@@ -2308,8 +2308,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:19:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8871783</LatitudeDegrees>
-                            <LongitudeDegrees>37.7657433</LongitudeDegrees>
+                            <LatitudeDegrees>0.0020059</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001752</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>70.6</AltitudeMeters>
                         <DistanceMeters>5561.785954672346</DistanceMeters>
@@ -2329,8 +2329,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:20:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8875567</LatitudeDegrees>
-                            <LongitudeDegrees>37.7659967</LongitudeDegrees>
+                            <LatitudeDegrees>0.0020604</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002277</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>76.3</AltitudeMeters>
                         <DistanceMeters>5612.474043478069</DistanceMeters>
@@ -2347,8 +2347,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:20:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8877517</LatitudeDegrees>
-                            <LongitudeDegrees>37.7666667</LongitudeDegrees>
+                            <LatitudeDegrees>0.0020710</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001741</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>75.5</AltitudeMeters>
                         <DistanceMeters>5660.11529804731</DistanceMeters>
@@ -2368,8 +2368,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:20:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8880217</LatitudeDegrees>
-                            <LongitudeDegrees>37.7666733</LongitudeDegrees>
+                            <LatitudeDegrees>0.0021211</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001170</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>75.3</AltitudeMeters>
                         <DistanceMeters>5690.462248288846</DistanceMeters>
@@ -2386,8 +2386,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:20:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8884317</LatitudeDegrees>
-                            <LongitudeDegrees>37.7666233</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022104</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001438</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>72.8</AltitudeMeters>
                         <DistanceMeters>5736.224947240946</DistanceMeters>
@@ -2404,8 +2404,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:20:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8889267</LatitudeDegrees>
-                            <LongitudeDegrees>37.7666100</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022055</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001573</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>72.0</AltitudeMeters>
                         <DistanceMeters>5791.30117318552</DistanceMeters>
@@ -2425,8 +2425,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:20:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8894550</LatitudeDegrees>
-                            <LongitudeDegrees>37.7666567</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022422</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001333</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>69.8</AltitudeMeters>
                         <DistanceMeters>5850.628022687036</DistanceMeters>
@@ -2446,8 +2446,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:21:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8899433</LatitudeDegrees>
-                            <LongitudeDegrees>37.7666100</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022011</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001286</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>73.5</AltitudeMeters>
                         <DistanceMeters>5905.148946342294</DistanceMeters>
@@ -2467,8 +2467,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:21:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8904200</LatitudeDegrees>
-                            <LongitudeDegrees>37.7666283</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022648</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001508</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>76.1</AltitudeMeters>
                         <DistanceMeters>5958.251714091284</DistanceMeters>
@@ -2488,8 +2488,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:21:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8909400</LatitudeDegrees>
-                            <LongitudeDegrees>37.7667017</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022146</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001688</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>75.1</AltitudeMeters>
                         <DistanceMeters>6016.3233461120135</DistanceMeters>
@@ -2506,8 +2506,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:21:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8913950</LatitudeDegrees>
-                            <LongitudeDegrees>37.7667567</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022721</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001834</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>74.5</AltitudeMeters>
                         <DistanceMeters>6067.119680195977</DistanceMeters>
@@ -2527,8 +2527,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:21:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8918400</LatitudeDegrees>
-                            <LongitudeDegrees>37.7669283</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022679</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001371</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>76.8</AltitudeMeters>
                         <DistanceMeters>6117.80436377917</DistanceMeters>
@@ -2548,8 +2548,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:21:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8922583</LatitudeDegrees>
-                            <LongitudeDegrees>37.7672517</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022616</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002038</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>77.3</AltitudeMeters>
                         <DistanceMeters>6168.696855492097</DistanceMeters>
@@ -2569,8 +2569,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:22:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8926783</LatitudeDegrees>
-                            <LongitudeDegrees>37.7676050</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022370</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002274</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>79.3</AltitudeMeters>
                         <DistanceMeters>6220.439326412632</DistanceMeters>
@@ -2587,8 +2587,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:22:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8930917</LatitudeDegrees>
-                            <LongitudeDegrees>37.7679017</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022864</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002035</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>75.3</AltitudeMeters>
                         <DistanceMeters>6270.047716942473</DistanceMeters>
@@ -2605,8 +2605,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:22:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8935083</LatitudeDegrees>
-                            <LongitudeDegrees>37.7681317</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023091</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002692</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>78.6</AltitudeMeters>
                         <DistanceMeters>6318.630209485773</DistanceMeters>
@@ -2623,8 +2623,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:22:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8938567</LatitudeDegrees>
-                            <LongitudeDegrees>37.7682867</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022954</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002934</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>80.1</AltitudeMeters>
                         <DistanceMeters>6358.626076937321</DistanceMeters>
@@ -2641,8 +2641,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:22:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8942450</LatitudeDegrees>
-                            <LongitudeDegrees>37.7683483</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023301</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002242</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>82.3</AltitudeMeters>
                         <DistanceMeters>6402.065651700374</DistanceMeters>
@@ -2659,8 +2659,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:22:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8947050</LatitudeDegrees>
-                            <LongitudeDegrees>37.7684167</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023351</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002579</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>83.0</AltitudeMeters>
                         <DistanceMeters>6453.415309811452</DistanceMeters>
@@ -2677,8 +2677,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:23:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8951250</LatitudeDegrees>
-                            <LongitudeDegrees>37.7685883</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023195</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002353</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>82.1</AltitudeMeters>
                         <DistanceMeters>6502.571190343093</DistanceMeters>
@@ -2695,8 +2695,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:23:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8955250</LatitudeDegrees>
-                            <LongitudeDegrees>37.7686233</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022510</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001724</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>82.0</AltitudeMeters>
                         <DistanceMeters>6547.240823795484</DistanceMeters>
@@ -2713,8 +2713,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:23:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8960433</LatitudeDegrees>
-                            <LongitudeDegrees>37.7686017</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022085</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002309</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>79.3</AltitudeMeters>
                         <DistanceMeters>6604.967310386591</DistanceMeters>
@@ -2734,8 +2734,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:23:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8965217</LatitudeDegrees>
-                            <LongitudeDegrees>37.7687817</LongitudeDegrees>
+                            <LatitudeDegrees>0.0021889</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002839</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>76.8</AltitudeMeters>
                         <DistanceMeters>6663.832423702877</DistanceMeters>
@@ -2755,8 +2755,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:23:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8964750</LatitudeDegrees>
-                            <LongitudeDegrees>37.7695583</LongitudeDegrees>
+                            <LatitudeDegrees>0.0021895</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002437</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>80.6</AltitudeMeters>
                         <DistanceMeters>6712.645263354534</DistanceMeters>
@@ -2776,8 +2776,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:23:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8964150</LatitudeDegrees>
-                            <LongitudeDegrees>37.7704267</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022291</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002618</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>82.8</AltitudeMeters>
                         <DistanceMeters>6767.4259161123355</DistanceMeters>
@@ -2797,8 +2797,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:24:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8963733</LatitudeDegrees>
-                            <LongitudeDegrees>37.7711583</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022645</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002264</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>86.0</AltitudeMeters>
                         <DistanceMeters>6813.454728145261</DistanceMeters>
@@ -2818,8 +2818,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:24:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8964283</LatitudeDegrees>
-                            <LongitudeDegrees>37.7716067</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022878</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002709</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>84.3</AltitudeMeters>
                         <DistanceMeters>6842.715462820043</DistanceMeters>
@@ -2836,8 +2836,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:24:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8966783</LatitudeDegrees>
-                            <LongitudeDegrees>37.7724033</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023175</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002708</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>82.8</AltitudeMeters>
                         <DistanceMeters>6901.740625058499</DistanceMeters>
@@ -2857,8 +2857,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:24:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8968017</LatitudeDegrees>
-                            <LongitudeDegrees>37.7735233</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023659</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002532</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>81.5</AltitudeMeters>
                         <DistanceMeters>6973.7069560144</DistanceMeters>
@@ -2878,8 +2878,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:24:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8969767</LatitudeDegrees>
-                            <LongitudeDegrees>37.7746517</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023792</LatitudeDegrees>
+                            <LongitudeDegrees>0.0001910</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>81.8</AltitudeMeters>
                         <DistanceMeters>7046.84453024045</DistanceMeters>
@@ -2896,8 +2896,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:24:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8970917</LatitudeDegrees>
-                            <LongitudeDegrees>37.7758700</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023749</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002203</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>81.6</AltitudeMeters>
                         <DistanceMeters>7123.97026161202</DistanceMeters>
@@ -2914,8 +2914,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:25:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8971750</LatitudeDegrees>
-                            <LongitudeDegrees>37.7770167</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023582</LatitudeDegrees>
+                            <LongitudeDegrees>0.0002751</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>85.3</AltitudeMeters>
                         <DistanceMeters>7196.575755595719</DistanceMeters>
@@ -2932,8 +2932,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:25:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8971700</LatitudeDegrees>
-                            <LongitudeDegrees>37.7779483</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023170</LatitudeDegrees>
+                            <LongitudeDegrees>0.0003541</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>85.8</AltitudeMeters>
                         <DistanceMeters>7255.155052485811</DistanceMeters>
@@ -2953,8 +2953,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:25:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8973000</LatitudeDegrees>
-                            <LongitudeDegrees>37.7790817</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023934</LatitudeDegrees>
+                            <LongitudeDegrees>0.0003644</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>85.1</AltitudeMeters>
                         <DistanceMeters>7327.8664679010635</DistanceMeters>
@@ -2971,8 +2971,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:25:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8974300</LatitudeDegrees>
-                            <LongitudeDegrees>37.7800467</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023873</LatitudeDegrees>
+                            <LongitudeDegrees>0.0004459</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>83.1</AltitudeMeters>
                         <DistanceMeters>7390.268922766807</DistanceMeters>
@@ -2992,8 +2992,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:25:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8975600</LatitudeDegrees>
-                            <LongitudeDegrees>37.7808517</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023349</LatitudeDegrees>
+                            <LongitudeDegrees>0.0004823</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>80.5</AltitudeMeters>
                         <DistanceMeters>7442.869359703271</DistanceMeters>
@@ -3013,8 +3013,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:25:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8976317</LatitudeDegrees>
-                            <LongitudeDegrees>37.7815717</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023100</LatitudeDegrees>
+                            <LongitudeDegrees>0.0005250</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>82.8</AltitudeMeters>
                         <DistanceMeters>7488.9035318011665</DistanceMeters>
@@ -3034,8 +3034,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:26:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8976967</LatitudeDegrees>
-                            <LongitudeDegrees>37.7821283</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022435</LatitudeDegrees>
+                            <LongitudeDegrees>0.0004927</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>88.3</AltitudeMeters>
                         <DistanceMeters>7524.656321723496</DistanceMeters>
@@ -3052,8 +3052,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:26:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8977433</LatitudeDegrees>
-                            <LongitudeDegrees>37.7826533</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023169</LatitudeDegrees>
+                            <LongitudeDegrees>0.0004978</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>89.6</AltitudeMeters>
                         <DistanceMeters>7559.033187910073</DistanceMeters>
@@ -3070,8 +3070,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:26:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8978117</LatitudeDegrees>
-                            <LongitudeDegrees>37.7832533</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023564</LatitudeDegrees>
+                            <LongitudeDegrees>0.0004966</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>89.1</AltitudeMeters>
                         <DistanceMeters>7597.7855026228235</DistanceMeters>
@@ -3091,8 +3091,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:26:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8978917</LatitudeDegrees>
-                            <LongitudeDegrees>37.7837967</LongitudeDegrees>
+                            <LatitudeDegrees>0.0022870</LatitudeDegrees>
+                            <LongitudeDegrees>0.0004319</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>93.1</AltitudeMeters>
                         <DistanceMeters>7633.554011900515</DistanceMeters>
@@ -3109,8 +3109,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:26:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8979833</LatitudeDegrees>
-                            <LongitudeDegrees>37.7845383</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023609</LatitudeDegrees>
+                            <LongitudeDegrees>0.0004921</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>91.6</AltitudeMeters>
                         <DistanceMeters>7681.008070088303</DistanceMeters>
@@ -3127,8 +3127,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:26:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8980150</LatitudeDegrees>
-                            <LongitudeDegrees>37.7852817</LongitudeDegrees>
+                            <LatitudeDegrees>0.0023754</LatitudeDegrees>
+                            <LongitudeDegrees>0.0004765</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>91.1</AltitudeMeters>
                         <DistanceMeters>7727.832502608668</DistanceMeters>
@@ -3145,8 +3145,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:27:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8979833</LatitudeDegrees>
-                            <LongitudeDegrees>37.7859683</LongitudeDegrees>
+                            <LatitudeDegrees>0.0024643</LatitudeDegrees>
+                            <LongitudeDegrees>0.0004609</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>89.8</AltitudeMeters>
                         <DistanceMeters>7771.170732213164</DistanceMeters>
@@ -3163,8 +3163,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:27:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8979733</LatitudeDegrees>
-                            <LongitudeDegrees>37.7863833</LongitudeDegrees>
+                            <LatitudeDegrees>0.0025372</LatitudeDegrees>
+                            <LongitudeDegrees>0.0005070</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>90.6</AltitudeMeters>
                         <DistanceMeters>7799.339455437717</DistanceMeters>
@@ -3181,8 +3181,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:27:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8978550</LatitudeDegrees>
-                            <LongitudeDegrees>37.7871517</LongitudeDegrees>
+                            <LatitudeDegrees>0.0025644</LatitudeDegrees>
+                            <LongitudeDegrees>0.0005438</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>89.3</AltitudeMeters>
                         <DistanceMeters>7849.505973747591</DistanceMeters>
@@ -3199,8 +3199,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:27:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8977467</LatitudeDegrees>
-                            <LongitudeDegrees>37.7880983</LongitudeDegrees>
+                            <LatitudeDegrees>0.0026482</LatitudeDegrees>
+                            <LongitudeDegrees>0.0005908</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>87.3</AltitudeMeters>
                         <DistanceMeters>7909.942149553858</DistanceMeters>
@@ -3217,8 +3217,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:27:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8976600</LatitudeDegrees>
-                            <LongitudeDegrees>37.7889600</LongitudeDegrees>
+                            <LatitudeDegrees>0.0027158</LatitudeDegrees>
+                            <LongitudeDegrees>0.0006319</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>87.3</AltitudeMeters>
                         <DistanceMeters>7965.244715535948</DistanceMeters>
@@ -3238,8 +3238,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:27:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8976133</LatitudeDegrees>
-                            <LongitudeDegrees>37.7895000</LongitudeDegrees>
+                            <LatitudeDegrees>0.0026488</LatitudeDegrees>
+                            <LongitudeDegrees>0.0006554</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>86.6</AltitudeMeters>
                         <DistanceMeters>7999.532745155213</DistanceMeters>
@@ -3256,8 +3256,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:28:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8976183</LatitudeDegrees>
-                            <LongitudeDegrees>37.7895033</LongitudeDegrees>
+                            <LatitudeDegrees>0.0027278</LatitudeDegrees>
+                            <LongitudeDegrees>0.0006442</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>88.0</AltitudeMeters>
                         <DistanceMeters>8007.068061139084</DistanceMeters>
@@ -3274,8 +3274,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:28:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8975767</LatitudeDegrees>
-                            <LongitudeDegrees>37.7897883</LongitudeDegrees>
+                            <LatitudeDegrees>0.0027784</LatitudeDegrees>
+                            <LongitudeDegrees>0.0006716</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>92.0</AltitudeMeters>
                         <DistanceMeters>8027.248332564254</DistanceMeters>
@@ -3295,8 +3295,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:28:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8975217</LatitudeDegrees>
-                            <LongitudeDegrees>37.7903067</LongitudeDegrees>
+                            <LatitudeDegrees>0.0027332</LatitudeDegrees>
+                            <LongitudeDegrees>0.0006598</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>95.8</AltitudeMeters>
                         <DistanceMeters>8060.67304211166</DistanceMeters>
@@ -3313,8 +3313,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:28:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8974933</LatitudeDegrees>
-                            <LongitudeDegrees>37.7908733</LongitudeDegrees>
+                            <LatitudeDegrees>0.0027529</LatitudeDegrees>
+                            <LongitudeDegrees>0.0006133</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>97.6</AltitudeMeters>
                         <DistanceMeters>8096.222286100128</DistanceMeters>
@@ -3331,8 +3331,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:28:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8974933</LatitudeDegrees>
-                            <LongitudeDegrees>37.7914817</LongitudeDegrees>
+                            <LatitudeDegrees>0.0027700</LatitudeDegrees>
+                            <LongitudeDegrees>0.0006093</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>100.6</AltitudeMeters>
                         <DistanceMeters>8135.037285305969</DistanceMeters>
@@ -3352,8 +3352,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:28:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8975267</LatitudeDegrees>
-                            <LongitudeDegrees>37.7920717</LongitudeDegrees>
+                            <LatitudeDegrees>0.0028428</LatitudeDegrees>
+                            <LongitudeDegrees>0.0006855</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>101.8</AltitudeMeters>
                         <DistanceMeters>8172.373336386909</DistanceMeters>
@@ -3370,8 +3370,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:29:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8975350</LatitudeDegrees>
-                            <LongitudeDegrees>37.7928717</LongitudeDegrees>
+                            <LatitudeDegrees>0.0028639</LatitudeDegrees>
+                            <LongitudeDegrees>0.0007335</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>104.6</AltitudeMeters>
                         <DistanceMeters>8222.452894903696</DistanceMeters>
@@ -3391,8 +3391,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:29:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8976183</LatitudeDegrees>
-                            <LongitudeDegrees>37.7937750</LongitudeDegrees>
+                            <LatitudeDegrees>0.0028165</LatitudeDegrees>
+                            <LongitudeDegrees>0.0006819</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>102.5</AltitudeMeters>
                         <DistanceMeters>8279.59339013242</DistanceMeters>
@@ -3409,8 +3409,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:29:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8977600</LatitudeDegrees>
-                            <LongitudeDegrees>37.7947917</LongitudeDegrees>
+                            <LatitudeDegrees>0.0027534</LatitudeDegrees>
+                            <LongitudeDegrees>0.0007165</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>98.3</AltitudeMeters>
                         <DistanceMeters>8345.106131238847</DistanceMeters>
@@ -3427,8 +3427,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:29:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8978867</LatitudeDegrees>
-                            <LongitudeDegrees>37.7958633</LongitudeDegrees>
+                            <LatitudeDegrees>0.0028156</LatitudeDegrees>
+                            <LongitudeDegrees>0.0007357</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>97.8</AltitudeMeters>
                         <DistanceMeters>8413.532520417619</DistanceMeters>
@@ -3448,8 +3448,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:29:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8980200</LatitudeDegrees>
-                            <LongitudeDegrees>37.7969533</LongitudeDegrees>
+                            <LatitudeDegrees>0.0027698</LatitudeDegrees>
+                            <LongitudeDegrees>0.0006971</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>96.1</AltitudeMeters>
                         <DistanceMeters>8483.180151995082</DistanceMeters>
@@ -3466,8 +3466,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:29:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8982450</LatitudeDegrees>
-                            <LongitudeDegrees>37.7981783</LongitudeDegrees>
+                            <LatitudeDegrees>0.0028241</LatitudeDegrees>
+                            <LongitudeDegrees>0.0006491</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>90.3</AltitudeMeters>
                         <DistanceMeters>8563.89285596853</DistanceMeters>
@@ -3487,8 +3487,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:30:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8984850</LatitudeDegrees>
-                            <LongitudeDegrees>37.7995517</LongitudeDegrees>
+                            <LatitudeDegrees>0.0028515</LatitudeDegrees>
+                            <LongitudeDegrees>0.0006940</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>90.1</AltitudeMeters>
                         <DistanceMeters>8653.79925307528</DistanceMeters>
@@ -3508,8 +3508,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:30:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8989000</LatitudeDegrees>
-                            <LongitudeDegrees>37.8008983</LongitudeDegrees>
+                            <LatitudeDegrees>0.0028635</LatitudeDegrees>
+                            <LongitudeDegrees>0.0007316</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>89.6</AltitudeMeters>
                         <DistanceMeters>8749.908694190242</DistanceMeters>
@@ -3529,8 +3529,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:30:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8993467</LatitudeDegrees>
-                            <LongitudeDegrees>37.8024317</LongitudeDegrees>
+                            <LatitudeDegrees>0.0028377</LatitudeDegrees>
+                            <LongitudeDegrees>0.0007345</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>89.3</AltitudeMeters>
                         <DistanceMeters>8857.98118115781</DistanceMeters>
@@ -3547,8 +3547,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:30:30.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.8999550</LatitudeDegrees>
-                            <LongitudeDegrees>37.8032933</LongitudeDegrees>
+                            <LatitudeDegrees>0.0028997</LatitudeDegrees>
+                            <LongitudeDegrees>0.0008044</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>83.8</AltitudeMeters>
                         <DistanceMeters>8960.171440548616</DistanceMeters>
@@ -3565,8 +3565,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:30:40.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.9006050</LatitudeDegrees>
-                            <LongitudeDegrees>37.8039117</LongitudeDegrees>
+                            <LatitudeDegrees>0.0029583</LatitudeDegrees>
+                            <LongitudeDegrees>0.0008505</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>82.3</AltitudeMeters>
                         <DistanceMeters>9047.278687316923</DistanceMeters>
@@ -3586,8 +3586,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:30:50.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.9013617</LatitudeDegrees>
-                            <LongitudeDegrees>37.8031333</LongitudeDegrees>
+                            <LatitudeDegrees>0.0030431</LatitudeDegrees>
+                            <LongitudeDegrees>0.0008717</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>84.0</AltitudeMeters>
                         <DistanceMeters>9145.919739059176</DistanceMeters>
@@ -3604,8 +3604,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:31:00.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.9019967</LatitudeDegrees>
-                            <LongitudeDegrees>37.8039217</LongitudeDegrees>
+                            <LatitudeDegrees>0.0030654</LatitudeDegrees>
+                            <LongitudeDegrees>0.0009486</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>80.8</AltitudeMeters>
                         <DistanceMeters>9234.075481476275</DistanceMeters>
@@ -3622,8 +3622,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:31:10.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.9018633</LatitudeDegrees>
-                            <LongitudeDegrees>37.8051100</LongitudeDegrees>
+                            <LatitudeDegrees>0.0031192</LatitudeDegrees>
+                            <LongitudeDegrees>0.0010223</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>80.5</AltitudeMeters>
                         <DistanceMeters>9315.182002630518</DistanceMeters>
@@ -3640,8 +3640,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:31:20.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.9016383</LatitudeDegrees>
-                            <LongitudeDegrees>37.8058567</LongitudeDegrees>
+                            <LatitudeDegrees>0.0030945</LatitudeDegrees>
+                            <LongitudeDegrees>0.0010629</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>79.3</AltitudeMeters>
                         <DistanceMeters>9369.90714265988</DistanceMeters>
@@ -3652,8 +3652,8 @@
                     <Trackpoint>
                         <Time>2024-01-01T09:31:21.000Z</Time>
                         <Position>
-                            <LatitudeDegrees>38.9016233</LatitudeDegrees>
-                            <LongitudeDegrees>37.8058467</LongitudeDegrees>
+                            <LatitudeDegrees>0.0031720</LatitudeDegrees>
+                            <LongitudeDegrees>0.0010658</LongitudeDegrees>
                         </Position>
                         <AltitudeMeters>79.3</AltitudeMeters>
                         <DistanceMeters>9369.90714265988</DistanceMeters>

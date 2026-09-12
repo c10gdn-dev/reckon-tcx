@@ -15,6 +15,7 @@ which is why the factors below match the originals exactly.
 Unlike `test_corpus.py` these are committed, so they run everywhere.
 """
 
+import re
 from pathlib import Path
 
 import pytest
@@ -119,3 +120,66 @@ def test_fixtures_carry_no_device_identifiers(fixture):
     for tag in ("UnitId", "ProductID"):
         for element in root.iter(tcx.qn(tcx.TCX_NS, tag)):
             assert element.text == "0"
+
+
+# Coordinates were the one thing the anonymiser was never checked on, which is
+# why a constant shift declared in a committed script survived here for weeks:
+# reversing it returned real coordinates to seven decimal places, in a public
+# repository. The dates and device identifiers were asserted from the start and
+# were fine. This is the assertion that was missing.
+FAKE_BOX_DEGREES = 1.0
+
+
+def _anonymiser():
+    import importlib.util
+
+    path = Path(__file__).resolve().parent.parent / "scripts" / "anonymise.py"
+    spec = importlib.util.spec_from_file_location("anonymise", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.anonymise
+
+
+def test_fixtures_carry_no_real_coordinates(fixture):
+    """Every coordinate must sit within a degree of Null Island.
+
+    A positive assertion about where the points *are*, not a negative one about
+    where they are not — there is no list of real locations to exclude, and a
+    test that tried would pass for every location it had not thought of.
+
+    `scripts/anonymise.py` generates these rather than transforming the
+    originals, so nothing here is a function of a real coordinate. A regression
+    to any shift-based scheme fails this immediately, wherever it shifts to.
+    """
+    text = fixture.decode()
+    values = [
+        float(value)
+        for pattern in (r"<LatitudeDegrees>([-\d.]+)", r"<LongitudeDegrees>([-\d.]+)")
+        for value in re.findall(pattern, text)
+    ]
+
+    assert all(abs(value) < FAKE_BOX_DEGREES for value in values), (
+        "a coordinate sits outside the fake origin box; anonymise.py must "
+        "replace coordinates, never transform them"
+    )
+
+
+def test_the_anonymiser_output_does_not_depend_on_the_input_coordinates():
+    """The property that makes it irreversible, asserted rather than assumed.
+
+    Two documents differing only in their coordinates must anonymise to the same
+    bytes. Any shift — constant, random, per-file — fails this, because a shift
+    carries the original through into the output and only hides it behind a key.
+    """
+    # `scripts/` is not a package and is not on the path; loaded by location so
+    # this test binds to the script the repository actually ships.
+    anonymise = _anonymiser()
+
+    one = load("cycle-clean").decode()
+    other = re.sub(
+        r"<LatitudeDegrees>[-\d.]+</LatitudeDegrees>",
+        "<LatitudeDegrees>55.8549433</LatitudeDegrees>",
+        one,
+    )
+
+    assert anonymise(one, seed="x") == anonymise(other, seed="x")
