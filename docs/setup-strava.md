@@ -216,9 +216,30 @@ rather than plain `activity:read` because the narrower one cannot see activities
 set to *Only You*, and an activity Reckon cannot see is an activity it would
 upload again.
 
-Adding a scope needs a **fresh authorisation** — an existing token does not gain
-new permissions. When that time comes, re-run step 5; the new token replaces the
-old one in the same store.
+### Where a scope is added, and where it is not
+
+**Not on strava.com.** There is no control anywhere in Strava's settings for
+granting an application a scope. Looking for one is a dead end, and a reasonable
+thing to go looking for.
+
+A scope is added in three steps, and only the middle one is yours:
+
+1. **In Reckon's source**, `SCOPES` in `src/reckon/clients/strava.py`. That tuple
+   becomes the `scope` parameter of the authorisation URL. Until it changes,
+   re-authorising grants exactly what you already have.
+2. **By re-running step 5.** The browser opens Strava's approval screen, which
+   lists the permissions being asked for. **That screen is where the grant
+   happens** — it is the only place in Strava that shows or changes what an
+   application may do.
+3. **Automatically**, as the new token replaces the old one in the same store.
+
+An existing token never gains permissions, so step 2 is required rather than
+optional. Reckon sends `approval_prompt=force` precisely so Strava asks again
+instead of silently handing back the grant you already gave — without it, widening
+a scope looks like it worked and changes nothing.
+
+Check the `granted scopes:` line the script prints afterwards. That is the
+confirmation, and there is nowhere else to get it.
 
 ---
 
