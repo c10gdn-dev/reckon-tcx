@@ -5,9 +5,15 @@ The only module besides `aws/` permitted to import boto3, and
 than at import, because `boto3.client(...)` at module scope needs credentials and
 a region, fails in CI, and distorts coverage.
 
-Deliberately the same two ports as `stores/file.py`, keyed the same way and
+Deliberately the same three ports as `stores/file.py`, keyed the same way and
 returning the same types, so `pipeline.py` cannot tell them apart. Single table,
-partition key only: `TOKEN#google`, `TOKEN#strava`, `LOG#{activityId}`.
+partition key only: `TOKEN#google`, `TOKEN#strava`, `LOG#{activityId}`,
+`INV#{activityId}`.
+
+Inventory records additionally carry `kind` and `starts`, which are the key of a
+global secondary index. That index exists so "every activity in this window,
+oldest first" is a query rather than a table scan — a scan would read the tokens
+and the whole processed log to answer a question about neither.
 
 The compare-and-swap is a `ConditionExpression` on a version attribute. That is
 the mechanism `PLAN.md` §8 specifies, and it is worth keeping even though the
@@ -26,11 +32,14 @@ from botocore.exceptions import ClientError
 
 from reckon.clients.oauth import Tokens
 from reckon.stores.base import (
+    InventoryEntry,
     LogEntry,
+    MatchKind,
     Status,
     StoreError,
     TokenConflict,
     VersionedTokens,
+    chronological,
 )
 
 # How long a processed-activity record lives. Long enough that a webhook
@@ -41,10 +50,19 @@ LOG_TTL_DAYS = 90
 
 _TOKEN_PREFIX = "TOKEN#"
 _LOG_PREFIX = "LOG#"
+_INV_PREFIX = "INV#"
+
+# The secondary index that makes a windowed listing a query. Its partition key is
+# a constant, which is normally a design smell — one hot partition — and is right
+# here: the whole point is to read the inventory in time order, the table holds one
+# person's activities, and the alternative is scanning every token and log record
+# to answer a question about neither.
+INVENTORY_INDEX = "kind-starts-index"
+_INVENTORY_KIND = "inventory"
 
 
 class DynamoStore:
-    """A `TokenStore` and a `ProcessedLogStore` over one DynamoDB table."""
+    """A `TokenStore`, a `ProcessedLogStore` and an `InventoryStore` over one table."""
 
     def __init__(
         self,
@@ -162,6 +180,63 @@ class DynamoStore:
         # outcome for one activity, because it consults the store first.
         self.client.put_item(TableName=self.table_name, Item=item)
 
+    # --- InventoryStore -----------------------------------------------------
+
+    def put(self, entry: InventoryEntry) -> None:
+        item: dict[str, Any] = {
+            "pk": {"S": f"{_INV_PREFIX}{entry.activity_id}"},
+            "kind": {"S": _INVENTORY_KIND},
+            "starts": {"S": chronological(entry.start_time)},
+            "start_time": {"S": entry.start_time},
+            "match": {"S": str(entry.match)},
+            "seen_at": {"N": repr(entry.seen_at or self._now())},
+            "checked_at": {"N": repr(entry.checked_at)},
+        }
+        for name, value in (
+            ("end_time", entry.end_time),
+            ("exercise_type", entry.exercise_type),
+            ("display_name", entry.display_name),
+        ):
+            if value:
+                item[name] = {"S": value}
+        if entry.distance_m is not None:
+            item["distance_m"] = {"N": repr(entry.distance_m)}
+        if entry.strava_activity_id is not None:
+            item["strava_activity_id"] = {"N": str(entry.strava_activity_id)}
+        # No `ttl` attribute, deliberately, where log records carry one. Expiring
+        # the inventory would make Reckon forget an activity exists and upload it
+        # again — the table's TTL is enabled, and an item without the attribute is
+        # simply never expired, so the omission is the mechanism.
+        self.client.put_item(TableName=self.table_name, Item=item)
+
+    def inventory(self, activity_id: str) -> InventoryEntry | None:
+        item = self._get(f"{_INV_PREFIX}{activity_id}")
+        return None if item is None else _inventory(activity_id, item)
+
+    def between(self, start_time: str, end_time: str) -> list[InventoryEntry]:
+        found: list[InventoryEntry] = []
+        arguments: dict[str, Any] = {
+            "TableName": self.table_name,
+            "IndexName": INVENTORY_INDEX,
+            "KeyConditionExpression": "kind = :kind AND starts BETWEEN :low AND :high",
+            "ExpressionAttributeValues": {
+                ":kind": {"S": _INVENTORY_KIND},
+                ":low": {"S": chronological(start_time)},
+                # BETWEEN is inclusive at both ends and the port is half-open, so
+                # the upper bound is excluded below rather than here — DynamoDB
+                # has no exclusive form and silently including it would make the
+                # two adapters disagree on a boundary nobody would think to test.
+                ":high": {"S": chronological(end_time)},
+            },
+        }
+        while True:
+            page = self.client.query(**arguments)
+            for item in page.get("Items", []):
+                found.append(_inventory(item["pk"]["S"].removeprefix(_INV_PREFIX), item))
+            if not (token := page.get("LastEvaluatedKey")):
+                return [e for e in found if chronological(e.start_time) < chronological(end_time)]
+            arguments["ExclusiveStartKey"] = token
+
     # --- the table ----------------------------------------------------------
 
     def _get(self, key: str) -> Mapping[str, Any] | None:
@@ -182,3 +257,21 @@ def _optional_int(value: Mapping[str, Any] | None) -> int | None:
 
 def _optional_float(value: Mapping[str, Any] | None) -> float | None:
     return None if value is None else float(value["N"])
+
+
+def _inventory(activity_id: str, item: Mapping[str, Any]) -> InventoryEntry:
+    try:
+        return InventoryEntry(
+            activity_id=activity_id,
+            start_time=item["start_time"]["S"],
+            end_time=item.get("end_time", {}).get("S", ""),
+            exercise_type=item.get("exercise_type", {}).get("S", ""),
+            display_name=item.get("display_name", {}).get("S", ""),
+            distance_m=_optional_float(item.get("distance_m")),
+            seen_at=float(item.get("seen_at", {}).get("N", 0.0)),
+            strava_activity_id=_optional_int(item.get("strava_activity_id")),
+            match=MatchKind(item["match"]["S"]),
+            checked_at=float(item.get("checked_at", {}).get("N", 0.0)),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise StoreError(f"stored inventory record for {activity_id} is unreadable: {exc}") from exc

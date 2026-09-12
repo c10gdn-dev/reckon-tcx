@@ -9,8 +9,33 @@ import boto3
 import pytest
 from moto import mock_aws
 
+from reckon.stores.dynamo import INVENTORY_INDEX
+
 TABLE = "reckon-test"
 REGION = "eu-west-2"
+
+# One definition, used by every fixture that needs a table, so the secondary
+# index cannot be present in one test and missing in another — which would show
+# up as a query failing only in the fixture nobody thought to update.
+TABLE_SCHEMA = {
+    "KeySchema": [{"AttributeName": "pk", "KeyType": "HASH"}],
+    "AttributeDefinitions": [
+        {"AttributeName": "pk", "AttributeType": "S"},
+        {"AttributeName": "kind", "AttributeType": "S"},
+        {"AttributeName": "starts", "AttributeType": "S"},
+    ],
+    "GlobalSecondaryIndexes": [
+        {
+            "IndexName": INVENTORY_INDEX,
+            "KeySchema": [
+                {"AttributeName": "kind", "KeyType": "HASH"},
+                {"AttributeName": "starts", "KeyType": "RANGE"},
+            ],
+            "Projection": {"ProjectionType": "ALL"},
+        }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+}
 
 
 @pytest.fixture
@@ -31,12 +56,7 @@ def dynamo(aws_credentials: None):
     """
     with mock_aws():
         client = boto3.client("dynamodb", region_name=REGION)
-        client.create_table(
-            TableName=TABLE,
-            KeySchema=[{"AttributeName": "pk", "KeyType": "HASH"}],
-            AttributeDefinitions=[{"AttributeName": "pk", "AttributeType": "S"}],
-            BillingMode="PAY_PER_REQUEST",
-        )
+        client.create_table(TableName=TABLE, **TABLE_SCHEMA)
         yield client
 
 
@@ -54,12 +74,7 @@ def aws(aws_credentials: None):
     """DynamoDB and SQS together, for the handler entry points."""
     with mock_aws():
         dynamo = boto3.client("dynamodb", region_name=REGION)
-        dynamo.create_table(
-            TableName=TABLE,
-            KeySchema=[{"AttributeName": "pk", "KeyType": "HASH"}],
-            AttributeDefinitions=[{"AttributeName": "pk", "AttributeType": "S"}],
-            BillingMode="PAY_PER_REQUEST",
-        )
+        dynamo.create_table(TableName=TABLE, **TABLE_SCHEMA)
         sqs_client = boto3.client("sqs", region_name=REGION)
         url = sqs_client.create_queue(QueueName="reckon-test")["QueueUrl"]
         yield dynamo, sqs_client, url

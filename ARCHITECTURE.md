@@ -25,10 +25,10 @@ One line each, saying what the module owns.
 | `clients/oauth.py` | OAuth 2.0: authorisation URLs, code exchange, refresh, and `TokenHolder`. |
 | `clients/health.py` | Google Health: listing exercises, downloading TCX. |
 | `clients/strava.py` | Strava: multipart upload, polling, duplicate detection. |
-| `stores/base.py` | The two persistence ports, as protocols, plus the vocabulary they are defined in. |
-| `stores/file.py` | Local adapter. Both ports in one 0600 JSON file, under `flock`. |
+| `stores/base.py` | The three persistence ports, as protocols, plus the vocabulary they are defined in — `Status`, `LogEntry`, `MatchKind`, `InventoryEntry` and the chronological key both adapters order on. |
+| `stores/file.py` | Local adapter. All three ports in one 0600 JSON file, under `flock`. |
 | `pipeline.py` | Activity in → rescale → upload → record. Shared by `sync`, `local` and the Lambda worker; `sync` fetches the bytes, `local` reads them from a file. |
-| `stores/dynamo.py` | AWS adapter. Same two ports over one DynamoDB table; the only place besides `aws/` that may import boto3. |
+| `stores/dynamo.py` | AWS adapter. Same three ports over one DynamoDB table, plus the index that makes a windowed inventory listing a query rather than a scan; the only place besides `aws/` that may import boto3. |
 | `aws/receiver.py` | Webhook endpoint. Authenticates, enqueues, acknowledges. Nothing else. |
 | `aws/worker.py` | SQS handler. Routes the two message shapes; re-enqueues delayed rather than sleeping. |
 | `aws/queue.py` | The SQS seam, as `http.py` is the network seam. |
@@ -78,7 +78,15 @@ are therefore built on first use. *Convention, with a test on each.*
 **The two stores are interchangeable.** `stores/file.py` and `stores/dynamo.py`
 must be indistinguishable to `pipeline.py` — that is what the whole local/AWS
 split rests on. *Enforced by `tests/test_store_contract.py`, which runs one set
-of behaviours against both.*
+of behaviours against both.* It is also why `chronological` lives in
+`stores/base.py`: both adapters must order a window the same way, and two copies
+of that normalisation would drift until they disagreed on a boundary.
+
+**Inventory records never expire; log records do.** The table has TTL enabled on
+a `ttl` attribute and DynamoDB never expires an item that lacks it, so the
+omission *is* the mechanism. A forgotten inventory record means Reckon no longer
+knows an activity exists and uploads it again. *Convention, with a test on the
+adapter.*
 
 ## Why local and AWS share a pipeline
 

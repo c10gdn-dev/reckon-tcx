@@ -9,6 +9,7 @@ happens when the table holds something unreadable.
 """
 
 import time
+from typing import Any
 
 import boto3
 import pytest
@@ -18,7 +19,13 @@ from moto import mock_aws
 from conftest import REGION, TABLE
 from fakes import Clock
 from reckon.clients.oauth import Tokens
-from reckon.stores.base import LogEntry, Status, StoreError, TokenConflict
+from reckon.stores.base import (
+    InventoryEntry,
+    LogEntry,
+    Status,
+    StoreError,
+    TokenConflict,
+)
 from reckon.stores.dynamo import LOG_TTL_DAYS, DynamoStore
 
 TOKENS = Tokens("access", "refresh", 5000.0)
@@ -194,3 +201,83 @@ def test_the_default_clock_is_the_real_one(dynamo) -> None:
     subject = DynamoStore(TABLE, client=dynamo)
     subject.record(LogEntry("1", Status.UPLOADED))
     assert subject.get("1").recorded_at == pytest.approx(time.time(), abs=10)
+
+
+# --- inventory --------------------------------------------------------------
+
+
+def test_an_inventory_record_carries_no_ttl(dynamo) -> None:
+    """Log records expire at 90 days; inventory must not, and this is how.
+
+    The table has TTL enabled on `ttl`, and an item without the attribute is
+    never expired. Expiring the inventory would make Reckon forget an activity
+    exists and upload it a second time.
+    """
+    store = DynamoStore(TABLE, client=dynamo, now=Clock(now=1000.0).time)
+    store.put(InventoryEntry(activity_id="1", start_time="2026-02-23T13:10:00Z"))
+
+    item = dynamo.get_item(TableName=TABLE, Key={"pk": {"S": "INV#1"}})["Item"]
+    assert "ttl" not in item
+
+
+def test_inventory_records_are_keyed_and_indexed_separately(dynamo) -> None:
+    store = DynamoStore(TABLE, client=dynamo, now=Clock(now=1000.0).time)
+    store.put(InventoryEntry(activity_id="1", start_time="2026-02-23T14:00:00+01:00"))
+
+    item = dynamo.get_item(TableName=TABLE, Key={"pk": {"S": "INV#1"}})["Item"]
+    assert item["kind"]["S"] == "inventory"
+    # The index sorts on the normalised instant, while the raw text is kept as
+    # the API reported it. Indexing the raw text would order two offsets wrongly.
+    assert item["starts"]["S"] == "2026-02-23T13:00:00Z"
+    assert item["start_time"]["S"] == "2026-02-23T14:00:00+01:00"
+
+
+def test_an_unreadable_inventory_record_is_a_store_error(dynamo) -> None:
+    dynamo.put_item(
+        TableName=TABLE,
+        Item={"pk": {"S": "INV#1"}, "start_time": {"S": "2026-02-23T13:10:00Z"}},
+    )
+    store = DynamoStore(TABLE, client=dynamo)
+
+    with pytest.raises(StoreError, match="inventory record for 1 is unreadable"):
+        store.inventory("1")
+
+
+class PagingClient:
+    """A client whose query returns two pages, to exercise the pagination loop.
+
+    moto will not paginate a handful of items — its page limit is a megabyte —
+    and writing thousands of records to reach it would trade a fast test for a
+    slow one that proves the same thing.
+    """
+
+    def __init__(self) -> None:
+        self.keys: list[Any] = []
+
+    def query(self, **arguments: Any) -> dict[str, Any]:
+        self.keys.append(arguments.get("ExclusiveStartKey"))
+        if len(self.keys) == 1:
+            return {
+                "Items": [_item("1", "2026-02-23T09:00:00Z")],
+                "LastEvaluatedKey": {"pk": {"S": "INV#1"}},
+            }
+        return {"Items": [_item("2", "2026-02-23T10:00:00Z")]}
+
+
+def _item(activity_id: str, starts: str) -> dict[str, Any]:
+    return {
+        "pk": {"S": f"INV#{activity_id}"},
+        "start_time": {"S": starts},
+        "match": {"S": "none"},
+    }
+
+
+def test_between_follows_every_page() -> None:
+    client = PagingClient()
+
+    found = DynamoStore(TABLE, client=client).between(
+        "2026-02-23T00:00:00Z", "2026-02-24T00:00:00Z"
+    )
+
+    assert [e.activity_id for e in found] == ["1", "2"]
+    assert client.keys == [None, {"pk": {"S": "INV#1"}}]

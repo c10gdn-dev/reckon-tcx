@@ -1,14 +1,15 @@
-"""The two ports the pipeline persists through, and nothing else.
+"""The three ports the pipeline persists through, and nothing else.
 
 `typing.Protocol` rather than ABCs, deliberately: a `...` body is excluded from
 coverage by configuration, so there is no unreachable `raise NotImplementedError`
 to explain away later (`PLAN.md` §7).
 
-Both ports are defined here so that `pipeline.py` can be written, tested and run
+All three are defined here so that `pipeline.py` can be written, tested and run
 against `file.py` without DynamoDB, boto3, or an AWS account existing — which is
 the whole point of the split in §2.
 """
 
+import datetime as dt
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
@@ -115,4 +116,96 @@ class ProcessedLogStore(Protocol):
 
     def record(self, entry: LogEntry) -> None:
         """Persist one decision. Every recorded decision is final."""
+        ...
+
+
+class MatchKind(StrEnum):
+    """How we know Strava has an activity — or that we do not know.
+
+    Not a boolean, because *how* we know decides how far to trust it. Reducing
+    these four to "on Strava: yes/no" is how a duplicate gets uploaded or a real
+    activity gets silently skipped (`PLAN.md` §13.2).
+    """
+
+    EXTERNAL_ID = "external_id"
+    """Certain. Reckon uploaded it, and Strava echoed back the id Reckon sent."""
+
+    START_TIME = "start_time"
+    """An inference. Something on Strava starts when this activity does — very
+    likely the same outing arriving by another route, but nothing proves it."""
+
+    AMBIGUOUS = "ambiguous"
+    """Two or more Strava activities are within tolerance. **Nothing is assumed**:
+    catch-up skips these and a person decides."""
+
+    NONE = "none"
+    """Looked, and found nothing. Distinct from never having looked, which is
+    `checked_at == 0.0` — the two are the same `MatchKind` and must not be the
+    same answer to "should catch-up consider this"."""
+
+
+@dataclass(frozen=True)
+class InventoryEntry:
+    """One activity Google Health holds, and whether Strava has it.
+
+    **A fact about the world, not a decision Reckon made.** `LogEntry` records
+    the decision; this records what there was to decide about. The codebase
+    conflated the two once — `Pipeline.mark_done` writes a `LogEntry` with status
+    `uploaded` and the reason "already on Strava before Reckon", which is a fact
+    wearing a decision's clothes — and that is why *known, never processed* could
+    not be expressed at all. See `ARCHITECTURE.md`.
+    """
+
+    activity_id: str
+    start_time: str
+    end_time: str = ""
+    exercise_type: str = ""
+    display_name: str = ""
+    distance_m: float | None = None
+    seen_at: float = 0.0
+    strava_activity_id: int | None = None
+    match: MatchKind = MatchKind.NONE
+    checked_at: float = 0.0
+
+
+def chronological(start_time: str) -> str:
+    """An RFC 3339 timestamp normalised so lexicographic order is chronological.
+
+    Both adapters need to return a window oldest-first, and both would otherwise
+    compare the raw strings — which breaks the moment two activities are written
+    with different UTC offsets, the same trap local-mode matching hit. Shared
+    here rather than implemented twice, because two copies of this would drift.
+
+    An unparseable value is returned unchanged. `clients/health.py` deliberately
+    yields an activity whose timestamp it cannot read rather than dropping it, so
+    one can reach the store; it will sort by its raw text and may fall outside
+    any window, which is visible and wrong rather than invisible and wrong.
+    """
+    try:
+        return dt.datetime.fromisoformat(start_time).astimezone(dt.UTC).strftime(_CHRONO)
+    except ValueError:
+        return start_time
+
+
+_CHRONO = "%Y-%m-%dT%H:%M:%SZ"
+
+
+class InventoryStore(Protocol):
+    """What Google Health holds, and what Strava already has of it.
+
+    The third port, added for deployed mode. Unlike `ProcessedLogStore`, whose
+    entries are final, these records are rewritten: backfill discovers them and
+    reconcile updates them, repeatedly and idempotently.
+    """
+
+    def put(self, entry: InventoryEntry) -> None:
+        """Write one activity's record, replacing any earlier one."""
+        ...
+
+    def inventory(self, activity_id: str) -> InventoryEntry | None:
+        """One activity's record, or None if backfill has never seen it."""
+        ...
+
+    def between(self, start_time: str, end_time: str) -> list[InventoryEntry]:
+        """Every activity starting in `[start_time, end_time)`, oldest first."""
         ...

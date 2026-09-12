@@ -13,7 +13,14 @@ import pytest
 
 from fakes import Clock
 from reckon.clients.oauth import Tokens
-from reckon.stores.base import LogEntry, Status, StoreError, TokenConflict, VersionedTokens
+from reckon.stores.base import (
+    InventoryEntry,
+    LogEntry,
+    Status,
+    StoreError,
+    TokenConflict,
+    VersionedTokens,
+)
 from reckon.stores.file import SCHEMA, FileStore
 
 TOKENS = Tokens("access", "refresh", 5000.0)
@@ -241,3 +248,29 @@ def test_an_unreadable_log_record_is_reported(tmp_path: Path, record: object) ->
     path.write_text(json.dumps({"schema": SCHEMA, "tokens": {}, "logs": {"12345": record}}))
     with pytest.raises(StoreError, match="log record for 12345 is unreadable"):
         FileStore(path).get("12345")
+
+
+def test_an_unreadable_inventory_record_is_a_store_error(tmp_path: Path) -> None:
+    store = FileStore(tmp_path / "store.json")
+    store.put(InventoryEntry(activity_id="1", start_time="2026-02-23T13:10:00Z"))
+    document = json.loads((tmp_path / "store.json").read_text())
+    document["inventory"]["1"]["checked_at"] = "not a number"
+    (tmp_path / "store.json").write_text(json.dumps(document))
+
+    with pytest.raises(StoreError, match="inventory record for 1 is unreadable"):
+        store.inventory("1")
+
+
+def test_a_store_written_before_the_inventory_existed_still_loads(tmp_path: Path) -> None:
+    """Adding the port was deliberately not a schema bump; this is what that buys.
+
+    An older document has no `inventory` key, which is true rather than broken,
+    and forcing every existing store to be moved aside and re-authorised would
+    have been a steep price for a reader that loses nothing.
+    """
+    path = tmp_path / "store.json"
+    path.write_text(json.dumps({"schema": 1, "tokens": {}, "logs": {}}))
+    store = FileStore(path)
+
+    assert store.inventory("1") is None
+    assert store.between("2026-01-01T00:00:00Z", "2027-01-01T00:00:00Z") == []

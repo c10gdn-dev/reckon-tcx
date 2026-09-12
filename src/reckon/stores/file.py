@@ -27,11 +27,14 @@ from typing import Any
 
 from reckon.clients.oauth import Tokens
 from reckon.stores.base import (
+    InventoryEntry,
     LogEntry,
+    MatchKind,
     Status,
     StoreError,
     TokenConflict,
     VersionedTokens,
+    chronological,
 )
 
 DEFAULT_PATH = Path.home() / ".config" / "reckon" / "store.json"
@@ -44,7 +47,7 @@ _MODE = 0o600
 
 
 class FileStore:
-    """A `TokenStore` and a `ProcessedLogStore` over one JSON document."""
+    """A `TokenStore`, a `ProcessedLogStore` and an `InventoryStore` over one JSON document."""
 
     def __init__(self, path: Path = DEFAULT_PATH, *, now: Callable[[], float] = time.time) -> None:
         self.path = path
@@ -87,6 +90,31 @@ class FileStore:
             found = [_entry(key, raw) for key, raw in document["logs"].items()]
         return sorted(found, key=lambda entry: entry.recorded_at)
 
+    # --- InventoryStore -----------------------------------------------------
+
+    def put(self, entry: InventoryEntry) -> None:
+        with self._transaction(write=True) as document:
+            stored = asdict(entry)
+            stored.pop("activity_id")
+            stored["match"] = str(entry.match)
+            stored["seen_at"] = entry.seen_at or self._now()
+            document["inventory"][entry.activity_id] = stored
+
+    def inventory(self, activity_id: str) -> InventoryEntry | None:
+        with self._transaction(write=False) as document:
+            raw = document["inventory"].get(activity_id)
+            return None if raw is None else _inventory(activity_id, raw)
+
+    def between(self, start_time: str, end_time: str) -> list[InventoryEntry]:
+        low, high = chronological(start_time), chronological(end_time)
+        with self._transaction(write=False) as document:
+            found = [_inventory(key, raw) for key, raw in document["inventory"].items()]
+        # Filtered and sorted on the normalised key, never the raw text: two
+        # activities written with different UTC offsets compare wrongly as
+        # strings, which is the trap local-mode matching already fell into.
+        inside = [e for e in found if low <= chronological(e.start_time) < high]
+        return sorted(inside, key=lambda e: chronological(e.start_time))
+
     # --- the file itself ----------------------------------------------------
 
     @contextmanager
@@ -116,7 +144,7 @@ class FileStore:
 
     def _parse(self, text: str) -> dict[str, Any]:
         if not text.strip():
-            return {"schema": SCHEMA, "tokens": {}, "logs": {}}
+            return {"schema": SCHEMA, "tokens": {}, "logs": {}, "inventory": {}}
         try:
             document = json.loads(text)
         except json.JSONDecodeError as exc:
@@ -131,6 +159,12 @@ class FileStore:
             )
         document.setdefault("tokens", {})
         document.setdefault("logs", {})
+        # Added with the inventory port and deliberately *not* a schema bump: an
+        # older document simply has no inventory yet, which is true, and an older
+        # Reckon reading a newer document ignores a key it does not know. A bump
+        # would force every existing store to be moved aside and re-authorised
+        # for a change that costs an existing reader nothing.
+        document.setdefault("inventory", {})
         return document
 
 
@@ -162,3 +196,21 @@ def _entry(activity_id: str, raw: Any) -> LogEntry:
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise StoreError(f"stored log record for {activity_id} is unreadable: {exc}") from exc
+
+
+def _inventory(activity_id: str, raw: Any) -> InventoryEntry:
+    try:
+        return InventoryEntry(
+            activity_id=activity_id,
+            start_time=raw["start_time"],
+            end_time=raw.get("end_time", ""),
+            exercise_type=raw.get("exercise_type", ""),
+            display_name=raw.get("display_name", ""),
+            distance_m=raw.get("distance_m"),
+            seen_at=float(raw.get("seen_at", 0.0)),
+            strava_activity_id=raw.get("strava_activity_id"),
+            match=MatchKind(raw.get("match", MatchKind.NONE)),
+            checked_at=float(raw.get("checked_at", 0.0)),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise StoreError(f"stored inventory record for {activity_id} is unreadable: {exc}") from exc
