@@ -342,17 +342,21 @@ you approve it, and paste the address bar back:
 
 ```console
 $ python scripts/authorize.py google --credentials ~/Downloads/client_secret_*.json
-$ python scripts/authorize.py strava --client-id ... --client-secret ...
+$ python scripts/authorize.py strava --credentials ~/.config/reckon/strava-credentials.json
 ```
 
-Prefer `--credentials` with the JSON file Google Cloud gives you: a secret passed
-as a command-line flag ends up in your shell history and in `ps` output. Both
-write into the same store, so `reckon sync` picks them up with no further
-configuration.
+**Use `--credentials` for both.** A secret passed as a command-line flag ends up
+in your shell history and in `ps` output for every other account on the machine.
+Google gives you the file to point at; for Strava you write a three-line one
+yourself, and the Strava guide shows its exact contents. Both services write into
+the same store, so `reckon sync` picks them up with no further configuration.
 
-Setting Google Cloud up is genuinely fiddly, and its error messages are not
-helpful. **[docs/setup-google-cloud.md](docs/setup-google-cloud.md) walks through
-it click by click**, including the two places it goes wrong silently.
+Each service has its own setup guide, because they have nothing in common:
+
+- **[docs/setup-google-cloud.md](docs/setup-google-cloud.md)** — about half an
+  hour, genuinely fiddly, and two of its steps fail silently rather than loudly.
+- **[docs/setup-strava.md](docs/setup-strava.md)** — about five minutes, one
+  field that can break everything, and no review process at all.
 
 `sync` also needs the client ids and secrets in the environment — the same values
 the AWS side will read from SSM:

@@ -7,11 +7,12 @@ URL, checking `state`, exchanging the code, reading the expiry — lives in
 thirty lines of logic means something is in the wrong place.
 
     python scripts/authorize.py google --credentials client_secret_....json
-    python scripts/authorize.py strava --client-id ... --client-secret ...
+    python scripts/authorize.py strava --credentials strava-credentials.json
 
-Prefer `--credentials` with the JSON downloaded from the Google Cloud console:
-a secret passed as a flag lands in shell history and in `ps` output for every
-other user on the machine.
+Prefer `--credentials` for both services. Google hands you the file; for Strava
+write one yourself with an `installed` section — see docs/setup-strava.md. A
+secret passed as a flag lands in shell history and in `ps` output for every other
+user on the machine.
 
 Copy the printed URL into a browser, approve, then paste the address bar back.
 The browser will show a connection error at the redirect — that is expected and

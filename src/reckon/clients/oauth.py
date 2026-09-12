@@ -85,8 +85,14 @@ def read_client_credentials(text: str) -> ClientCredentials:
 
     Exists so the client secret can reach Reckon through a 0600 file rather than
     a command line, where it would land in shell history and in `ps` output for
-    every other user on the machine. Strava has no equivalent download, so its
-    credentials still come from flags or the environment.
+    every other user on the machine.
+
+    **Strava has no download, but the same route works**: write the three lines by
+    hand under an `installed` key and pass `--credentials`. The docs said
+    otherwise until 2026-09-12 and sent people to `--client-secret` instead — the
+    exact hazard this function was added to remove. Nothing about the parsing is
+    Google-specific; only the error message names a console, because that is
+    where a *downloaded* file goes wrong.
 
     The interesting key is `web` for a Web application client and `installed` for
     a Desktop one. Both shapes are otherwise identical, and which you get depends
@@ -107,7 +113,8 @@ def read_client_credentials(text: str) -> ClientCredentials:
     else:
         raise OAuthError(
             f"credentials file has no 'web' or 'installed' section, only {sorted(document)}; "
-            f"download it again from the Credentials page of the Google Cloud console"
+            f"for Google, download it again from the Credentials page of the Cloud "
+            f"console; for Strava, see docs/setup-strava.md for the three lines to write"
         )
 
     client_id = section.get("client_id")

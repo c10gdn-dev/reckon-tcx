@@ -279,26 +279,15 @@ has no route to correct, so Reckon leaves it exactly as it is.
 
 ## 10. Strava
 
-Strava is far simpler — no projects, no publishing, no verification.
+Strava is far simpler — no projects, no publishing, no verification — and it has
+its own short guide, because it has nothing to do with Google Cloud and you
+should not have to read this file to find it:
 
-1. Go to **[strava.com/settings/api](https://www.strava.com/settings/api)**.
-2. If you have never done this, it asks you to create an application. Give it any
-   name (`Reckon` is fine), category *Data Importer*, and website — your GitHub
-   page from step 5 will do.
-3. **Authorization Callback Domain: `localhost`** — just the word, no `http://`
-   and no port.
-4. It shows you a **Client ID** and a **Client Secret**.
+**→ [docs/setup-strava.md](setup-strava.md)**
 
-Then:
+About five minutes. Come back here when you have a Client ID and Client Secret.
 
-```console
-$ python scripts/authorize.py strava --client-id 12345 --client-secret abc...
-```
-
-Same as before: open the link, approve, paste the address back. Strava's
-permission does not expire, so this really is once.
-
-Now put all four values in your environment and run it for real:
+Then put all four values in your environment and run it for real:
 
 ```console
 $ export RECKON_GOOGLE_CLIENT_ID=...   RECKON_GOOGLE_CLIENT_SECRET=...
