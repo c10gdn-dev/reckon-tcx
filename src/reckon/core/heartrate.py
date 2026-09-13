@@ -207,15 +207,25 @@ def build(
                     _insert(point, bpm)
                     annotated += 1
 
-            taken = [moment for moment, _ in entries]
+            # Measured against the trackpoints that were *already here*, never
+            # against the ones being created. Checking the growing list made
+            # `tolerance_s` do a second job it was never meant for — a minimum
+            # spacing between new points — so one created at t suppressed every
+            # sample up to t+10 and a 1 Hz series came out at one point per
+            # 11 s, discarding 91% of the readings this function exists to
+            # preserve. One mechanism, two meanings, again.
+            existing = [moment for moment, _ in entries]
+            written: set[dt.datetime] = set()
             for moment, bpm in ordered:
                 if not first <= moment <= last:
                     outside += 1
                     continue
-                if any(abs((moment - held).total_seconds()) <= tolerance_s for held in taken):
+                if moment in written:
+                    continue
+                if any(abs((moment - held).total_seconds()) <= tolerance_s for held in existing):
                     continue
                 entries.append((moment, _trackpoint(moment, bpm)))
-                taken.append(moment)
+                written.add(moment)
                 created += 1
 
             # Rewritten from the pairs rather than sorted in place, so ordering

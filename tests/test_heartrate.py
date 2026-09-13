@@ -424,3 +424,35 @@ def test_build_leaves_a_track_it_cannot_order_alone() -> None:
 
     assert result.created == 0
     assert len(built(result.data)) == 3
+
+
+def test_build_keeps_a_1_hz_series_at_1_hz() -> None:
+    """The shape it exists to reproduce, and the bug that stopped it.
+
+    `tolerance_s` was measured against the trackpoints being *created* as well as
+    the ones already there, so it silently became a minimum spacing: one point at
+    t suppressed every sample to t+10, and a 1 Hz series emerged at one point per
+    11 s. 91% of real measurements discarded by a function written to preserve
+    them — one mechanism doing two jobs, for the eighth time in this codebase.
+    """
+    every_second = [(SKELETON_START + dt.timedelta(seconds=i), 70 + i % 30) for i in range(601)]
+
+    result = heartrate.build(SKELETON, every_second)
+
+    # 601 samples, less the 11 within 10 s of each skeleton trackpoint (0-10 s
+    # and 590-600 s inclusive) = 579 created, with the two skeleton points
+    # annotated instead. Exact rather than approximate: a bound would have passed
+    # at one point per 11 s, which is the bug.
+    assert (result.created, result.annotated) == (579, 2)
+    times = [moment for moment, _ in built(result.data)]
+    assert times == sorted(times)
+    assert len(set(times)) == len(times)
+
+
+def test_build_does_not_write_two_trackpoints_at_one_instant() -> None:
+    """Duplicate sample timestamps are a shape the API could return."""
+    moment = SKELETON_START + dt.timedelta(seconds=120)
+
+    result = heartrate.build(SKELETON, [(moment, 70), (moment, 99)])
+
+    assert result.created == 1

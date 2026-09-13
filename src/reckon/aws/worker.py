@@ -3,7 +3,13 @@
 Two shapes on the queue (`PLAN.md` §9), and the worker does nothing a local
 `reckon sync` does not — the pipeline is identical code. What differs is only
 what happens to a slow Strava upload: locally a bounded loop waits for it, here
-the message is re-enqueued with `DelaySeconds`, because a sleeping Lambda is
+**SPECIFIED BUT NOT WIRED UP.** Nothing produces an `upload_check` message —
+`_upload_check` below has a consumer, tests and an IAM grant, and no caller. The
+worker in fact reaches `Pipeline._await`, which *sleeps* up to 62 s per slow
+upload. At three activities a day that costs a few seconds of billed time and
+the 300 s timeout accommodates it, so this is a real gap rather than an urgent
+one; see `PLAN.md` §9. The design below reads: the message is re-enqueued with
+`DelaySeconds`, because a sleeping Lambda is
 billed wall-clock time.
 
 Transient faults are allowed to propagate. That is the whole contract with SQS:
@@ -174,6 +180,17 @@ def _upload_check(
 
 
 def _settled(activity_id: str, upload: Any, recorded_at: float) -> LogEntry:
+    """**Unreachable, and wrong if it ever becomes reachable. Do not wire this up
+    without reading `PLAN.md` §9's "the re-enqueue path has no producer".**
+
+    It can only write `UPLOADED` or `FAILED`, so a yoga session or a GPS-less
+    walk would land as `uploaded` with no factor — exactly the collapse
+    `Status` exists to prevent. That is not fixable here: the message carries an
+    activity id and an upload id and nothing about what the transform decided,
+    so the producer would have to be designed first. Left in place rather than
+    half-corrected, because a plausible-looking `_settled` is more dangerous
+    than an obviously unfinished one.
+    """
     if upload.duplicate:
         # Strava dedupes on external_id. The activity is there, which is the
         # thing that matters; that this store had not recorded it is a store

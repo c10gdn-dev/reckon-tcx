@@ -236,6 +236,13 @@ recorded and give no way to check the result.
 spreads the correction proportionally, so it cannot recover which kilometre
 carried the error.
 
+**Coverage is a claim about reachable code, and nothing more.** `aws/worker._upload_check`
+is 100% line- and branch-covered, has an IAM grant and a message schema in
+`PLAN.md` §9, and **no caller anywhere in production** — the worker sleeps
+instead, which the design forbids. Coverage asked whether a line ran under test
+and could not ask whether production reaches it. When a branch exists for a
+message, assert that something *sends* one.
+
 **Coverage is gated at 100% from the first commit.** Not retrofitted, and never
 lowered. A phase that cannot reach it is information about the design, not a
 reason to relax the threshold. Every `# pragma: no cover` carries a justification;
