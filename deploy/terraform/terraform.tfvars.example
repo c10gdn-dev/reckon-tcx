@@ -9,3 +9,13 @@ alarm_email = "you@example.com"
 
 log_retention_days     = 14
 worker_timeout_seconds = 60
+
+# Which Google OAuth client this deployment authenticates against.
+#
+#   "published"  no heart rate, no maintenance. The default.
+#   "testing"    an unpublished client: Relative Effort works, and the login
+#                expires every seven days and must be renewed by hand.
+#
+# Named for the client's publishing status because that is what you can check —
+# the Audience page in the Cloud console says "Testing" or "In production".
+# google_profile = "testing"

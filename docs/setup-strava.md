@@ -183,7 +183,7 @@ $ python scripts/authorize.py strava --credentials ~/.config/reckon/strava-crede
 ...
 stored strava tokens in /Users/you/.config/reckon/store.json
 access token expires in 360 min
-granted scopes: activity:write
+granted scopes: activity:read_all, activity:write
 ```
 
 **Read that line.** Strava answers a malformed scope request by granting a
@@ -203,18 +203,17 @@ Reckon asks for the narrowest permission that does the job.
 
 | Scope | What it allows | Needed for |
 |---|---|---|
-| `activity:write` | uploading activities | everything Reckon does today |
-| `activity:read_all` | reading your activity list, including private ones | deployed mode only, not yet built |
+| `activity:write` | uploading activities | `sync`, `local`, `catchup` |
+| `activity:read_all` | reading your activity list, including private ones | `reconcile` |
 
-Today Reckon requests **only `activity:write`**. It can upload, and it cannot
-read your activities back — which also means it cannot check whether an activity
-is already on Strava, and relies on its own local record instead.
+Reckon requests **both**. `read_all` rather than plain `activity:read` because
+the narrower one cannot see activities set to *Only You*, and an activity
+`reconcile` cannot see is one `catchup` would upload a second copy of.
 
-**Deployed mode will need `activity:read_all`** so it can reconcile against what
-Strava already holds and avoid uploading duplicates after a failure. `read_all`
-rather than plain `activity:read` because the narrower one cannot see activities
-set to *Only You*, and an activity Reckon cannot see is an activity it would
-upload again.
+**If you authorised before September 2026 you have only `activity:write`**, and
+`reckon reconcile` fails with `401 activity:read_permission missing`. That is not
+a bug and does not mean the scope is unavailable — your grant simply predates it.
+Re-run step 5 and read the `granted scopes:` line.
 
 ### Where a scope is added, and where it is not
 
@@ -249,7 +248,7 @@ confirmation, and there is nowhere else to get it.
 |---|---|
 | The API settings page asks for a password you do not have | Your account signs in through Google or Facebook. Set a password under **Settings → My Account** first. |
 | *"redirect_uri is invalid"* after approving | The Authorization Callback Domain is not exactly `localhost`. Fix it on the settings page and authorise again. |
-| *"Authorization Error ... activity:read_permission missing"* | Something asked to read your activities with a write-only token. Expected until deployed mode exists. |
+| *"Authorization Error ... activity:read_permission missing"* | Your grant predates `activity:read_all`. Re-run step 5; the new token replaces the old one. |
 | The browser page fails to load after approving | Expected. Reckon is not running a web server. Copy the address bar contents and paste them back. |
 | An upload is rejected as a duplicate | Strava already has that activity, matched on the id Reckon sent. Reckon treats this as success — the activity is there, which is what mattered. |
 
@@ -257,9 +256,10 @@ confirmation, and there is nowhere else to get it.
 
 ## What Reckon can see, and what it keeps
 
-With `activity:write` alone, Reckon can upload activities to your account and
-read nothing back — not your profile, not your friends, not your existing
-activities. It never posts, follows, kudos or comments.
+Reckon can upload activities and read your activity list. It cannot post,
+follow, give kudos or comment, and it reads nothing about anyone else. The list
+is used for one thing: working out which of your activities Strava already has,
+so it does not upload a second copy.
 
 Your Strava tokens live in `~/.config/reckon/store.json` on your own machine,
 alongside the Google ones, `0600` and re-chmodded every time it is opened.

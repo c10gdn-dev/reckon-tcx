@@ -154,11 +154,21 @@ def gps_coverage(activity: ET.Element) -> float:
 # files sampling at 1 s and at 2 s, and a synthetic fixture may sample at 10 s.
 # An absolute threshold would call ordinary sampling a gap on any of them.
 #
-# The multiple is measured, not chosen. Seventeen of the twenty corpus files have
-# a maximum interval of exactly 3 s against a 1 s median — three times — and none
-# exceeds it. The 2 s-median files also top out at 3 s, comfortably inside their
-# own 6 s threshold. Both thresholds reproduce the corpus exactly, and the floor
-# stops a hypothetical sub-second recorder from calling every sample a gap.
+# The multiple is measured, not chosen — and the measurement has moved.
+#
+# **It originally read "none exceeds it", and eight of twenty-six now do**, with
+# maximum intervals of 5, 5, 9, 10, 25, 74, 89 and 247 s against a 1 s median.
+# That is not the threshold failing: every one of those is a real break in
+# recording, which is exactly what this exists to find. What is false is the
+# claim that the constant "reproduces the corpus exactly", which was true of
+# twenty files and stopped being true as the corpus grew.
+#
+# Three remains right for a different and better reason than the original one.
+# Thirteen of twenty-six sit at exactly 3 s against a 1 s median, which is the
+# recorder's ordinary jitter and must not be called a gap; everything above 5 s
+# is a break. Nothing in the corpus lands between 3 and 5 s, so the multiple has
+# real clearance where it matters — at the boundary between normal and abnormal,
+# rather than at the top of the range.
 GAP_MULTIPLE = 3.0
 GAP_FLOOR_SECONDS = 3.0
 

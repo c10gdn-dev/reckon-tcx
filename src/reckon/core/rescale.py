@@ -26,16 +26,31 @@ from reckon.core.errors import MissingTarget, ToleranceExceeded
 # activity with the most to correct. 0.4 admits it with headroom while still
 # catching a target that is wrong by an order of magnitude, such as metres
 # supplied where kilometres were meant.
+#
+# **Symmetric, despite what four documents said until 2026-09-13.** It bounds the
+# factor on both sides — `lower = 1 - tolerance`, `upper = 1 + tolerance`. It was
+# genuinely one-sided until 2026-09-05, when the corroboration rule meant a
+# file-derived factor above 1.005 no longer always became partial GPS, leaving a
+# complete track with an absurd lap total nothing to catch it. Anyone
+# "restoring the documented asymmetry" reopens that hole.
 DEFAULT_TOLERANCE = 0.4
 
-# Minimum fraction of an activity's elapsed time that must carry a GPS fix
-# before its distance stream is considered a complete record of the route.
+# How much of an activity's elapsed time must carry a position fix before the
+# stream is trusted as a measurement of the whole route.
 #
-# Calibrated against the corpus: nine complete tracks measure 89.2%-99.4%, and
-# the one activity that lost lock measures 71.7%. The default sits between those
-# clusters. Be aware that no real file has yet been observed between 72% and 89%,
-# so the exact threshold is a judgement inside an unobserved gap — it is exposed
-# as a parameter for that reason.
+# **Recalibrated 2026-09-13; the original justification has been falsified by the
+# corpus that was supposed to support it.** It read: "nine complete tracks
+# measure 89.2%-99.4%, the one that lost lock measures 71.7%, and no real file
+# has yet been observed between 72% and 89%, so the exact threshold is a
+# judgement inside an unobserved gap." Across 26 files the corrected tracks now
+# run **85.1% to 100.0%** — `6436069663605072632` sits at 85.1% and is corrected
+# at 0.7841 — so the gap is occupied and the clearance is five points, not
+# seventeen.
+#
+# The threshold is unchanged, because 85.1% is a file that *should* be corrected
+# and 71.7% is one that should not, and 0.80 still separates them. What is gone
+# is the comfort: this is now a judgement with one real file five points above
+# it, and the next file below 85% is the one to look at hard.
 MIN_GPS_COVERAGE = 0.80
 
 # A factor above this means the GPS stream measured *less* than the activity's

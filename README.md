@@ -57,8 +57,8 @@ point that becomes `uv tool install reckon-tcx`.
 Fitbit and Strava disagree because they compute distance differently, and one of
 them is summing noise.
 
-**Strava sums the distance stream in the file, unchanged.** Verified across
-twenty-six exports, and then tested directly: a rescaled file uploaded by hand came
+**Strava sums the distance stream in the file, unchanged.** Verified against the
+fourteen exports for which a Strava figure was read off the screen and recorded, and then tested directly: a rescaled file uploaded by hand came
 back reporting the rescaled total, 21.4 km, where the original stream said
 24.06 km and a raw haversine sum of the same coordinates said 24.08 km. Strava
 takes the stream at face value and does not recompute from position.
@@ -262,7 +262,7 @@ reckon rescale INPUT [--distance DIST] [-o OUTPUT]
 | `INPUT` | TCX file to read. |
 | `--distance DIST` | Override the target. `15.23km`, `9.46mi`, or a bare number meaning metres. Defaults to the file's own `Lap/DistanceMeters`. |
 | `-o`, `--output` | Write here instead of stdout. |
-| `--tolerance` | How far *below* 1 the factor may fall before the guard fires. Default `0.4`. The bound is asymmetric — see below. |
+| `--tolerance` | How far the factor may sit from 1 in *either* direction before the guard fires. Default `0.4`, which is wide because a factor below 1 is the ordinary case. |
 | `--on-tolerance` | `abort` (default), `clamp` to the tolerance bound, or `proceed` anyway. |
 
 The report line goes to stderr and the file to stdout, so
@@ -323,10 +323,13 @@ rather than fabricating data:
 | A factor above 1 on a fully recorded track | Corrected normally. Chords are shorter than curves, so a complete track can measure slightly short. |
 | A factor outside `--tolerance` either way | Aborts by default, whatever the target's source. |
 
-The bound is deliberately **asymmetric**. GPS noise only ever adds length, so a
-factor below 1 is the normal case and can legitimately be large — one real walk
-in testing measured 0.723, a 38% over-read. A factor above 1 means something
-quite different and gets handled separately.
+The bound is symmetric; **what differs is how the two sides are treated.** GPS
+noise only ever adds length, so a factor below 1 is the normal case and can
+legitimately be large — one real walk measured 0.723, a 38% over-read — which is
+why the band is as wide as 0.4. A factor above 1 means the track measured
+*short*, which is a different thing entirely and gets a much tighter test of its
+own at 1.005. The wide band still applies in both directions, and it is what
+catches a target that is simply wrong.
 
 That asymmetry was once stated too strongly. "A complete track can only measure
 long" is half the mechanism: jitter adds length, and chording a curve subtracts
@@ -371,6 +374,7 @@ reckon fetch ACTIVITY_ID [--raw] [-o OUTPUT]
 reckon sync      [--since DATE] [--until DATE] [--dry-run]
 reckon backfill  [--since DATE] [--until DATE]
 reckon reconcile [--since DATE] [--until DATE]
+reckon catchup   [--since DATE] [--until DATE] [--limit N] [--dry-run]
 ```
 
 All of these take `--store PATH` for the local JSON store, or `--table NAME` to
@@ -424,6 +428,18 @@ Keeping those apart rather than reducing them to yes/no is the point: an
 wrong in either direction costs you a duplicate or a missing activity.
 `reconcile` exits non-zero if anything is ambiguous, because that is the only
 outcome needing a person.
+
+Then `catchup` uploads what is genuinely missing, oldest first:
+
+```console
+$ reckon catchup --since 2026-01-01 --limit 10
+```
+
+It **refuses any activity reconcile has not checked** — not reconciled is not
+"known absent", and uploading one is how a second copy gets made. `--limit`
+defaults to 25 because a years-deep history must not fire hundreds of uploads
+unattended; Strava allows 1000 requests a day and an upload costs several. Run it
+again for the rest.
 
 **`reconcile` needs the `activity:read_all` scope**, which tokens issued before
 September 2026 do not carry. Re-run `scripts/authorize.py strava` and check the
@@ -660,10 +676,11 @@ is the authentication, compared in constant time. The receiver does nothing but
 authenticate, copy the body to a queue and return — it never trusts the
 notification's contents, and the worker re-fetches everything from the API.
 
-Two alarms email you when something needs a person: a message reaching the
-dead-letter queue, which means an activity did not get to Strava; and the
+Three alarms email you when something needs a person: a message reaching the
+dead-letter queue, which means an activity did not get to Strava; the
 authorisation lapsing, which needs `scripts/authorize.py` re-run and cannot be
-automated.
+automated; and — on the `testing` profile only — the grant approaching its
+seven-day expiry, a day before it stops working.
 
 **Teardown** is `terraform destroy`. The SSM parameters and their values go with
 it.

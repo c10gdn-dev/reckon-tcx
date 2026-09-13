@@ -156,8 +156,7 @@ id is what Strava deduplicates on, so an unidentified file uploaded twice become
 two activities that nothing can ever reconcile. The file stays on disk and the
 next run tries again.
 
-**An inventory record is separate from a log entry** — planned for deployed mode,
-`PLAN.md` §13.2. "What exists in Google Health, and is it on Strava" is a fact
+**An inventory record is separate from a log entry** (`PLAN.md` §13.2, built). "What exists in Google Health, and is it on Strava" is a fact
 about the world; "what Reckon decided about it" is a decision Reckon made. The
 codebase has already conflated them once: `mark_done` writes a `LogEntry` with
 status `uploaded` and the reason "already on Strava before Reckon", which records
@@ -306,11 +305,17 @@ the live API rejects. Only reading the diagram against the code finds that.
 
 Things that will look wrong until you know why.
 
-- **The tolerance guard is asymmetric.** `DEFAULT_TOLERANCE` bounds the *low*
-  side only; the high side is `MAX_CREDIBLE_FACTOR`. GPS jitter only ever adds
-  length, so a factor below 1 is ordinary and can be large, while a factor above
-  1 means the track measured *short*, which jitter cannot cause. A symmetric band
-  falsely refused a real walk at 0.723.
+- **The tolerance guard is symmetric; the *treatment* of the two sides is not.**
+  `DEFAULT_TOLERANCE` bounds the factor both ways — `1 ± tolerance` — and it is
+  wide (0.4) because GPS jitter only ever adds length, so a factor well below 1
+  is ordinary. A symmetric band of 0.2 falsely refused a real walk at 0.723,
+  which is why the number is large rather than why the bound is one-sided.
+  `MAX_CREDIBLE_FACTOR` (1.005) is a *separate, much tighter* test on the high
+  side, because a track measuring short means something different — but it
+  refuses only with corroboration, so the wide symmetric bound is what catches an
+  absurd target. **Four documents described this as low-side-only until
+  2026-09-13**; it was true until the corroboration rule landed on 2026-09-05 and
+  left a complete track with a nonsense lap total otherwise unguarded.
 - **GPS coverage is measured in seconds, not trackpoints.** The watch samples
   roughly half as often without a fix, so counting trackpoints understates a
   dropout badly enough to hide one.

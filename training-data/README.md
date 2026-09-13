@@ -49,7 +49,8 @@ A real Fitbit TCX carries *two* different distances, and they do not agree:
 
 Across the corpus files that carry a usable stream, the second runs from 0.6% to
 38.3% larger than the first, and it tracks the raw haversine sum of the
-coordinates to within 0.1%. Two files measure *short* instead, and they are the
+coordinates to within 0.8% — and to within 0.1% on sixteen of the twenty-two
+files that carry a stream. Two files measure *short* instead, and they are the
 two partial-GPS cases: one by 24.8%, where the watch lost its lock mid-route, and
 one by 9.1%, where it recorded nothing at all for the first six minutes. So the target total the transform rescales *to* is already present
 in the file — no activity summary fetch is needed to compute the factor.
@@ -71,6 +72,6 @@ Drop files in whenever you have them; both pick them up automatically.
 
 ## Promoting a file to a test fixture
 
-`scripts/anonymise.py` shifts all coordinates by a constant offset,
+`scripts/anonymise.py` replaces all coordinates with generated ones,
 rebases timestamps to an epoch, and strips device serial and user ID. That is how
 `tests/fixtures/` gets populated with something committable.
