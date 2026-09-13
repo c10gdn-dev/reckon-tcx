@@ -45,6 +45,23 @@ resource "aws_lambda_function_url" "receiver" {
   authorization_type = "NONE"
 }
 
+# Creating the URL does not grant permission to call it. The console adds this
+# for you and Terraform does not, so without it `apply` succeeds and then every
+# request gets a 403 from Lambda before reaching the handler -- including
+# Google's two verification probes, which makes `subscribe.py create` fail with
+# a message that says nothing about permissions.
+#
+# The wildcard principal is what `authorization_type = "NONE"` means; the
+# authentication is the shared secret the handler checks. Verify after apply
+# with `curl -i "$URL"` -- 401 is the handler answering, 403 is this missing.
+resource "aws_lambda_permission" "receiver_url" {
+  statement_id           = "AllowPublicFunctionUrlInvoke"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = aws_lambda_function.receiver.function_name
+  principal              = "*"
+  function_url_auth_type = "NONE"
+}
+
 resource "aws_lambda_function" "worker" {
   function_name = "${var.name}-worker"
   role          = aws_iam_role.worker.arn

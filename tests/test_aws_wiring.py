@@ -18,6 +18,7 @@ from reckon.aws import receiver, warden, worker
 from reckon.aws.config import build_pipeline, from_environment
 from reckon.aws.queue import Sqs
 from reckon.aws.secrets import Secrets, parameter_name
+from reckon.clients.health import Profile
 from reckon.clients.oauth import Tokens
 from reckon.core.errors import ReckonError
 from reckon.stores.base import Status
@@ -319,8 +320,9 @@ def test_the_warden_warns_once_the_grant_is_near_seven_days(dynamo) -> None:
     store = DynamoStore(TABLE, client=dynamo)
     store.save("google", replace(LIVE, authorised_at=DAY), expected_version=0)
 
-    assert warden.check(store=store, now=Clock(now=DAY * 7.5).time)["warn"] is True
-    assert warden.check(store=store, now=Clock(now=DAY * 4).time)["warn"] is False
+    testing = {"profile": Profile.TESTING}
+    assert warden.check(store=store, now=Clock(now=DAY * 7.5).time, **testing)["warn"] is True
+    assert warden.check(store=store, now=Clock(now=DAY * 4).time, **testing)["warn"] is False
 
 
 def test_the_warden_never_warns_about_strava(dynamo) -> None:
@@ -359,6 +361,7 @@ def test_the_warden_handler_prints_the_report_for_the_metric_filter(
     store.save("google", replace(LIVE, authorised_at=DAY), expected_version=0)
     monkeypatch.setattr(warden, "DynamoStore", lambda name, **kw: store)
     monkeypatch.setenv("RECKON_TABLE", TABLE)
+    monkeypatch.setenv("RECKON_GOOGLE_PROFILE", "testing")
 
     # The handler uses the real clock, and a grant stamped at day one of the
     # epoch is long past seven days — so this is the warning case, printed.
@@ -380,3 +383,49 @@ def test_the_warden_handler_returns_the_report_rather_than_raising(dynamo, monke
     report = warden.handler({})
 
     assert report["services"]["google"]["state"] == "ok"
+
+
+def test_the_warden_does_not_warn_on_the_published_profile(dynamo) -> None:
+    """A published client's grant lasts about six months, not seven days.
+
+    The warden warned unconditionally until 2026-09-13, using the testing
+    numbers against whatever was deployed. With `published` the default, the
+    first run after migrating an existing grant would have emailed
+    "re-authorise now" with months left — and an alarm that cries wolf in week
+    one is worse than no alarm, because the operator learns to close it.
+    """
+    store = DynamoStore(TABLE, client=dynamo)
+    store.save("google", replace(LIVE, authorised_at=DAY), expected_version=0)
+
+    report = warden.check(store=store, now=Clock(now=DAY * 90).time, profile=Profile.PUBLISHED)
+
+    assert report["services"]["google"]["watched"] is False
+    assert report["warn"] is False
+    assert report["profile"] == "published"
+
+
+def test_the_warden_reads_the_profile_from_configuration(dynamo) -> None:
+    store = DynamoStore(TABLE, client=dynamo)
+    store.save("google", replace(LIVE, authorised_at=DAY), expected_version=0)
+
+    report = warden.check(
+        store=store, now=Clock(now=DAY * 90).time, secret=_secrets(TABLE, profile="testing")
+    )
+
+    assert report["warn"] is True
+
+
+def test_an_unreadable_profile_warns_about_nothing(dynamo) -> None:
+    """The failure that matters here is a false alarm, not a missed one.
+
+    A missed warning costs a re-authorisation the operator must do anyway; a
+    false one costs the credibility of the channel that reports real problems.
+    """
+    store = DynamoStore(TABLE, client=dynamo)
+    store.save("google", replace(LIVE, authorised_at=DAY), expected_version=0)
+
+    report = warden.check(
+        store=store, now=Clock(now=DAY * 90).time, secret=_secrets(TABLE, profile="nonsense")
+    )
+
+    assert report["warn"] is False

@@ -25,7 +25,13 @@ variable "alarm_email" {
 variable "worker_timeout_seconds" {
   description = "Worker Lambda timeout. The queue's visibility timeout is derived from this."
   type        = number
-  default     = 60
+
+  # 300, not 60. The worker polls Strava's asynchronous upload with a bounded
+  # sleep of up to 62 s per activity, and a notification can carry several -- so
+  # 60 s could not finish two. Idle time is not billed on a queue this quiet, so
+  # the headroom costs nothing and buys the difference between draining and
+  # dead-lettering.
+  default = 300
 }
 
 

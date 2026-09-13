@@ -20,6 +20,12 @@ resource "aws_sqs_queue" "work" {
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.dead_letter.arn
-    maxReceiveCount     = 3
+
+    # Five, not three. Three was sized for "three transient faults", but a
+    # notification window holding several activities can need more than one
+    # invocation to drain -- each receive makes durable progress, and the
+    # *message* still counts a failure. Three would dead-letter a batch that was
+    # working, about twelve minutes in.
+    maxReceiveCount = 5
   })
 }

@@ -55,6 +55,21 @@ SERVICES = {
 }
 
 
+def _store(args: argparse.Namespace) -> object:
+    """The local file, or DynamoDB when `--table` names one.
+
+    Imported inside the function for the same reason `cli.py` does it: boto3
+    ships in the Lambda runtime and is a development dependency here, so a
+    module-level import would stop this script running on a machine that has
+    only what Reckon needs.
+    """
+    if args.table is None:
+        return FileStore(args.store)
+    from reckon.stores.dynamo import DynamoStore
+
+    return DynamoStore(args.table)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("service", choices=sorted(SERVICES))
@@ -76,6 +91,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--client-id")
     parser.add_argument("--client-secret")
     parser.add_argument("--redirect-uri", default=REDIRECT_URI)
+    parser.add_argument(
+        "--table",
+        metavar="NAME",
+        help=(
+            "write to this DynamoDB table instead of the local file — the weekly "
+            "renewal for a deployed `testing` profile, with no migrate.py step"
+        ),
+    )
     parser.add_argument(
         "--store",
         type=Path,
@@ -125,12 +148,13 @@ def main(argv: list[str] | None = None) -> int:
     # `reckon sync` can read it: FileStore expects a schema-versioned document
     # and refuses anything else, which is exactly the sort of seam that only
     # fails once real credentials are in hand.
-    store = FileStore(args.store)
+    store = _store(args)
     current = store.load(args.service)
     store.save(args.service, tokens, expected_version=0 if current is None else current.version)
 
     remaining = tokens.expires_at - time.time()
-    print(f"stored {args.service} tokens in {args.store}", file=sys.stderr)
+    where = args.table or args.store
+    print(f"stored {args.service} tokens in {where}", file=sys.stderr)
     print(f"access token expires in {remaining / 60:.0f} min", file=sys.stderr)
 
     # Said every time, because there is no way to look it up later.

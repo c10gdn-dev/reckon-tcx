@@ -508,8 +508,15 @@ class Pipeline:
         # this point is identical, which is the whole reason the modes share a
         # pipeline rather than a family resemblance.
         data = self.health.tcx(exercise.name) if data is None else data
-        data, hr_warnings = self._with_heart_rate(data, exercise)
         try:
+            # Both steps inside the guard, not just the rescale. Enrichment
+            # parses the document too, and a `MalformedTCX` raised there is the
+            # same deterministic fact about the same file — it simply used to
+            # escape past the handler written for it, aborting the whole run and
+            # losing every later activity in the window. The test suite missed
+            # it because its exercise fixture carries no average heart rate, so
+            # the enrichment returned before parsing anything.
+            data, hr_warnings = self._with_heart_rate(data, exercise)
             result = self._rescale(data)
         except ReckonError as exc:
             return Outcome(

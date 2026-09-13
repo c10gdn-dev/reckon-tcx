@@ -154,3 +154,36 @@ def test_the_default_clock_stamps_something_plausible() -> None:
     receive(event(body='{"a": 1}'), secret=SECRET, enqueue=queue)
     assert queue[0]["received_at"].endswith("Z")
     assert json.loads('"' + queue[0]["received_at"] + '"')
+
+
+def test_a_non_ascii_header_is_a_401_and_not_a_crash() -> None:
+    """`compare_digest` raises on a non-ASCII `str` rather than returning False.
+
+    `curl -H 'Authorization: é'` produced a 502 and a stack trace. Never an
+    authentication bypass — the raise preceded the enqueue — but a free way for
+    anyone who found the URL to fill the log and make the Errors metric useless.
+    """
+    sent: list[str] = []
+
+    answer = receive(
+        {"headers": {"authorization": "Bearer café"}, "body": "{}"},
+        secret="s3cret",
+        enqueue=sent.append,
+    )
+
+    assert answer["statusCode"] == 401
+    assert sent == []
+
+
+def test_a_secret_with_non_ascii_in_it_still_authenticates() -> None:
+    """Both sides encode, so a correct secret is not rejected for its bytes."""
+    sent: list[str] = []
+
+    answer = receive(
+        {"headers": {"authorization": "pässwörd"}, "body": "{}"},
+        secret="pässwörd",
+        enqueue=sent.append,
+    )
+
+    assert answer["statusCode"] == 204
+    assert len(sent) == 1

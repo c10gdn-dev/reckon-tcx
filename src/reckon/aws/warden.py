@@ -24,6 +24,7 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from reckon.aws.secrets import Secrets
+from reckon.clients.health import Profile
 from reckon.clients.oauth import Tokens
 from reckon.stores.base import TokenStore
 from reckon.stores.dynamo import DynamoStore
@@ -36,9 +37,17 @@ GRANT_DAYS = 7.0
 # always on is one nobody reads.
 WARN_AFTER_DAYS = 6.0
 
-# The services whose grants are worth watching. Strava's does not expire, so it
-# is here only to report, never to warn about.
-WATCHED = ("google", "strava")
+# Every service whose grant is reported. Which of them is *watched* depends on
+# the profile: Strava's grant never expires, and Google's expires weekly only on
+# an unpublished client. A published client's lasts about six months.
+SERVICES = ("google", "strava")
+
+# Google's documented life for a published client's refresh token: revoked, or
+# six months unused. A deployment refreshing on every notification never
+# approaches it, so `published` is reported and never warned about — warning at
+# six days there would email a false alarm within the week and teach the reader
+# to ignore the one alarm that matters.
+PUBLISHED_IS_WATCHED = False
 
 
 def handler(event: Mapping[str, Any], context: Any = None) -> dict[str, Any]:
@@ -65,16 +74,20 @@ def check(
     secret: Callable[[str], str] | None = None,
     now: Callable[[], float] = time.time,
     warn_after_days: float = WARN_AFTER_DAYS,
+    profile: Profile | None = None,
 ) -> dict[str, Any]:
     """How old each stored grant is, and whether any of them wants attention."""
     secret = Secrets() if secret is None else secret
     store = DynamoStore(secret("RECKON_TABLE"), now=now) if store is None else store
+    profile = _profile(secret) if profile is None else profile
 
     moment = now()
-    report: dict[str, Any] = {"services": {}, "warn": False}
-    for service in WATCHED:
+    report: dict[str, Any] = {"services": {}, "warn": False, "profile": str(profile)}
+    for service in SERVICES:
         stored = store.load(service)
-        report["services"][service] = _age(service, stored.tokens if stored else None, moment)
+        report["services"][service] = _age(
+            service, stored.tokens if stored else None, moment, profile
+        )
 
     report["warn"] = any(
         entry["days"] is not None and entry["days"] >= warn_after_days
@@ -84,7 +97,21 @@ def check(
     return report
 
 
-def _age(service: str, tokens: Tokens | None, moment: float) -> dict[str, Any]:
+def _profile(secret: Callable[[str], str]) -> Profile:
+    """Which client this deployment authenticates against, or the safe default.
+
+    Unreadable or unset means `published`, which warns about nothing — the
+    failure that matters here is a false alarm, not a missed one. A missed
+    warning costs a manual re-authorisation the operator would have to do
+    anyway; a false one costs the credibility of the alarm channel.
+    """
+    try:
+        return Profile(secret("RECKON_GOOGLE_PROFILE"))
+    except (KeyError, ValueError):
+        return Profile.PUBLISHED
+
+
+def _age(service: str, tokens: Tokens | None, moment: float, profile: Profile) -> dict[str, Any]:
     """One service's grant age, and whether its expiry is worth watching.
 
     `days` is None in two different situations that must not be confused: no
@@ -98,7 +125,8 @@ def _age(service: str, tokens: Tokens | None, moment: float) -> dict[str, Any]:
     days = tokens.granted_days_ago(moment)
     if days is None:
         return {"days": None, "state": "authorised before this was recorded", "watched": False}
-    # Only Google's grant expires on a clock. Strava's lasts until revoked, so
-    # its age is reported and never warned about.
-    watched = service == "google"
+    # Only Google's grant runs on a seven-day clock, and only on an unpublished
+    # client. Strava's lasts until revoked; a published Google client's lasts
+    # months. Both are reported and neither is warned about.
+    watched = service == "google" and profile is Profile.TESTING
     return {"days": round(days, 2), "state": "ok", "watched": watched}

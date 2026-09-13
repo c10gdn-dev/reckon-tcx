@@ -1627,3 +1627,51 @@ def test_catchup_goes_oldest_first(tmp_path: pathlib.Path) -> None:
     )
 
     assert [o.activity_id for o in line.catchup(**WINDOW)] == ["early", "late"]
+
+
+def test_a_malformed_file_is_withheld_even_when_enrichment_parses_first() -> None:
+    """One bad file must not abort the run, and used to.
+
+    `_with_heart_rate` parses the document to write the lap average, so a
+    `MalformedTCX` was raised one line before the handler written to catch it.
+    Every later activity in the window was lost. The original test missed it
+    because its exercise fixture has no average heart rate, so the enrichment
+    returned before parsing anything — and Google does send one.
+    """
+    with_average = replace(exercise(), average_heart_rate=120)
+    health = FakeTransport(response(body=b"<truncated"))
+
+    outcome = pipeline(health, FakeTransport()).process(with_average)
+
+    assert outcome.status is Status.WITHHELD
+    assert "not well-formed XML" in outcome.reason
+
+
+def test_a_malformed_file_does_not_stop_the_activities_after_it() -> None:
+    listing = json_response(
+        {
+            "dataPoints": [
+                {
+                    "name": f"users/me/dataTypes/exercise/dataPoints/{point}",
+                    "exercise": {
+                        "interval": {"startTime": "2026-02-23T13:10:00Z"},
+                        "exerciseType": "WALKING",
+                        "displayName": "Walk",
+                        "metricsSummary": {"averageHeartRateBeatsPerMinute": 120},
+                    },
+                }
+                for point in ("1", "2", "3")
+            ]
+        }
+    )
+    health = FakeTransport(
+        listing,
+        response(body=CORRECTABLE),
+        response(body=b"<truncated"),
+        response(body=CORRECTABLE),
+    )
+    strava = FakeTransport(upload_response(activity_id=11), upload_response(activity_id=33))
+
+    outcomes = pipeline(health, strava).sync(**WINDOW)
+
+    assert [str(o.status) for o in outcomes] == ["uploaded", "withheld", "uploaded"]

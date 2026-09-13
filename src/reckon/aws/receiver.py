@@ -93,7 +93,15 @@ def _authorised(event: Mapping[str, Any], secret: str) -> bool:
     supplied = headers.get("authorization")
     if not isinstance(supplied, str) or not secret:
         return False
-    return hmac.compare_digest(supplied, secret)
+    # Compared as bytes, because `compare_digest` *raises* on a non-ASCII `str`
+    # rather than returning False. `curl -H 'Authorization: é'` used to produce a
+    # 502 and a stack trace instead of a 401 — no authentication bypass, since
+    # the raise preceded the enqueue, but a free way for anyone who finds the URL
+    # to fill the log with errors and make the Errors metric meaningless.
+    #
+    # UTF-8 on both sides: a byte comparison of differing encodings would reject
+    # a secret that is in fact correct, which is the worse failure.
+    return hmac.compare_digest(supplied.encode("utf-8"), secret.encode("utf-8"))
 
 
 def _body(event: Mapping[str, Any]) -> str:
