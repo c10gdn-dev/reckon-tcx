@@ -163,12 +163,19 @@ def gps_coverage(activity: ET.Element) -> float:
 # claim that the constant "reproduces the corpus exactly", which was true of
 # twenty files and stopped being true as the corpus grew.
 #
-# Three remains right for a different and better reason than the original one.
-# Thirteen of twenty-six sit at exactly 3 s against a 1 s median, which is the
-# recorder's ordinary jitter and must not be called a gap; everything above 5 s
-# is a break. Nothing in the corpus lands between 3 and 5 s, so the multiple has
-# real clearance where it matters — at the boundary between normal and abnormal,
-# rather than at the top of the range.
+# Three remains right, but the clearance that justified it is gone (2026-09-17).
+# Seventeen of twenty-seven files top out at exactly 3 s — four of them against a
+# 2 s median, where 3 s is not a gap at all — and that is the recorder's ordinary
+# jitter, which must not be called a break. The claim that followed, "nothing in
+# the corpus lands between 3 and 5 s", was true of twenty-six files and is now
+# false: an hour of 5-a-side football sampled at 1 Hz tops out at 4 s, landing
+# squarely in the void, and two files sit at 5 s.
+#
+# The threshold survives on its behaviour rather than on its margin. That 4 s
+# interval is one of 3579 and carries the file to a 0.1% gap fraction, so nothing
+# warns and nothing refuses. Three is now a judgement with a file one second
+# above it, and the next file to land at 4 s is the one to look at hard — the
+# same shape of erosion MIN_GPS_COVERAGE already records.
 GAP_MULTIPLE = 3.0
 GAP_FLOOR_SECONDS = 3.0
 

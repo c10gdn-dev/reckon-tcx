@@ -16,8 +16,8 @@ from enum import StrEnum
 from reckon.core import tcx
 from reckon.core.errors import MissingTarget, ToleranceExceeded
 
-# How far *below* 1 the factor may fall. Deliberately asymmetric — see the guard
-# in `rescale_tcx` — because the two directions mean different things.
+# How far the factor may fall either side of 1 — see the guard in `rescale_tcx`.
+# The two directions mean different things, but both are bounded.
 #
 # A factor below 1 means the GPS stream over-measured, which is ordinary jitter.
 # The corpus has one real walk at 0.723: a short meandering route with 91.6% GPS
@@ -57,19 +57,32 @@ MIN_GPS_COVERAGE = 0.80
 # own total. GPS jitter is strictly additive — every wobble lengthens the path,
 # none shortens it — so a complete track cannot come in short. When the target
 # was taken from the file, that is evidence of missing track rather than of
-# noise. All nine complete tracks in the corpus fall below 1.0; the highest is
-# 0.9943. The margin above 1.0 absorbs rounding in the two recorded totals.
+# noise. Every complete track in the corpus falls below 1.0, which is the claim
+# this constant rests on and it still holds. The margin above 1.0 absorbs
+# rounding in the two recorded totals.
+#
+# The old figures — "all nine complete tracks, the highest 0.9943" — do not
+# reproduce (2026-09-17), because "complete" was never defined. Read strictly as
+# gps_coverage == 100%, twenty-seven files give eight such tracks and the highest
+# factor among them is 0.9898; 0.9943 belongs to a file whose coverage is not
+# 100%. Stated with the definition attached so the next re-read can check it.
 MAX_CREDIBLE_FACTOR = 1.005
 
 # Share of an activity's elapsed time that may fall between trackpoints before
 # the result says so. Distance survives a gap — the stream chords straight across
 # it — so this warns and never refuses.
 #
-# A judgement inside an observed void, and flagged as such. Seventeen of twenty
-# corpus files have no gap at all; the two with minor ones sit at 0.6% and 1.2%;
-# the one real case is 47.5%. Nothing has been seen between 1.2% and 47.5%, so
-# 5% is an order of magnitude clear of the benign cases and an order below the
-# real one, which is the most that can honestly be claimed for it.
+# The void it was justified inside has been occupied (2026-09-17). The comment
+# read "nothing has been seen between 1.2% and 47.5%", which was true of twenty
+# files. Two now sit at 9.3% and 9.2% — a 247 s break and an 89 s one, both
+# against a 1 s median — so the threshold no longer separates a cluster from a
+# lone outlier. It warns on both, which is correct: those are real breaks in
+# recording, which is what this exists to find.
+#
+# What is gone is the order-of-magnitude clearance either side. 5% now has files
+# 4 points above it and the benign cases a few points below, so it is an
+# ordinary judgement rather than a wide one. It still never refuses — the stream
+# chords across a gap, so distance survives and only shape is lost.
 MAX_GAP_FRACTION = 0.05
 
 # How much of an activity's own duration may fall outside the recorded track
@@ -80,12 +93,21 @@ MAX_GAP_FRACTION = 0.05
 # the middle is chorded across, while time before the first trackpoint is simply
 # absent from the stream. They are free to diverge.
 #
-# Measured, like the gap threshold. Twenty-three of the twenty-six corpus files
-# leave 3.0% or less unrecorded, most of them under 1%; the two exceptions are
-# 12.1% and 25.0%, and both are files whose track really does start late. A watch
-# that takes a minute to find the sky on an hour-long run lands at 1.7%, so the
-# bound has to sit above the ordinary acquisition delay the README describes and
-# below a genuinely missing kilometre.
+# Measured, like the gap threshold. Twenty-four of the twenty-seven corpus files
+# leave 3.0% or less unrecorded, most of them under 1%, and the largest of those
+# exceptions are 12.1% and 25.0% — files whose track really does start late. A
+# watch that takes a minute to find the sky on an hour-long run lands at 1.7%, so
+# the bound has to sit above the ordinary acquisition delay the README describes
+# and below a genuinely missing kilometre.
+#
+# **The margin is 0.3 points, not 9, and always was** — a third file sits at 4.69%
+# and PLAN.md has recorded it since the bound was set, reading it as proof the
+# headroom is real rather than assumed. Both readings are fair; keep them
+# together. It is a threshold that, unlike the gap check, *refuses*, and it does
+# not refuse that file only because this measure bites solely when the factor is
+# already above MAX_CREDIBLE_FACTOR — and that file's factor is 0.9493. A file at
+# 4.7% with a high factor would be refused on a margin this thin, so the next one
+# to land near 5% is a reason to re-measure rather than to trust the constant.
 MAX_UNRECORDED_FRACTION = 0.05
 
 # Number of decimal places kept when writing a scaled value back. Distances are

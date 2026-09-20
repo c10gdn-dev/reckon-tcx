@@ -330,8 +330,11 @@ Things that will look wrong until you know why.
   longer than `max(3 s, 3 x the file's own median)`. An absolute threshold was
   written first and was wrong: real files sample at 1 s and 2 s and the synthetic
   builders at 10 s, so a fixed 3 s called ordinary sampling a gap on every
-  generated fixture. The multiple is the measured one — seventeen of twenty real
-  files top out at exactly 3 s against a 1 s median.
+  generated fixture. The multiple is the measured one — seventeen of
+  twenty-seven real files top out at exactly 3 s, though four of those seventeen
+  sample at a 2 s median, where 3 s is not a gap at all. The clearance that once
+  justified it is gone: one file now tops out at 4 s, in what the comment on
+  `GAP_MULTIPLE` used to call an unoccupied void.
 - **A recording gap warns and never refuses, but a late start does refuse.** The
   two look alike and are opposites. A gap between two trackpoints is chorded
   across, so no distance is lost, only the shape of that stretch. Time before the
