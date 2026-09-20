@@ -19,7 +19,13 @@ from reckon import __version__
 from reckon.clients import health as health_api
 from reckon.clients import strava as strava_api
 from reckon.clients.http import retrying, send
-from reckon.core.analyse import ActivityStats, analyse_tcx, summarise
+from reckon.core.analyse import (
+    ActivityStats,
+    ThresholdEvidence,
+    analyse_tcx,
+    summarise,
+    threshold_evidence,
+)
 from reckon.core.errors import ReckonError
 from reckon.core.rescale import DEFAULT_TOLERANCE, RescaleResult, ToleranceAction, rescale_tcx
 from reckon.pipeline import CATCHUP_LIMIT, PROCESSED_DIR, Outcome, Pipeline, token_holder
@@ -124,6 +130,14 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=DEFAULT_CORPUS,
         help=f"directory of .tcx files to measure (default {DEFAULT_CORPUS})",
+    )
+    analyse.add_argument(
+        "--thresholds",
+        action="store_true",
+        help=(
+            "instead of the per-file table, recompute the corpus figures behind "
+            "each threshold constant, for checking their comments against"
+        ),
     )
     analyse.set_defaults(handler=_analyse_command)
 
@@ -396,6 +410,10 @@ def _analyse_command(args: argparse.Namespace, out: Any, err: Any) -> int:
             print(f"reckon: {path.name}: {exc}", file=err)
             return 1
 
+    if args.thresholds:
+        _print_thresholds(threshold_evidence(measured), out)
+        return 0
+
     _print_table(measured, out)
     summary = summarise([s for _, s in measured])
     print("", file=out)
@@ -412,6 +430,37 @@ def _analyse_command(args: argparse.Namespace, out: Any, err: Any) -> int:
         print(f"skipped  {reason}  x{count}", file=out)
 
     return 0
+
+
+def _print_thresholds(evidence: list[ThresholdEvidence], out: Any) -> None:
+    """Print each constant beside the corpus figures that justify it.
+
+    Deliberately not a pass/fail: a file above the bound is the design working
+    for three of these six and a warning sign for the others. The reader
+    compares this against the comment on the constant and decides.
+    """
+    for item in evidence:
+        print(f"{item.name} = {item.value:g}   {item.measure}", file=out)
+        print(
+            f"  {item.population} files, {len(item.below)} at or below, {len(item.above)} above",
+            file=out,
+        )
+        _print_nearest("closest below", item.below, out)
+        _print_nearest("closest above", item.above, out)
+        clearance = item.clearance
+        print(
+            f"  {'clearance':<14}{'-' if clearance is None else format(clearance, '.4f')}",
+            file=out,
+        )
+        print("", file=out)
+
+
+def _print_nearest(label: str, rows: tuple[tuple[str, float], ...], out: Any) -> None:
+    if not rows:
+        print(f"  {label:<14}none", file=out)
+        return
+    name, value = rows[0]
+    print(f"  {label:<14}{value:<10.4f}{name}", file=out)
 
 
 def _print_table(measured: list[tuple[str, ActivityStats]], out: Any) -> None:

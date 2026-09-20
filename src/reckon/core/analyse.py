@@ -17,7 +17,16 @@ from dataclasses import dataclass
 
 from reckon.core import tcx
 from reckon.core.errors import MissingTarget
-from reckon.core.rescale import RescaleResult, SkipReason, rescale_tcx
+from reckon.core.rescale import (
+    DEFAULT_TOLERANCE,
+    MAX_CREDIBLE_FACTOR,
+    MAX_GAP_FRACTION,
+    MAX_UNRECORDED_FRACTION,
+    MIN_GPS_COVERAGE,
+    RescaleResult,
+    SkipReason,
+    rescale_tcx,
+)
 
 # Speed below which a sample counts as stopped, when estimating moving time.
 # Only ever used to compare a before against an after, so the absolute value
@@ -48,6 +57,9 @@ class ActivityStats:
     factor: float | None
     gps_coverage: float
     gap_fraction: float
+    unrecorded_fraction: float
+    median_interval_s: float
+    max_interval_s: float
     wiggle: float | None
     lead_in_s: float | None
     start_lag_s: float | None
@@ -89,6 +101,121 @@ class CorpusSummary:
     skipped: tuple[tuple[SkipReason, int], ...]
 
 
+@dataclass(frozen=True)
+class ThresholdEvidence:
+    """What the corpus currently says about one threshold constant.
+
+    Exists because every corpus-citing comment in this codebase has eventually
+    been falsified by a file, twice needing rewriting by hand. The shape is the
+    same for all six constants: which files the measure applies to, the ones
+    nearest the bound on either side, and the clearance between them. That last
+    number is the one that keeps eroding, so it is computed rather than claimed.
+
+    `below` and `above` are sorted *towards* the bound, nearest first, so the
+    first entry of each is the pair the clearance is measured across. Which side
+    is the safe one differs per constant and is deliberately not encoded here:
+    this reports, it does not judge.
+    """
+
+    name: str
+    value: float
+    measure: str
+    """What was measured, worded for a reader comparing it against a comment."""
+
+    below: tuple[tuple[str, float], ...]
+    above: tuple[tuple[str, float], ...]
+
+    @property
+    def population(self) -> int:
+        """Files the measure applies to. Not every constant sees every file."""
+        return len(self.below) + len(self.above)
+
+    @property
+    def clearance(self) -> float | None:
+        """Distance between the nearest file each side. None when one side is empty.
+
+        An empty side is the honest answer, not a wide margin: it means the
+        corpus has nothing there yet, which is exactly the claim that has twice
+        stopped being true.
+        """
+        if not self.below or not self.above:
+            return None
+        return self.above[0][1] - self.below[0][1]
+
+
+def threshold_evidence(measured: list[tuple[str, ActivityStats]]) -> list[ThresholdEvidence]:
+    """Recompute the corpus figures behind each threshold, for checking comments against.
+
+    Reports; never judges. A constant is not wrong because a file crossed it —
+    `MAX_GAP_FRACTION` is *meant* to have files above it — so the caller reads
+    the numbers and decides, exactly as the comments record having done.
+    """
+    # Each constant sees a different population, and the differences are the
+    # point: a no-GPS yoga file says nothing about GPS coverage, and a skipped
+    # file has no factor to be inside a tolerance. Folding them in would put
+    # zeroes next to the bound and invent a clearance that is not there.
+    gps = [(n, s.gps_coverage) for n, s in measured if s.trackpoints_with_gps > 0]
+    complete = [
+        (n, s.factor) for n, s in measured if s.gps_coverage >= 1.0 and s.factor is not None
+    ]
+    corrected = [(n, abs(s.factor - 1.0)) for n, s in measured if s.factor is not None]
+    sampled = [
+        (n, s.max_interval_s / s.median_interval_s) for n, s in measured if s.median_interval_s > 0
+    ]
+
+    return [
+        _split(
+            "MIN_GPS_COVERAGE",
+            MIN_GPS_COVERAGE,
+            "GPS coverage, files carrying any",
+            gps,
+        ),
+        _split(
+            "MAX_CREDIBLE_FACTOR",
+            MAX_CREDIBLE_FACTOR,
+            "factor, complete tracks only",
+            complete,
+        ),
+        _split(
+            "DEFAULT_TOLERANCE",
+            DEFAULT_TOLERANCE,
+            "distance of factor from 1",
+            corrected,
+        ),
+        _split(
+            "MAX_GAP_FRACTION",
+            MAX_GAP_FRACTION,
+            "elapsed time between trackpoints",
+            [(n, s.gap_fraction) for n, s in measured],
+        ),
+        _split(
+            "MAX_UNRECORDED_FRACTION",
+            MAX_UNRECORDED_FRACTION,
+            "activity duration outside the track",
+            [(n, s.unrecorded_fraction) for n, s in measured],
+        ),
+        _split(
+            "GAP_MULTIPLE",
+            tcx.GAP_MULTIPLE,
+            "longest interval over the file's own median",
+            sampled,
+        ),
+    ]
+
+
+def _split(
+    name: str, value: float, measure: str, rows: list[tuple[str, float]]
+) -> ThresholdEvidence:
+    """Partition measurements either side of the bound, each sorted towards it."""
+    return ThresholdEvidence(
+        name=name,
+        value=value,
+        measure=measure,
+        below=tuple(sorted((r for r in rows if r[1] <= value), key=lambda r: -r[1])),
+        above=tuple(sorted((r for r in rows if r[1] > value), key=lambda r: r[1])),
+    )
+
+
 def analyse_tcx(data: bytes) -> ActivityStats:
     """Measure one TCX file, running the transform to find its factor."""
     root = tcx.parse(data)
@@ -103,6 +230,9 @@ def analyse_tcx(data: bytes) -> ActivityStats:
     positions = [(t, p) for t, p, _ in samples if p is not None]
     stream = [(t, d) for t, d in ((t, d) for t, _, d in samples) if d is not None]
     elapsed = (samples[-1][0] - samples[0][0]).total_seconds() if len(samples) > 1 else 0.0
+    intervals = [
+        (samples[i][0] - samples[i - 1][0]).total_seconds() for i in range(1, len(samples))
+    ]
 
     return ActivityStats(
         sport=activity.get("Sport") or "",
@@ -116,6 +246,9 @@ def analyse_tcx(data: bytes) -> ActivityStats:
         factor=factor,
         gps_coverage=tcx.gps_coverage(activity),
         gap_fraction=tcx.recording_gaps(activity).fraction,
+        unrecorded_fraction=tcx.unrecorded_time(activity).fraction,
+        median_interval_s=st.median(intervals) if intervals else 0.0,
+        max_interval_s=max(intervals, default=0.0),
         wiggle=_wiggle(positions),
         lead_in_s=(positions[0][0] - samples[0][0]).total_seconds() if positions else None,
         start_lag_s=_start_lag(activity, samples[0][0]),

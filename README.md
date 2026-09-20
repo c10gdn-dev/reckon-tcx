@@ -307,6 +307,32 @@ late. `lead` is the watch writing trackpoints while it hunts for the sky; `lag`
 is it writing nothing at all. A large `lag` on a file Reckon refused is the
 reason it refused.
 
+#### Checking the thresholds against the corpus
+
+Reckon's guards are constants, and each one carries a comment citing the corpus
+figures that justify it. Those figures go stale every time a file is added, so
+`--thresholds` recomputes them instead of printing the per-file table:
+
+```console
+$ reckon analyse --corpus training-data/ --thresholds
+MIN_GPS_COVERAGE = 0.8   GPS coverage, files carrying any
+  23 files, 1 at or below, 22 above
+  closest below 0.7173    8854647812686872528
+  closest above 0.8506    6436069663605072632
+  clearance     0.1333
+...
+```
+
+Each constant gets the population the measure applies to, the file nearest the
+bound on each side, and the clearance between them. **`clearance` is the number
+worth watching** — it is what every one of those comments claims, and what has
+twice turned out to be smaller than claimed. A `-` means one side is empty,
+which is the corpus having nothing there *yet* rather than a wide margin.
+
+It reports and does not judge: a file above the bound is the guard working for
+`MAX_GAP_FRACTION` and a warning sign for `MIN_GPS_COVERAGE`. Read it against
+the comment on the constant.
+
 
 **Guards.** Reckon leaves an activity alone, with a warning naming the reason,
 rather than fabricating data:

@@ -18,7 +18,7 @@ One line each, saying what the module owns.
 |---|---|
 | `core/tcx.py` | Parsing and serialising TCX. Namespaces, element lookup, GPS coverage, recording gaps, the device name and the start timestamp. Knows nothing about rescaling. |
 | `core/rescale.py` | The transform. Pure: bytes and a target in, bytes and numbers out. |
-| `core/analyse.py` | Corpus measurement. Pure. Feeds `reckon analyse`. |
+| `core/analyse.py` | Corpus measurement. Pure. Feeds `reckon analyse`, including `--thresholds`, which recomputes the figures each guard's comment cites. |
 | `core/heartrate.py` | Putting heart rate back into a TCX: annotating existing trackpoints (`merge`), building them where the API exported none (`build`), or the summary's average onto the lap (`set_average`). |
 | `core/errors.py` | The exception hierarchy, and the `Transient` marker. |
 | `clients/http.py` | **The only module that touches the network.** `send` performs one request; `retrying` decides what is worth repeating. |

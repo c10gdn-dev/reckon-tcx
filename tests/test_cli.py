@@ -7,6 +7,7 @@ juggling and no patching of `sys.stdout`.
 import argparse
 import io
 import json
+import re
 
 import pytest
 
@@ -298,6 +299,40 @@ def test_analyse_reports_a_single_file_without_a_stdev(tmp_path):
 
     assert code == 0
     assert "stdev" not in report
+
+
+def test_analyse_thresholds_reports_each_constant_with_its_corpus_figures(corpus):
+    code, report, _ = analyse("--corpus", str(corpus), "--thresholds")
+
+    assert code == 0
+    for name in (
+        "MIN_GPS_COVERAGE",
+        "MAX_CREDIBLE_FACTOR",
+        "DEFAULT_TOLERANCE",
+        "MAX_GAP_FRACTION",
+        "MAX_UNRECORDED_FRACTION",
+        "GAP_MULTIPLE",
+    ):
+        assert name in report
+    assert "closest below" in report
+    assert "clearance" in report
+    assert "factor" not in report.split("MIN_GPS_COVERAGE")[0], "the table is replaced, not added"
+
+
+def test_analyse_thresholds_says_none_where_no_file_crosses(corpus):
+    """An empty side prints as absent rather than as a number."""
+    code, report, _ = analyse("--corpus", str(corpus), "--thresholds")
+
+    assert code == 0
+    assert "closest above none" in re.sub(r" +", " ", report)
+    assert "clearance -" in re.sub(r" +", " ", report)
+
+
+def test_analyse_without_thresholds_still_prints_the_table(corpus):
+    _, report, _ = analyse("--corpus", str(corpus))
+
+    assert "MIN_GPS_COVERAGE" not in report
+    assert "2 of 3 corrected" in report
 
 
 def test_analyse_on_an_empty_directory_exits_one(tmp_path):
