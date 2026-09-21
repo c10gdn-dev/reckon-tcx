@@ -712,8 +712,48 @@ def test_an_ordinary_acquisition_delay_still_scales() -> None:
     survives it. 5 s against a 95 s activity is 5.3%... just over the bound, so
     this uses 4 s to sit under it — the point being that the bound is set above
     ordinary acquisition and below a missing kilometre.
+
+    Since 2026-09-21 it passes for a second reason as well, and the distinction
+    matters: those 4 s cover 40 m at the track's own pace against a 200 m
+    shortfall, so they explain 20% of it and MIN_SHORTFALL_EXPLAINED is not met
+    either. Change the lap distance and the same 4 s lead refuses — see below.
     """
     result = rescale_tcx(late_starting(4.0))
+
+    assert result.modified is True
+    assert result.skips == ()
+
+
+def test_a_lead_too_short_to_trip_the_bound_still_refuses_when_it_explains_the_gap() -> None:
+    """The 2026-09-21 hole: 1.89% unrecorded hid 144 m of a real 7 km run.
+
+    The same 4 s lead as the test above, against a shortfall small enough that
+    those seconds account for 80% of it. Nothing about the *track* has changed —
+    100% coverage, no gap, 4.3% unrecorded, all inside every bound — so only the
+    relation between the lead and the shortfall can catch it.
+    """
+    result = rescale_tcx(late_starting(4.0, lap_distance_m=950.0))
+
+    assert result.modified is False
+    assert [str(s.reason) for s in result.skips] == ["partial_gps"]
+
+
+def test_that_refusal_says_how_much_of_the_gap_the_lead_explains() -> None:
+    """A fourth reason reaches the message, so it has to name itself too."""
+    detail = rescale_tcx(late_starting(4.0, lap_distance_m=950.0)).skips[0].detail
+
+    assert "4s before the first trackpoint accounts for 80%" in detail
+    assert "at this activity's own pace" in detail
+
+
+def test_a_complete_track_with_no_lead_at_all_is_still_corrected() -> None:
+    """The 14 km chord case, pinned again from the other side.
+
+    With no unrecorded time there is nothing for the new rule to weigh, so it
+    scores zero and the file is corrected — which is the whole reason the rule
+    is a share rather than "any lead at all".
+    """
+    result = rescale_tcx(short_measuring())
 
     assert result.modified is True
     assert result.skips == ()

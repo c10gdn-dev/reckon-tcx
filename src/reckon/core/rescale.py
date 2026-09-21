@@ -57,9 +57,16 @@ MIN_GPS_COVERAGE = 0.80
 # own total. GPS jitter is strictly additive — every wobble lengthens the path,
 # none shortens it — so a complete track cannot come in short. When the target
 # was taken from the file, that is evidence of missing track rather than of
-# noise. Every complete track in the corpus falls below 1.0, which is the claim
-# this constant rests on and it still holds. The margin above 1.0 absorbs
-# rounding in the two recorded totals.
+# noise. The margin above 1.0 absorbs rounding in the two recorded totals.
+#
+# **"Every complete track falls below 1.0" was falsified on 2026-09-21** by a
+# 7.1 km run: 100% coverage, no gap over 5 s, and an implied factor of 1.0207.
+# The claim held for twenty-seven files. What was missing was the first 50 s,
+# which the watch never wrote — 1.89% of the activity, far under
+# MAX_UNRECORDED_FRACTION, yet 144 m of a 144 m shortfall. The constant was
+# right and its corroboration was too coarse; see MIN_SHORTFALL_EXPLAINED, which
+# now catches that file. Do not read a complete track as a guarantee of a
+# factor below 1.
 #
 # The old figures — "all nine complete tracks, the highest 0.9943" — do not
 # reproduce (2026-09-17), because "complete" was never defined. Read strictly as
@@ -109,6 +116,33 @@ MAX_GAP_FRACTION = 0.05
 # 4.7% with a high factor would be refused on a margin this thin, so the next one
 # to land near 5% is a reason to re-measure rather than to trust the constant.
 MAX_UNRECORDED_FRACTION = 0.05
+
+# Share of a scale-up the unrecorded lead must plausibly account for before the
+# file counts as missing route rather than as chords cutting corners.
+#
+# The seventh instance of this codebase's recurring fork, and split for the same
+# reason as the other six. `MAX_UNRECORDED_FRACTION` asks "is the track complete
+# enough", a property of the track alone. This asks "does the missing part
+# account for the discrepancy", a relation between the track and the target.
+# Folding them together is what let a 50-second acquisition delay hide 144 m:
+# 1.89% of a 44-minute run is nowhere near the 5% bound, yet at the run's own
+# pace those seconds cover 93% of the shortfall.
+#
+# Why a share and not "any lead at all": chords are shorter than arcs, so a
+# complete track genuinely can measure short — a real 14 km run came in 0.57%
+# below its own total with no acquisition delay and nothing missing. That file
+# must still be corrected, and it has no lead to explain anything with. A file
+# with two seconds of lead and a large shortfall must be corrected too, which a
+# bare "lead > 0" test would refuse.
+#
+# Measured on the only three files that can reach the guard — a factor above
+# MAX_CREDIBLE_FACTOR is rare. They answer 0.00 (a mid-route dropout, no lead at
+# all, caught by the coverage check instead), 0.93 and 1.38. **A judgement
+# inside a void with three points in it**, which is exactly the claim this
+# project has twice watched die, so expect to move it. `reckon analyse
+# --thresholds` does not report this one: it is a relation, not a per-file
+# measurement, and has nowhere to sit in that table.
+MIN_SHORTFALL_EXPLAINED = 0.5
 
 # Number of decimal places kept when writing a scaled value back. Distances are
 # metres and speeds are m/s; seven places is far beyond the precision of either
@@ -216,6 +250,7 @@ def rescale_tcx(
     skips: list[Skip] = []
     scalable: list[ET.Element] = []
     gps_total = 0.0
+    stream_totals: dict[int, float] = {}
     trackpoint_count = 0
 
     for activity in tcx.activities(root):
@@ -271,6 +306,7 @@ def rescale_tcx(
                 f"distance is intact but the route is chorded across them"
             )
         scalable.append(activity)
+        stream_totals[id(activity)] = final
         gps_total += final
 
     if not scalable:
@@ -286,7 +322,16 @@ def rescale_tcx(
         target_distance_m = _target_from_file(scalable, lap_totals)
 
     factor = target_distance_m / gps_total
-    incomplete = [a for a in scalable if not _fully_recorded(a)]
+    # Two independent reasons to call a track incomplete, and they catch
+    # different files: the mid-route dropout at 1.3295 has no lead at all, and
+    # the late start at 1.0207 is complete by every property-of-the-track test.
+    shortfall = target_distance_m - gps_total
+    incomplete = [
+        a
+        for a in scalable
+        if not _fully_recorded(a)
+        or _lead_share(a, stream_totals[id(a)], shortfall) >= MIN_SHORTFALL_EXPLAINED
+    ]
     if from_file and factor > MAX_CREDIBLE_FACTOR and incomplete:
         # The file's own total exceeding the GPS sum *can* mean part of the route
         # went unrecorded — a dropout too brief for the coverage check to catch.
@@ -306,7 +351,8 @@ def rescale_tcx(
         # shows somewhere the route could have gone missing.
         detail = (
             f"the file's own total exceeds the GPS distance by {(factor - 1) * 100:.1f}%, "
-            f"and {_why_incomplete(incomplete[0])}; part of the route is missing"
+            f"and {_why_incomplete(incomplete[0], stream_totals, shortfall)}; "
+            f"part of the route is missing"
         )
         for activity in incomplete:
             _skip(skips, warnings, tcx.label(activity), SkipReason.PARTIAL_GPS, detail)
@@ -428,13 +474,16 @@ def _format(value: float) -> str:
     return f"{value:.{_PRECISION}f}".rstrip("0").rstrip(".")
 
 
-def _why_incomplete(activity: ET.Element) -> str:
-    """Which of the three checks found the hole, for the refusal message.
+def _why_incomplete(
+    activity: ET.Element, stream_totals: dict[int, float], shortfall_m: float
+) -> str:
+    """Which of the four checks found the hole, for the refusal message.
 
-    Named rather than summarised as "not fully recorded", because the three mean
+    Named rather than summarised as "not fully recorded", because they mean
     different things to whoever reads the warning: a dropout is the watch losing
-    the sky mid-route, a gap is it not writing at all, and a late start is the
-    route beginning before the recording did.
+    the sky mid-route, a gap is it not writing at all, a late start is the route
+    beginning before the recording did, and the fourth is a late start too short
+    to trip the third while still accounting for the missing distance.
     """
     unrecorded = tcx.unrecorded_time(activity)
     if unrecorded.fraction > MAX_UNRECORDED_FRACTION:
@@ -444,7 +493,36 @@ def _why_incomplete(activity: ET.Element) -> str:
         )
     if tcx.gps_coverage(activity) < 1.0:
         return "the track is not fully recorded"
-    return f"{tcx.recording_gaps(activity).fraction:.0%} of the elapsed time has no trackpoint"
+    gaps = tcx.recording_gaps(activity)
+    if gaps.fraction > MAX_GAP_FRACTION:
+        return f"{gaps.fraction:.0%} of the elapsed time has no trackpoint"
+    share = _lead_share(activity, stream_totals[id(activity)], shortfall_m)
+    return (
+        f"the {unrecorded.total_s:.0f}s before the first trackpoint accounts for "
+        f"{share:.0%} of the missing distance at this activity's own pace"
+    )
+
+
+def _lead_share(activity: ET.Element, stream_total_m: float, shortfall_m: float) -> float:
+    """How much of a scale-up the unrecorded time could have covered, as a share.
+
+    The activity's own mean pace over the stretch it *did* record, applied to the
+    stretch it did not. Deliberately the recorded pace rather than any assumed
+    one: a walk and a sprint lose very different distances to the same ten
+    seconds, and the file already says which this was.
+
+    Zero when there is nothing to explain or nothing to explain it with, so the
+    caller needs no special cases: a complete track measuring short through
+    chords alone scores 0.0 and is corrected, which is the behaviour the 14 km
+    run in `MIN_SHORTFALL_EXPLAINED` pins down.
+    """
+    if shortfall_m <= 0:
+        return 0.0
+    unrecorded = tcx.unrecorded_time(activity)
+    recorded_s = unrecorded.activity_s - unrecorded.total_s
+    if unrecorded.total_s <= 0 or recorded_s <= 0:
+        return 0.0
+    return unrecorded.total_s * (stream_total_m / recorded_s) / shortfall_m
 
 
 def _fully_recorded(activity: ET.Element) -> bool:

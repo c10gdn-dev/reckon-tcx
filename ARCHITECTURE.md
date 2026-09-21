@@ -335,6 +335,13 @@ Things that will look wrong until you know why.
   sample at a 2 s median, where 3 s is not a gap at all. The clearance that once
   justified it is gone: one file now tops out at 4 s, in what the comment on
   `GAP_MULTIPLE` used to call an unoccupied void.
+- **A late start can refuse even when every completeness bound passes.** The three
+  property-of-the-track checks ask whether the track looks whole;
+  `MIN_SHORTFALL_EXPLAINED` asks whether the unrecorded seconds account for the
+  missing distance, at the activity's own pace. A real 7.1 km run passed all
+  three — 100% coverage, 0.2% gaps, 1.89% unrecorded — while 50 s of unwritten
+  track covered 93% of a 144 m shortfall. Without the fourth check it would have
+  been scaled up 2%, spreading an unrecorded start over the recorded route.
 - **A recording gap warns and never refuses, but a late start does refuse.** The
   two look alike and are opposites. A gap between two trackpoints is chorded
   across, so no distance is lost, only the shape of that stretch. Time before the

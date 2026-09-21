@@ -28,7 +28,7 @@ Real activities from a Fitbit Charge 5:
 Reckon rescales the distance stream so the total matches the device's own
 figure, leaving the GPS geometry and every timestamp untouched.
 
-The size of the correction is not fixed. Across twenty-seven activities it ranged
+The size of the correction is not fixed. Across twenty-eight activities it ranged
 from 0.6% to 38%. How noisy the track was is the best single predictor, though
 only of the *order* — it ranks the corpus well and predicts the size of any
 individual correction poorly, which is why Reckon measures every file rather than
@@ -178,7 +178,7 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   that expires weekly. It is off by default and stays that way. It matters only
   for a fully automated pipeline, where nobody is there to export a file.
 - **Elevation is not corrected.** See below; this is deliberate.
-- **The factor is not a constant.** Across twenty-seven activities it ranged 0.72–0.99
+- **The factor is not a constant.** Across twenty-eight activities it ranged 0.72–0.99
   and tracked neither distance, duration nor pace. It depends on how noisy that
   particular track was. Reckon computes it per file and refuses to guess.
 - **A partial GPS track cannot be corrected, and Reckon detects that and
@@ -188,8 +188,9 @@ value by it, and copy coordinates, altitudes and timestamps through unchanged.
   Reckon checks how much of the elapsed time carried a fix, and refuses below
   80%. It also refuses when the activity's own total exceeds what GPS measured
   **and** the track shows somewhere the route could have gone missing — a
-  trackpoint without a fix, a stretch with no trackpoints at all, or a track that
-  does not span the activity. Both halves are required: a complete track can
+  trackpoint without a fix, a stretch with no trackpoints at all, a track that
+  does not span the activity, or an unrecorded start long enough to account for
+  the missing distance. Both halves are required: a complete track can
   measure slightly short all by itself,
   because the stream joins fixes with straight lines and a chord is shorter than
   the curve it cuts. A real 14 km run measured 0.6% short with every trackpoint
@@ -284,11 +285,11 @@ stream is rescaled.
 $ reckon analyse --corpus training-data/
 file        sport      factor    infl  cover  gaps  wiggle   lead   lag  dMove
 ...
-21 of 27 corrected
+21 of 28 corrected
 factor  0.7229-0.9943  mean 0.9033  stdev 0.0928
 worst moving-time change  113s
 skipped  no_gps  x4
-skipped  partial_gps  x2
+skipped  partial_gps  x3
 ```
 
 | Column | Means |
@@ -345,7 +346,7 @@ rather than fabricating data:
 | A non-monotonic stream | Warns and proceeds; multiplication preserves ordering. |
 | Part of the activity has no trackpoints at all | Warns and proceeds. The distance survives — the file joins the two ends with a straight line — but the shape of that stretch is gone, so splits across it are approximate. |
 | A factor further below 1 than `--tolerance` | Aborts by default. The stream over-measured by more than jitter can explain, so the target is probably wrong. |
-| A factor above 1 by more than 0.5%, on a track that is *not* fully recorded | Passed through as partial GPS. Both conditions are needed — see below. "Not fully recorded" means any of three things: a trackpoint without a fix, more than 5% of the elapsed time with no trackpoint, or more than 5% of the activity's duration outside the track altogether. |
+| A factor above 1 by more than 0.5%, on a track that is *not* fully recorded | Passed through as partial GPS. Both conditions are needed — see below. "Not fully recorded" means any of four things: a trackpoint without a fix, more than 5% of the elapsed time with no trackpoint, more than 5% of the activity's duration outside the track altogether, or an unrecorded start that accounts for at least half the missing distance at the activity's own pace. The fourth catches what the third is too coarse for: 50 unwritten seconds are 1.9% of an hour-long run and can still be 93% of its shortfall. |
 | A factor above 1 on a fully recorded track | Corrected normally. Chords are shorter than curves, so a complete track can measure slightly short. |
 | A factor outside `--tolerance` either way | Aborts by default, whatever the target's source. |
 
@@ -534,7 +535,7 @@ the deliberate act the override is for.
 ## Status
 
 Alpha, and honest about it. The offline commands — `rescale` and `analyse` —
-work and are validated against twenty-seven real exports, including a hand upload to
+work and are validated against twenty-eight real exports, including a hand upload to
 Strava confirming it honours the corrected stream.
 
 `reckon fetch`, `reckon sync` and `reckon local` are built: authorise both
