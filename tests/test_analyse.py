@@ -334,7 +334,38 @@ def test_a_file_that_was_not_corrected_has_no_factor_to_place():
     report = by_name(threshold_evidence([measured("run"), measured("skipped", factor=None)]))
 
     assert report["DEFAULT_TOLERANCE"].population == 1
-    assert report["MAX_CREDIBLE_FACTOR"].population == 1
+
+
+def test_a_refused_file_still_counts_towards_the_credible_factor():
+    """The row would otherwise be circular, and was until 2026-09-21.
+
+    MAX_CREDIBLE_FACTOR is what decides whether a candidate factor is
+    believable, so the files it refuses are the evidence it is about. Reading
+    the post-guard factor meant a corpus holding a file above the bound reported
+    none, because that file had been refused for being above it.
+    """
+    report = by_name(threshold_evidence([measured("run"), measured("refused", factor=None)]))
+
+    assert report["MAX_CREDIBLE_FACTOR"].population == 2
+
+
+def test_the_credible_factor_row_measures_the_implied_ratio_not_the_applied_one():
+    """900 m of lap against 1000 m of stream implies 0.9, whatever ran."""
+    report = by_name(threshold_evidence([measured(factor=None)]))
+
+    assert report["MAX_CREDIBLE_FACTOR"].below[0][1] == pytest.approx(0.9)
+
+
+def test_a_file_with_no_total_has_no_implied_factor():
+    report = by_name(threshold_evidence([measured(lap_distance_m=None)]))
+
+    assert report["MAX_CREDIBLE_FACTOR"].population == 0
+
+
+def test_a_file_with_no_stream_has_no_implied_factor():
+    report = by_name(threshold_evidence([measured(stream_distance_m=0.0)]))
+
+    assert report["MAX_CREDIBLE_FACTOR"].population == 0
 
 
 def test_an_incomplete_track_is_left_out_of_the_credible_factor_population():

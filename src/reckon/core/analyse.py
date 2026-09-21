@@ -155,8 +155,17 @@ def threshold_evidence(measured: list[tuple[str, ActivityStats]]) -> list[Thresh
     # file has no factor to be inside a tolerance. Folding them in would put
     # zeroes next to the bound and invent a clearance that is not there.
     gps = [(n, s.gps_coverage) for n, s in measured if s.trackpoints_with_gps > 0]
+    # The *implied* factor, not the one the transform ran with, and the
+    # difference is the whole point of this row. MAX_CREDIBLE_FACTOR decides
+    # whether a candidate factor is believable, so a file it refuses is exactly
+    # the evidence it is about — and a refused file has no `factor` at all.
+    # Reading `s.factor` here made the row circular: it could only ever report
+    # the files that passed, and answered "0 above" on a corpus containing one
+    # above. Found 2026-09-21, two days after this was written.
     complete = [
-        (n, s.factor) for n, s in measured if s.gps_coverage >= 1.0 and s.factor is not None
+        (n, s.lap_distance_m / s.stream_distance_m)
+        for n, s in measured
+        if s.gps_coverage >= 1.0 and s.lap_distance_m is not None and s.stream_distance_m
     ]
     corrected = [(n, abs(s.factor - 1.0)) for n, s in measured if s.factor is not None]
     sampled = [
@@ -173,7 +182,7 @@ def threshold_evidence(measured: list[tuple[str, ActivityStats]]) -> list[Thresh
         _split(
             "MAX_CREDIBLE_FACTOR",
             MAX_CREDIBLE_FACTOR,
-            "factor, complete tracks only",
+            "implied factor, complete tracks only",
             complete,
         ),
         _split(
