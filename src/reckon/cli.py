@@ -52,6 +52,24 @@ _ENV = {
     "strava": ("RECKON_STRAVA_CLIENT_ID", "RECKON_STRAVA_CLIENT_SECRET"),
 }
 
+# Warnings that say only what the outcome line already says.
+#
+# `rescale._skip` records every pass-through twice — once as the `Skip` that
+# becomes the reason, once as a warning — so a file with no GPS at all prints
+# "no_gps" and then two sentences restating it. Partial GPS is the opposite case
+# and must never be filtered: there the warning carries the measurements the
+# reason omits ("exceeds the GPS distance by 3.9%, and 9% of the activity has no
+# track at all"), which is the most useful line this tool prints.
+#
+# Deliberately coupled to rescale's wording, and `test_cli.py` pins the coupling
+# by running a real no-GPS file through: if either message is reworded the test
+# fails rather than the filter silently going quiet.
+_REDUNDANT_WARNINGS = (
+    "no GPS positions recorded",
+    "no Trackpoint/DistanceMeters",
+    "no activity carries a usable GPS distance stream",
+)
+
 _DISTANCE_PATTERN = re.compile(r"(?P<value>\d+(?:\.\d+)?)(?P<unit>km|mi)?", re.IGNORECASE)
 _UNITS_IN_METRES = {"": 1.0, "km": 1000.0, "mi": 1609.344}
 _DISTANCE_HELP = "expected a distance like 10.2km, 6.3mi, or 10200 (bare number means metres)"
@@ -625,7 +643,7 @@ def _report_outcomes(outcomes: Sequence[Outcome], out: Any) -> int:
         # the warning that it was being uploaded under the wrong sport type went
         # only to the Outcome, where nobody reads it. A warning no one sees is not
         # a warning.
-        for warning in outcome.warnings:
+        for warning in _worth_printing(outcome):
             print(f"    ! {warning}", file=out)
     print("", file=out)
     print(
@@ -648,6 +666,19 @@ def _outcome_line(outcome: Outcome) -> str:
         f"{marker} {(outcome.source or outcome.activity_id)[:21]:<22}{outcome.name[:18]:<19}"
         f"{outcome.status:<15}{factor}{detail}"
     )
+
+
+def _worth_printing(outcome: Outcome) -> tuple[str, ...]:
+    """The outcome's warnings, less any that only restate its reason.
+
+    Filtered only when nothing was rescaled, which is exactly when the reason
+    line carries the explanation. A file where one activity was scaled and
+    another skipped has no reason of its own, so there the skip warning is the
+    only word about it and is kept.
+    """
+    if outcome.factor is not None:
+        return outcome.warnings
+    return tuple(w for w in outcome.warnings if not any(r in w for r in _REDUNDANT_WARNINGS))
 
 
 def _build_pipeline(args: argparse.Namespace, *, dry_run: bool = False) -> Pipeline:

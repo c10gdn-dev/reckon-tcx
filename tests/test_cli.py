@@ -725,14 +725,64 @@ def test_local_prints_the_warnings_the_outcome_carries(tmp_path, authorised):
     """
     import builders
 
-    directory = export_dir(tmp_path, indoor=builders.tcx(with_position=False, activity_id=ago(1)))
+    directory = export_dir(
+        tmp_path,
+        backwards=builders.tcx(
+            distances=(0.0, 500.0, 400.0), lap_distance_m=380.0, activity_id=ago(1)
+        ),
+    )
     transport = transport_of(listing("1"), upload_body(activity_id=9))
 
     code, report, _ = local(str(directory), "--store", str(authorised), transport=transport)
 
     assert code == 0
     assert "! " in report, "warnings are prefixed so they do not read as outcome lines"
-    assert "no GPS positions recorded" in report
+    assert "not monotonic" in report
+
+
+def test_local_does_not_restate_the_reason_as_a_warning(tmp_path, authorised):
+    """A no-GPS file said `no_gps` and then two sentences meaning `no_gps`.
+
+    This pins the coupling to `rescale`'s wording: if either message is reworded,
+    `_REDUNDANT_WARNINGS` stops matching and this test fails, rather than the
+    filter quietly going silent.
+    """
+    import builders
+
+    directory = export_dir(tmp_path, indoor=builders.tcx(with_position=False, activity_id=ago(1)))
+    transport = transport_of(listing("1"), upload_body(activity_id=9))
+
+    code, report, _ = local(str(directory), "--store", str(authorised), transport=transport)
+
+    assert code == 0
+    assert "no_gps" in report, "the reason still says why"
+    assert "! " not in report, f"nothing left worth printing, got:\n{report}"
+
+
+def test_a_partial_gps_warning_is_never_filtered(tmp_path, authorised):
+    """The opposite case, and the one that matters.
+
+    `partial_gps` as a reason says almost nothing; the warning carries the
+    measurements. Filtering it would hide the most useful line the tool prints.
+    """
+    import builders
+
+    directory = export_dir(
+        tmp_path,
+        late=builders.tcx(
+            distances=tuple(float(i * 100) for i in range(10)),
+            lap_distance_m=1100.0,
+            lap_total_time_s=690.0,
+            activity_id=ago(1),
+        ),
+    )
+    transport = transport_of(listing("1"), upload_body(activity_id=9))
+
+    code, report, _ = local(str(directory), "--store", str(authorised), transport=transport)
+
+    assert code == 0
+    assert "partial_gps" in report
+    assert "part of the route is missing" in report, f"detail was filtered away:\n{report}"
 
 
 def test_local_names_the_file_it_could_not_identify(tmp_path, authorised):
