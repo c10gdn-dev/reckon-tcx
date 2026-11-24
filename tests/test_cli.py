@@ -716,6 +716,25 @@ def test_local_reports_a_line_per_file_and_the_counts(tmp_path, authorised):
     assert "1 uploaded" in report
 
 
+def test_local_prints_the_warnings_the_outcome_carries(tmp_path, authorised):
+    """A warning no one sees is not a warning.
+
+    A treadmill run reached Strava under the wrong sport type on 2026-11-19 while
+    the warning saying so went only to the Outcome. The one-line summary said
+    `passed_through  no_gps` and nothing else.
+    """
+    import builders
+
+    directory = export_dir(tmp_path, indoor=builders.tcx(with_position=False, activity_id=ago(1)))
+    transport = transport_of(listing("1"), upload_body(activity_id=9))
+
+    code, report, _ = local(str(directory), "--store", str(authorised), transport=transport)
+
+    assert code == 0
+    assert "! " in report, "warnings are prefixed so they do not read as outcome lines"
+    assert "no GPS positions recorded" in report
+
+
 def test_local_names_the_file_it_could_not_identify(tmp_path, authorised):
     directory = export_dir(tmp_path, junk=b"not xml at all")
 

@@ -621,6 +621,12 @@ def _report_outcomes(outcomes: Sequence[Outcome], out: Any) -> int:
     """One line per activity, then the counts, then the exit code they imply."""
     for outcome in outcomes:
         print(_outcome_line(outcome), file=out)
+        # Printed since 2026-11-24. A treadmill run went through as `no_gps` while
+        # the warning that it was being uploaded under the wrong sport type went
+        # only to the Outcome, where nobody reads it. A warning no one sees is not
+        # a warning.
+        for warning in outcome.warnings:
+            print(f"    ! {warning}", file=out)
     print("", file=out)
     print(
         "  ".join(
