@@ -213,6 +213,27 @@ Press **Create**, then **Download JSON**. Keep that file — it is what you hand
 Reckon in the next step, and it is a password. Do not email it or commit it to a
 repository.
 
+**Move it somewhere you will not lose it.** `~/Downloads` is the wrong home: it
+is the folder people clear out, and a cleared-out client secret stops Reckon
+dead until you come back here and make another one. Anywhere outside the repo
+will do — `~/.config/reckon/` sits beside the token store and is already where
+Reckon keeps its secrets.
+
+On macOS you can keep it out of the filesystem altogether, in the login
+keychain:
+
+```console
+$ security add-generic-password -s reckon-google -a client_id     -w   # then paste
+$ security add-generic-password -s reckon-google -a client_secret -w   # then paste
+```
+
+Giving `-w` with nothing after it makes it prompt, so the secret never lands in
+your shell history. Read one back with `security find-generic-password -s
+reckon-google -a client_secret -w`. Keychain Access — on recent macOS at
+`/System/Library/CoreServices/Applications/Keychain Access.app`, not in
+Utilities — shows the items under **login**; the Passwords app does not, because
+it only lists website logins.
+
 [creds]: https://console.cloud.google.com/apis/credentials
 
 ---
@@ -222,7 +243,7 @@ repository.
 In a terminal, in the Reckon folder:
 
 ```console
-$ python scripts/authorize.py google --credentials ~/Downloads/client_secret_....json
+$ python scripts/authorize.py google --credentials ~/.config/reckon/client_secret.json
 ```
 
 It prints a long `accounts.google.com` link. Open it in a browser.
@@ -266,6 +287,23 @@ access token expires in 60 min
 $ export RECKON_GOOGLE_CLIENT_ID=...      # from the JSON file
 $ export RECKON_GOOGLE_CLIENT_SECRET=...
 $ reckon sync --dry-run
+```
+
+Typing the secret after `export` puts it in your shell history, which is the one
+thing worth avoiding here. Read it out of wherever you kept it instead — from
+the JSON file:
+
+```console
+$ export RECKON_GOOGLE_CLIENT_SECRET=$(python -c \
+    'import json,sys; print(json.load(open(sys.argv[1]))["web"]["client_secret"])' \
+    ~/.config/reckon/client_secret.json)
+```
+
+or, if you used the keychain above:
+
+```console
+$ export RECKON_GOOGLE_CLIENT_SECRET=$(security find-generic-password \
+    -s reckon-google -a client_secret -w)
 ```
 
 `--dry-run` means it will fetch your activities and work out what it *would* do,
@@ -366,7 +404,7 @@ Then authorise it as the `testing` profile:
 
 ```console
 $ python scripts/authorize.py google --profile testing \
-    --credentials ~/Downloads/client_secret_second_app.json
+    --credentials ~/.config/reckon/client_secret_second_app.json
 ```
 
 The `--profile testing` is what asks for the extra scope. Read the

@@ -371,7 +371,7 @@ Two commands need credentials. Authorise each service once — this opens a URL,
 you approve it, and paste the address bar back:
 
 ```console
-$ python scripts/authorize.py google --credentials ~/Downloads/client_secret_*.json
+$ python scripts/authorize.py google --credentials ~/.config/reckon/client_secret.json
 $ python scripts/authorize.py strava --credentials ~/.config/reckon/strava-credentials.json
 ```
 
@@ -692,7 +692,7 @@ credentials.
    ```console
    $ URL=$(terraform -chdir=deploy/terraform output -raw webhook_url)
    $ python scripts/subscribe.py create --url "$URL" --secret "$WEBHOOK_SECRET" \
-       --credentials ~/Downloads/client_secret_*.json
+       --credentials ~/.config/reckon/client_secret.json
    ```
    Google verifies the endpoint as it registers it, so `--secret` must match the
    `webhook_secret` parameter exactly.
