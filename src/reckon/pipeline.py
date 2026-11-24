@@ -66,6 +66,12 @@ SPORT_TYPES: Mapping[str, str] = {
     "BIKING": "Ride",
     "HIKING": "Hike",
     "SWIMMING_OPEN_WATER": "Swim",
+    # Observed live 2026-11-19, the first treadmill run in 612 history entries.
+    # `VirtualRun` rather than `Run` so indoor efforts stay out of outdoor-run
+    # personal records. Distance needs no correction either way: a treadmill file
+    # carries no GPS at all, so `Lap/DistanceMeters` — the belt or stride figure —
+    # is what Strava reads, and the pass-through is exact.
+    "TREADMILL": "VirtualRun",
     "YOGA": "Yoga",
     "WEIGHTS": "WeightTraining",
     "WORKOUT": "Workout",

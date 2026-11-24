@@ -424,6 +424,15 @@ def test_weight_training_is_mapped() -> None:
     assert SPORT_TYPES["WEIGHTS"] == "WeightTraining"
 
 
+def test_a_treadmill_run_is_a_virtual_run() -> None:
+    """Observed live: the first one in 612 history entries uploaded as `Workout`.
+
+    `VirtualRun` rather than `Run` keeps an indoor effort out of outdoor-run
+    personal records, which is the whole reason Strava separates them.
+    """
+    assert SPORT_TYPES["TREADMILL"] == "VirtualRun"
+
+
 def test_the_default_asserts_nothing_untrue() -> None:
     """`Workout` is as editable as `Run` and does not claim an activity happened."""
     assert DEFAULT_SPORT_TYPE == "Workout"
